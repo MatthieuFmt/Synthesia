@@ -24,6 +24,13 @@
       </div>
     </div>
 
+    <!-- Barre de transport : lecture / curseur de position -->
+    <div class="transport">
+      <button id="playBtn" class="btn play-btn" aria-label="Lecture / Pause">▶</button>
+      <span id="timeLabel" class="time-label">0:00 / 0:00</span>
+      <input id="seek" class="seek" type="range" min="0" max="0" step="0.01" value="0" />
+    </div>
+
     <div id="songInfo" class="song-info">Aucun morceau chargé.</div>
   </header>
 

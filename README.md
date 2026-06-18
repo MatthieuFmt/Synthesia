@@ -4,7 +4,7 @@ Application web type *Synthesia* pour apprendre le piano : elle lit un fichier
 MIDI et affiche les notes sur une grille à défilement vertical (le morceau
 démarre **en bas** et monte vers le **haut**).
 
-## Étape 1 — ce qui est implémenté
+## Étape 1 — grille & parsing
 
 - **Stack** : HTML5 Canvas + JavaScript moderne (modules ES). Parsing MIDI via
   [`@tonejs/midi`](https://github.com/Tonejs/Midi) chargé depuis un CDN.
@@ -20,6 +20,21 @@ démarre **en bas** et monte vers le **haut**).
   changements de tempo/signature via les ticks).
 - **Navigation** : défilement vertical libre à la **molette** ou au **glisser**
   (souris/tactile) pour avancer ou reculer manuellement.
+
+## Étape 2 — lecture audio & curseur
+
+- **Audio** : synthèse polyphonique via [`Tone.js`](https://tonejs.github.io/)
+  qui joue les notes MIDI parsées.
+- **Curseur de lecture** : une ligne « now line » fixe (orange) que les notes
+  traversent ; les notes en cours de jeu sont mises en surbrillance.
+- **Transport** : bouton **play/pause**, temps écoulé / total, et barre de
+  progression cliquable (**seek**). Raccourci **Espace** pour play/pause.
+- **Défilement auto** : pendant la lecture, l'affichage suit le curseur.
+  `currentTime` est la source de vérité unique, donc la lecture et le
+  scrubbing manuel (molette / glisser / clic) partagent la même logique.
+
+> ℹ️ L'audio démarre au premier clic sur ▶ (politique « user gesture » des
+> navigateurs pour l'`AudioContext`).
 
 ## Lancer le projet
 

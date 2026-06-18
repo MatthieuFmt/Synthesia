@@ -8,6 +8,7 @@
   /* Couleurs des deux mains */
   --right-hand: #4ea1ff; /* main droite (aigus)  */
   --left-hand:  #2ecc71; /* main gauche (graves) */
+  --cursor:     #ffae57; /* ligne de lecture     */
 }
 
 * { box-sizing: border-box; }
@@ -80,6 +81,58 @@ body {
 
 .swatch.right-hand { background: var(--right-hand); }
 .swatch.left-hand  { background: var(--left-hand); }
+
+/* ---------- Barre de transport ---------- */
+.transport {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.play-btn {
+  width: 42px;
+  height: 38px;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.time-label {
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  color: var(--muted);
+  min-width: 92px;
+}
+
+.seek {
+  flex: 1;
+  appearance: none;
+  height: 6px;
+  border-radius: 3px;
+  background: #21262d;
+  outline: none;
+  cursor: pointer;
+}
+
+.seek::-webkit-slider-thumb {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--cursor, #ffae57);
+  border: none;
+}
+
+.seek::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: none;
+  border-radius: 50%;
+  background: var(--cursor, #ffae57);
+}
 
 .song-info {
   margin-top: 10px;

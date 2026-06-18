@@ -1,15 +1,20 @@
 // ============================================================================
-//  Synthesia Web — Étape 1
-//  Chargement / parsing MIDI + initialisation du Canvas avec les repères
-//  (lignes de mesure + lignes verticales Do/Mi) et défilement vertical.
+//  Synthesia Web — Étapes 1 & 2
+//  Chargement / parsing MIDI, grille de repères (mesures + Do/Mi),
+//  lecture audio (Tone.js) et curseur de lecture play/pause synchronisé.
 //
 //  Modèle d'affichage :
 //    - Axe X  = hauteur des notes (clavier piano de gauche à droite)
 //    - Axe Y  = temps. Le bas du canvas = début du morceau ; on défile
 //               vers le HAUT pour avancer dans le morceau.
+//
+//  Source de vérité : `state.currentTime` (en secondes). Le défilement en
+//  est dérivé, si bien que la lecture automatique et le défilement manuel
+//  (scrubbing) partagent exactement la même logique.
 // ============================================================================
 
 import { Midi } from "https://cdn.jsdelivr.net/npm/@tonejs/midi@2.0.28/+esm";
+import * as Tone from "https://cdn.jsdelivr.net/npm/tone@14.8.49/+esm";
 
 // ----------------------------------------------------------------------------
 //  Constantes de configuration
@@ -18,6 +23,7 @@ const MIDI_LOW = 21;            // A0  : note la plus grave d'un piano 88 touche
 const MIDI_HIGH = 108;          // C8  : note la plus aiguë
 const PIXELS_PER_SECOND = 140;  // échelle temporelle verticale
 const SPLIT_NOTE = 60;          // Do central : seuil graves/aigus pour le fallback
+const PLAYHEAD_RATIO = 0.18;    // position de la ligne de lecture (fraction du bas)
 
 // Demi-tons appartenant à une touche blanche (Do, Ré, Mi, Fa, Sol, La, Si)
 const WHITE_PITCH_CLASSES = [0, 2, 4, 5, 7, 9, 11];
@@ -26,12 +32,13 @@ const COLORS = {
   background: "#0d1117",
   gridMeasure: "#3a4150",
   gridDoMi: "#262c36",
-  whiteKey: "#11161d",
   blackKey: "#0a0d12",
   rightHand: "#4ea1ff",
   rightHandEdge: "#9ccbff",
   leftHand: "#2ecc71",
   leftHandEdge: "#86e9b0",
+  active: "#ffffff",
+  cursor: "#ffae57",
   label: "#6e7681",
 };
 
@@ -42,21 +49,24 @@ const canvas = document.getElementById("rollCanvas");
 const ctx = canvas.getContext("2d");
 
 const state = {
-  song: null,       // morceau parsé (voir buildSong)
-  scrollY: 0,       // décalage de défilement, en pixels (0 = bas/début)
-  dpr: 1,           // device pixel ratio
+  song: null,        // morceau parsé (voir buildSong)
+  currentTime: 0,    // position de lecture, en secondes (source de vérité)
+  isPlaying: false,
+  dpr: 1,
+
+  // Audio (Tone.js), initialisé paresseusement au premier play
+  audioReady: false,
+  synth: null,
+  part: null,
 };
 
 // ----------------------------------------------------------------------------
 //  Disposition du clavier : position horizontale de chaque note MIDI
-//  On répartit les touches blanches sur toute la largeur ; les touches
-//  noires se placent entre deux blanches.
 // ----------------------------------------------------------------------------
 function isWhite(midi) {
   return WHITE_PITCH_CLASSES.includes(((midi % 12) + 12) % 12);
 }
 
-// Nombre de touches blanches dans l'intervalle [MIDI_LOW, MIDI_HIGH]
 function countWhiteKeys() {
   let n = 0;
   for (let m = MIDI_LOW; m <= MIDI_HIGH; m++) if (isWhite(m)) n++;
@@ -65,75 +75,67 @@ function countWhiteKeys() {
 
 const TOTAL_WHITE_KEYS = countWhiteKeys();
 
-// Index de touche blanche (0..TOTAL_WHITE_KEYS-1) pour une note blanche donnée
 function whiteIndex(midi) {
   let idx = 0;
   for (let m = MIDI_LOW; m < midi; m++) if (isWhite(m)) idx++;
   return idx;
 }
 
-// Largeur d'une touche blanche en pixels (dépend de la largeur du canvas)
 function whiteKeyWidth() {
   return canvas.clientWidth / TOTAL_WHITE_KEYS;
 }
 
-// Position X (centre) et largeur d'une note quelconque
 function noteGeometry(midi) {
   const w = whiteKeyWidth();
   if (isWhite(midi)) {
     const x = whiteIndex(midi) * w;
     return { x, width: w, centerX: x + w / 2, white: true };
   }
-  // Touche noire : centrée sur la frontière entre la blanche précédente et suivante
-  const prevWhiteX = whiteIndex(midi - 1) * w; // la blanche juste en dessous
-  const centerX = prevWhiteX + w;              // frontière des deux blanches
+  const prevWhiteX = whiteIndex(midi - 1) * w;
+  const centerX = prevWhiteX + w;
   const blackW = w * 0.62;
   return { x: centerX - blackW / 2, width: blackW, centerX, white: false };
 }
 
-// Bord gauche d'une touche blanche (utile pour la ligne « à gauche du Do »)
 function whiteLeftEdge(midi) {
   return whiteIndex(midi) * whiteKeyWidth();
 }
 
 // ----------------------------------------------------------------------------
-//  Conversion temps <-> coordonnée écran (Y)
-//  Le bas du canvas correspond à (temps courant - scroll). Le temps croît
-//  vers le haut.
+//  Temps <-> coordonnée écran (Y)
+//
+//  La ligne de lecture (playhead) est fixe à `playheadY`. La note dont le temps
+//  vaut `currentTime` s'y trouve toujours. On en déduit :
+//      screenY(time) = playheadY - (time - currentTime) * PIXELS_PER_SECOND
+//  Le temps croît vers le haut (delta positif => plus haut).
 // ----------------------------------------------------------------------------
+function playheadY() {
+  return canvas.clientHeight * (1 - PLAYHEAD_RATIO);
+}
+
 function timeToScreenY(time) {
-  return canvas.clientHeight - (time * PIXELS_PER_SECOND - state.scrollY);
+  return playheadY() - (time - state.currentTime) * PIXELS_PER_SECOND;
+}
+
+// Inverse : à quel temps correspond une position écran (pour le clic-seek)
+function screenYToTime(y) {
+  return state.currentTime + (playheadY() - y) / PIXELS_PER_SECOND;
 }
 
 // ----------------------------------------------------------------------------
 //  Construction d'un « song » normalisé à partir d'un objet Midi (Tone.js)
-//
-//  Sortie :
-//  {
-//    notes:    [{ midi, time, duration, hand }],   hand: "left" | "right"
-//    measures: [time0, time1, ...],                débuts de mesure (s)
-//    duration: number (s),
-//    meta:     { name, bpm, timeSignature }
-//  }
 // ----------------------------------------------------------------------------
 function buildSong(midi) {
   const ppq = midi.header.ppq;
 
   // --- Séparation des mains -------------------------------------------------
-  // Stratégie : si le fichier a au moins 2 pistes contenant des notes, on
-  // considère la piste la plus aiguë comme la main droite et la plus grave
-  // comme la main gauche. Sinon, on répartit note par note autour du Do central.
   const tracksWithNotes = midi.tracks.filter((t) => t.notes.length > 0);
 
-  let handForTrack = new Map();
+  const handForTrack = new Map();
   if (tracksWithNotes.length >= 2) {
-    // Moyenne des hauteurs par piste -> la plus grave = main gauche
-    const avg = (t) =>
-      t.notes.reduce((s, n) => s + n.midi, 0) / t.notes.length;
+    const avg = (t) => t.notes.reduce((s, n) => s + n.midi, 0) / t.notes.length;
     const sorted = [...tracksWithNotes].sort((a, b) => avg(a) - avg(b));
-    sorted.forEach((t, i) => {
-      handForTrack.set(t, i === 0 ? "left" : "right");
-    });
+    sorted.forEach((t, i) => handForTrack.set(t, i === 0 ? "left" : "right"));
   }
 
   const notes = [];
@@ -150,22 +152,20 @@ function buildSong(midi) {
         midi: n.midi,
         time: n.time,
         duration: n.duration,
+        velocity: n.velocity ?? 0.8,
         hand,
       });
     }
   }
   notes.sort((a, b) => a.time - b.time);
 
-  // --- Durée totale ---------------------------------------------------------
   const duration = Math.max(
     midi.duration,
     notes.reduce((m, n) => Math.max(m, n.time + n.duration), 0)
   );
 
-  // --- Lignes de mesure -----------------------------------------------------
   const measures = computeMeasures(midi, ppq, duration);
 
-  // --- Métadonnées ----------------------------------------------------------
   const tempo = midi.header.tempos[0];
   const sig = midi.header.timeSignatures[0];
   const meta = {
@@ -178,12 +178,7 @@ function buildSong(midi) {
 }
 
 // ----------------------------------------------------------------------------
-//  Calcul des débuts de mesure à partir du tempo et de la signature rythmique.
-//
-//  On raisonne en « ticks » : une mesure dure
-//      ticksParMesure = ppq * numerateur * 4 / denominateur
-//  puis on convertit chaque frontière de mesure en secondes via Tone.js
-//  (header.ticksToSeconds), ce qui gère correctement les changements de tempo.
+//  Débuts de mesure à partir du tempo et de la signature rythmique.
 // ----------------------------------------------------------------------------
 function computeMeasures(midi, ppq, duration) {
   const measures = [];
@@ -192,7 +187,6 @@ function computeMeasures(midi, ppq, duration) {
       ? midi.header.timeSignatures
       : [{ ticks: 0, timeSignature: [4, 4] }];
 
-  // Tick final approximatif (pour borner la boucle)
   const endTicks = midi.header.secondsToTicks
     ? midi.header.secondsToTicks(duration)
     : ppq * 4 * 200;
@@ -208,7 +202,6 @@ function computeMeasures(midi, ppq, duration) {
       measures.push(midi.header.ticksToSeconds(t));
     }
   }
-  // Sécurité : au moins la mesure 0
   if (measures.length === 0) measures.push(0);
   return measures;
 }
@@ -231,37 +224,34 @@ function draw() {
     drawMeasureLines(w, h);
     drawNotes();
   }
+
+  drawPlayhead(w, h);
 }
 
-// Colonnes de fond : alterne légèrement blanches / noires pour la lisibilité
 function drawKeyboardColumns(w, h) {
   for (let m = MIDI_LOW; m <= MIDI_HIGH; m++) {
-    if (isWhite(m)) continue; // on ne peint que les colonnes noires
+    if (isWhite(m)) continue;
     const g = noteGeometry(m);
     ctx.fillStyle = COLORS.blackKey;
     ctx.fillRect(g.x, 0, g.width, h);
   }
 }
 
-// Repères verticaux : une ligne à GAUCHE de chaque Do, une à DROITE de chaque Mi
+// Repères verticaux : à GAUCHE de chaque Do, à DROITE de chaque Mi
 function drawDoMiLines(w, h) {
   ctx.strokeStyle = COLORS.gridDoMi;
   ctx.lineWidth = 1;
 
   for (let m = MIDI_LOW; m <= MIDI_HIGH; m++) {
     const pc = ((m % 12) + 12) % 12;
-
     if (pc === 0) {
-      // Do : ligne juste à gauche de la touche
       line(crisp(whiteLeftEdge(m)), 0, crisp(whiteLeftEdge(m)), h);
     } else if (pc === 4) {
-      // Mi : ligne juste à droite de la touche
       const right = whiteLeftEdge(m) + whiteKeyWidth();
       line(crisp(right), 0, crisp(right), h);
     }
   }
 
-  // Étiquettes d'octave (C1, C2, ...) sur chaque Do
   ctx.fillStyle = COLORS.label;
   ctx.font = "10px system-ui, sans-serif";
   for (let m = MIDI_LOW; m <= MIDI_HIGH; m++) {
@@ -272,7 +262,7 @@ function drawDoMiLines(w, h) {
   }
 }
 
-// Repères horizontaux : une ligne par début de mesure
+// Repères horizontaux : débuts de mesure
 function drawMeasureLines(w, h) {
   ctx.strokeStyle = COLORS.gridMeasure;
   ctx.lineWidth = 1;
@@ -281,29 +271,33 @@ function drawMeasureLines(w, h) {
 
   state.song.measures.forEach((t, i) => {
     const y = timeToScreenY(t);
-    if (y < -20 || y > h + 20) return; // hors écran : on saute
+    if (y < -20 || y > h + 20) return;
     line(0, crisp(y), w, crisp(y));
     ctx.fillText(`${i + 1}`, 4, y - 3);
   });
 }
 
-// Notes : rectangles arrondis, colorés selon la main
+// Notes : rectangles arrondis colorés par main, surbrillance si en cours
 function drawNotes() {
   const h = canvas.clientHeight;
+  const now = state.currentTime;
 
   for (const n of state.song.notes) {
     const yBottom = timeToScreenY(n.time);
     const yTop = timeToScreenY(n.time + n.duration);
-
-    // Culling : on ne dessine que ce qui est visible
     if (yBottom < -50 || yTop > h + 50) continue;
 
     const g = noteGeometry(n.midi);
     const isRight = n.hand === "right";
+    const isActive = now >= n.time && now <= n.time + n.duration;
 
     ctx.fillStyle = isRight ? COLORS.rightHand : COLORS.leftHand;
-    ctx.strokeStyle = isRight ? COLORS.rightHandEdge : COLORS.leftHandEdge;
-    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = isActive
+      ? COLORS.active
+      : isRight
+      ? COLORS.rightHandEdge
+      : COLORS.leftHandEdge;
+    ctx.lineWidth = isActive ? 2.5 : 1.5;
 
     const pad = 1;
     roundRect(
@@ -318,7 +312,25 @@ function drawNotes() {
   }
 }
 
-// --- Petits utilitaires de dessin ------------------------------------------
+// Ligne de lecture (curseur) fixe + petits repères triangulaires
+function drawPlayhead(w, h) {
+  const y = playheadY();
+
+  ctx.save();
+  ctx.strokeStyle = COLORS.cursor;
+  ctx.lineWidth = 2;
+  ctx.shadowColor = COLORS.cursor;
+  ctx.shadowBlur = 8;
+  line(0, crisp(y), w, crisp(y));
+  ctx.restore();
+
+  // Triangles aux extrémités
+  ctx.fillStyle = COLORS.cursor;
+  triangle(0, y, 9, 1);
+  triangle(w, y, 9, -1);
+}
+
+// --- Utilitaires de dessin --------------------------------------------------
 function line(x1, y1, x2, y2) {
   ctx.beginPath();
   ctx.moveTo(x1, y1);
@@ -326,7 +338,15 @@ function line(x1, y1, x2, y2) {
   ctx.stroke();
 }
 
-// Aligne sur la demi-pixel pour des lignes nettes
+function triangle(x, y, size, dir) {
+  ctx.beginPath();
+  ctx.moveTo(x, y - size);
+  ctx.lineTo(x + size * dir, y);
+  ctx.lineTo(x, y + size);
+  ctx.closePath();
+  ctx.fill();
+}
+
 function crisp(v) {
   return Math.round(v) + 0.5;
 }
@@ -343,21 +363,121 @@ function roundRect(x, y, w, hgt, r) {
 }
 
 // ----------------------------------------------------------------------------
-//  Défilement
+//  Position de lecture (source de vérité) + synchronisation UI
 // ----------------------------------------------------------------------------
-function maxScroll() {
-  if (!state.song) return 0;
-  const contentHeight = state.song.duration * PIXELS_PER_SECOND;
-  return Math.max(0, contentHeight - canvas.clientHeight + 40);
+function songDuration() {
+  return state.song ? state.song.duration : 0;
 }
 
-function setScroll(value) {
-  state.scrollY = Math.max(0, Math.min(maxScroll(), value));
+// Définit la position courante (clamp [0, durée]) et redessine.
+function setTime(t, { fromTransport = false } = {}) {
+  state.currentTime = Math.max(0, Math.min(songDuration(), t));
+
+  // Si on déplace manuellement le curseur pendant la lecture, on repositionne
+  // le transport audio pour rester synchronisé.
+  if (!fromTransport && state.isPlaying) {
+    Tone.Transport.seconds = state.currentTime;
+  }
+
+  syncTransportUI();
   draw();
 }
 
+function syncTransportUI() {
+  const seek = document.getElementById("seek");
+  const label = document.getElementById("timeLabel");
+  seek.value = String(state.currentTime);
+  label.textContent = `${fmt(state.currentTime)} / ${fmt(songDuration())}`;
+}
+
+function fmt(seconds) {
+  const s = Math.max(0, Math.floor(seconds));
+  const m = Math.floor(s / 60);
+  return `${m}:${String(s % 60).padStart(2, "0")}`;
+}
+
 // ----------------------------------------------------------------------------
-//  Gestion du canvas haute densité (Retina) + redimensionnement
+//  Audio (Tone.js)
+// ----------------------------------------------------------------------------
+async function ensureAudio() {
+  if (state.audioReady) return;
+  await Tone.start(); // doit être déclenché par un geste utilisateur
+  state.synth = new Tone.PolySynth(Tone.Synth).toDestination();
+  state.synth.volume.value = -8;
+  state.audioReady = true;
+}
+
+// (Re)construit le « Part » Tone qui planifie toutes les notes du morceau.
+function buildPart() {
+  if (state.part) {
+    state.part.dispose();
+    state.part = null;
+  }
+  Tone.Transport.cancel();
+  if (!state.song) return;
+
+  const events = state.song.notes.map((n) => ({
+    time: n.time,
+    note: Tone.Frequency(n.midi, "midi").toNote(),
+    duration: n.duration,
+    velocity: n.velocity,
+  }));
+
+  state.part = new Tone.Part((time, value) => {
+    state.synth.triggerAttackRelease(
+      value.note,
+      value.duration,
+      time,
+      value.velocity
+    );
+  }, events);
+  state.part.start(0); // les évènements suivent le temps du Transport
+}
+
+async function play() {
+  if (!state.song) return;
+  await ensureAudio();
+  if (!state.part) buildPart();
+
+  // Reprise depuis le début si on est à la fin
+  if (state.currentTime >= songDuration() - 1e-3) setTime(0);
+
+  Tone.Transport.seconds = state.currentTime;
+  Tone.Transport.start();
+  state.isPlaying = true;
+  updatePlayButton();
+  requestAnimationFrame(tick);
+}
+
+function pause() {
+  Tone.Transport.pause();
+  state.isPlaying = false;
+  updatePlayButton();
+}
+
+function togglePlay() {
+  state.isPlaying ? pause() : play();
+}
+
+function updatePlayButton() {
+  document.getElementById("playBtn").textContent = state.isPlaying ? "⏸" : "▶";
+}
+
+// Boucle d'animation pendant la lecture : suit le transport audio
+function tick() {
+  if (!state.isPlaying) return;
+
+  setTime(Tone.Transport.seconds, { fromTransport: true });
+
+  if (state.currentTime >= songDuration() - 1e-3) {
+    pause();
+    return;
+  }
+  requestAnimationFrame(tick);
+}
+
+// ----------------------------------------------------------------------------
+//  Redimensionnement / canvas haute densité
 // ----------------------------------------------------------------------------
 function resizeCanvas() {
   const dpr = window.devicePixelRatio || 1;
@@ -367,20 +487,28 @@ function resizeCanvas() {
   canvas.width = Math.round(w * dpr);
   canvas.height = Math.round(h * dpr);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  setScroll(state.scrollY); // re-clamp + redraw
+  draw();
 }
 
 // ----------------------------------------------------------------------------
-//  Chargement d'un fichier MIDI
+//  Chargement d'un fichier MIDI / démo
 // ----------------------------------------------------------------------------
+function resetForNewSong(label) {
+  pause();
+  buildPart();        // (re)planifie l'audio si l'audio est déjà initialisé
+  state.currentTime = 0;
+  document.getElementById("seek").max = String(songDuration());
+  updateSongInfo(label);
+  syncTransportUI();
+  draw();
+}
+
 async function loadMidiFile(file) {
   try {
     const buffer = await file.arrayBuffer();
     const midi = new Midi(buffer);
     state.song = buildSong(midi);
-    state.scrollY = 0;
-    updateSongInfo(file.name);
-    draw();
+    resetForNewSong(file.name);
   } catch (err) {
     console.error(err);
     updateSongInfo(null, `Erreur de lecture : ${err.message}`);
@@ -405,30 +533,25 @@ function updateSongInfo(fileName, error) {
 }
 
 // ----------------------------------------------------------------------------
-//  Génération d'un morceau de DÉMO (données MIDI fictives) pour démarrer
-//  sans fichier. On crée un vrai objet Midi puis on le passe dans buildSong,
-//  afin d'exercer exactement le même chemin que l'import.
+//  Morceau de DÉMO (données MIDI fictives)
 // ----------------------------------------------------------------------------
 function buildDemoSong() {
   const midi = new Midi();
   midi.name = "Démo — Gamme & accords";
   midi.header.setTempo(96);
-  midi.header.timeSignatures = [];
   midi.header.update();
 
   const right = midi.addTrack();
   const left = midi.addTrack();
 
-  // Main droite : une gamme de Do majeur qui monte (noires)
   const scale = [60, 62, 64, 65, 67, 69, 71, 72, 71, 69, 67, 65, 64, 62, 60];
   let t = 0;
-  const beat = 60 / 96; // durée d'une noire à 96 BPM
+  const beat = 60 / 96;
   for (const midiNote of scale) {
     right.addNote({ midi: midiNote, time: t, duration: beat * 0.9 });
     t += beat;
   }
 
-  // Main gauche : accords (Do, Fa, Sol) en blanches
   const chords = [
     [48, 52, 55], // Do
     [53, 57, 60], // Fa
@@ -441,7 +564,7 @@ function buildDemoSong() {
     for (const note of chord) {
       left.addNote({ midi: note, time: tc, duration: half * 0.95 });
     }
-    tc += half * 2; // un accord toutes les deux blanches
+    tc += half * 2;
   }
 
   return buildSong(midi);
@@ -449,54 +572,77 @@ function buildDemoSong() {
 
 function loadDemo() {
   state.song = buildDemoSong();
-  state.scrollY = 0;
-  updateSongInfo("Démo");
-  draw();
+  resetForNewSong("Démo");
 }
 
 // ----------------------------------------------------------------------------
-//  Interactions : molette + glisser
+//  Interactions : molette, glisser, clic-seek, transport, clavier
 // ----------------------------------------------------------------------------
 function attachInteractions() {
-  // Molette : vers le haut = avancer dans le morceau
+  // Molette : vers le haut = avancer
   canvas.addEventListener(
     "wheel",
     (e) => {
       e.preventDefault();
-      setScroll(state.scrollY - e.deltaY);
+      setTime(state.currentTime - e.deltaY / PIXELS_PER_SECOND);
     },
     { passive: false }
   );
 
-  // Glisser (souris / tactile via Pointer Events)
+  // Glisser : vers le bas = reculer, vers le haut = avancer
   let dragging = false;
+  let moved = false;
   let lastY = 0;
+  let downY = 0;
   canvas.addEventListener("pointerdown", (e) => {
     dragging = true;
-    lastY = e.clientY;
+    moved = false;
+    lastY = downY = e.clientY;
     canvas.setPointerCapture(e.pointerId);
   });
   canvas.addEventListener("pointermove", (e) => {
     if (!dragging) return;
-    // glisser vers le bas = reculer ; vers le haut = avancer
-    setScroll(state.scrollY + (e.clientY - lastY));
+    if (Math.abs(e.clientY - downY) > 3) moved = true;
+    setTime(state.currentTime + (e.clientY - lastY) / PIXELS_PER_SECOND);
     lastY = e.clientY;
   });
-  const endDrag = () => (dragging = false);
+  const endDrag = (e) => {
+    if (!dragging) return;
+    dragging = false;
+    // Clic simple (sans glisser) = placer le curseur à l'endroit cliqué
+    if (!moved) {
+      const rect = canvas.getBoundingClientRect();
+      setTime(screenYToTime(e.clientY - rect.top));
+    }
+  };
   canvas.addEventListener("pointerup", endDrag);
-  canvas.addEventListener("pointercancel", endDrag);
+  canvas.addEventListener("pointercancel", () => (dragging = false));
+
+  // Barre de progression (seek)
+  document.getElementById("seek").addEventListener("input", (e) => {
+    setTime(parseFloat(e.target.value));
+  });
+
+  // Bouton play/pause
+  document.getElementById("playBtn").addEventListener("click", togglePlay);
+
+  // Raccourci clavier : Espace = play/pause
+  window.addEventListener("keydown", (e) => {
+    if (e.code === "Space" && e.target.tagName !== "INPUT") {
+      e.preventDefault();
+      togglePlay();
+    }
+  });
 }
 
 // ----------------------------------------------------------------------------
 //  Initialisation
 // ----------------------------------------------------------------------------
 function init() {
-  document
-    .getElementById("midiInput")
-    .addEventListener("change", (e) => {
-      const file = e.target.files[0];
-      if (file) loadMidiFile(file);
-    });
+  document.getElementById("midiInput").addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (file) loadMidiFile(file);
+  });
 
   document.getElementById("demoBtn").addEventListener("click", loadDemo);
 
@@ -504,7 +650,7 @@ function init() {
 
   attachInteractions();
   resizeCanvas();
-  loadDemo(); // on démarre directement sur la démo
+  loadDemo();
 }
 
 init();
