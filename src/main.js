@@ -28,6 +28,35 @@ const PLAYHEAD_RATIO = 0.18;    // position de la ligne de lecture (fraction du 
 // Demi-tons appartenant à une touche blanche (Do, Ré, Mi, Fa, Sol, La, Si)
 const WHITE_PITCH_CLASSES = [0, 2, 4, 5, 7, 9, 11];
 
+// --- Notation musicale (mini-portée) ----------------------------------------
+const LATIN_NAMES = ["Do", "Ré", "Mi", "Fa", "Sol", "La", "Si"];
+// Degré diatonique (0..6) de chaque demi-ton ; les noires reprennent le degré
+// de la blanche située juste en dessous + une altération dièse.
+const PC_TO_DEGREE = [0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 5, 6];
+const SHARP_PCS = new Set([1, 3, 6, 8, 10]);
+
+// Référence : ligne du bas de la portée
+//   - Clé de sol  -> Mi3 (MIDI 64)  index diatonique 37
+//   - Clé de fa   -> Sol1 (MIDI 43) index diatonique 25
+const TREBLE_BOTTOM = 37;
+const BASS_BOTTOM = 25;
+
+function diatonicIndex(midi) {
+  const pc = ((midi % 12) + 12) % 12;
+  return Math.floor(midi / 12) * 7 + PC_TO_DEGREE[pc];
+}
+
+// Position verticale sur la portée, en demi-interlignes (0 = ligne du bas,
+// +1 par degré vers le haut). Les lignes sont aux valeurs paires 0,2,4,6,8.
+function staffStep(midi, clef) {
+  return diatonicIndex(midi) - (clef === "treble" ? TREBLE_BOTTOM : BASS_BOTTOM);
+}
+
+function noteDegreeName(midi) {
+  const pc = ((midi % 12) + 12) % 12;
+  return LATIN_NAMES[PC_TO_DEGREE[pc]] + (SHARP_PCS.has(pc) ? "♯" : "");
+}
+
 const COLORS = {
   background: "#0d1117",
   gridMeasure: "#3a4150",
@@ -40,6 +69,8 @@ const COLORS = {
   active: "#ffffff",
   cursor: "#ffae57",
   label: "#6e7681",
+  cardBg: "#f6f1e3", // fond « papier » des mini-portées
+  ink: "#1b1b1b",    // encre des portées / notes
 };
 
 // ----------------------------------------------------------------------------
@@ -52,6 +83,7 @@ const state = {
   song: null,        // morceau parsé (voir buildSong)
   currentTime: 0,    // position de lecture, en secondes (source de vérité)
   isPlaying: false,
+  showNotation: true, // mini-portées sur les notes
   dpr: 1,
 
   // Audio (Tone.js), initialisé paresseusement au premier play
@@ -223,6 +255,7 @@ function draw() {
   if (state.song) {
     drawMeasureLines(w, h);
     drawNotes();
+    if (state.showNotation) drawNotationCards();
   }
 
   drawPlayhead(w, h);
@@ -310,6 +343,120 @@ function drawNotes() {
     ctx.fill();
     ctx.stroke();
   }
+}
+
+// Mini-portées : sur chaque note visible, une petite « carte » de partition
+// (5 lignes + clé + tête de note placée + lignes supplémentaires + hampe + nom)
+// pour apprendre à lire la note en même temps qu'on la joue.
+function drawNotationCards() {
+  const h = canvas.clientHeight;
+  for (const n of state.song.notes) {
+    const edgeY = timeToScreenY(n.time); // bord d'attaque (départ de la note)
+    if (edgeY < -40 || edgeY > h + 40) continue;
+    const g = noteGeometry(n.midi);
+    drawNotationCard(g.centerX, edgeY, n.midi, n.hand);
+  }
+}
+
+function drawNotationCard(cx, edgeY, midi, hand) {
+  const clef = hand === "right" ? "treble" : "bass";
+
+  const LG = 4;             // espacement des interlignes (px)
+  const staffH = LG * 4;    // hauteur des 5 lignes
+  const clefW = 10;         // largeur réservée à la clé
+  const cardW = 30;
+  const topPad = 12;        // marge haute (hampes / lignes supplémentaires)
+  const captionH = 10;      // bandeau du nom de note
+  const cardH = topPad + staffH + captionH;
+
+  const cardX = Math.round(cx - cardW / 2);
+  const cardY = Math.round(edgeY - cardH / 2);
+
+  // Carte « papier » bordée de la couleur de la main
+  ctx.fillStyle = COLORS.cardBg;
+  ctx.strokeStyle = hand === "right" ? COLORS.rightHand : COLORS.leftHand;
+  ctx.lineWidth = 1.5;
+  roundRect(cardX, cardY, cardW, cardH, 3);
+  ctx.fill();
+  ctx.stroke();
+
+  const staffLeft = cardX + clefW;
+  const staffRight = cardX + cardW - 3;
+  const staffTopY = cardY + topPad;
+  const bottomLineY = staffTopY + staffH;
+
+  // 5 lignes de portée
+  ctx.strokeStyle = COLORS.ink;
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 5; i++) {
+    const y = crisp(staffTopY + i * LG);
+    line(staffLeft, y, staffRight, y);
+  }
+
+  // Clé (symboles musicaux Unicode)
+  ctx.fillStyle = COLORS.ink;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "alphabetic";
+  if (clef === "treble") {
+    ctx.font = `${Math.round(staffH * 1.7)}px serif`;
+    ctx.fillText("\u{1D11E}", cardX + 1, bottomLineY + LG * 0.6); // 𝄞 clé de sol
+  } else {
+    ctx.font = `${Math.round(staffH * 1.1)}px serif`;
+    ctx.fillText("\u{1D122}", cardX + 1, staffTopY + LG * 2.7); // 𝄢 clé de fa
+  }
+
+  // Tête de note
+  const step = staffStep(midi, clef);
+  const headY = bottomLineY - step * (LG / 2);
+  const headX = staffLeft + (staffRight - staffLeft) * 0.62;
+  const headRx = LG * 0.72;
+  const headRy = LG * 0.6;
+
+  // Lignes supplémentaires (au-dessus / en dessous de la portée)
+  ctx.strokeStyle = COLORS.ink;
+  const ledgerHalf = headRx + 2;
+  if (step < 0) {
+    for (let k = -2; k >= step; k -= 2) {
+      const y = crisp(bottomLineY - k * (LG / 2));
+      line(headX - ledgerHalf, y, headX + ledgerHalf, y);
+    }
+  } else if (step > 8) {
+    for (let k = 10; k <= step; k += 2) {
+      const y = crisp(bottomLineY - k * (LG / 2));
+      line(headX - ledgerHalf, y, headX + ledgerHalf, y);
+    }
+  }
+
+  // Hampe (le « trait vertical ») : vers le haut sous la 3e ligne, sinon bas
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  if (step < 4) {
+    ctx.moveTo(headX + headRx, headY);
+    ctx.lineTo(headX + headRx, headY - LG * 2.6);
+  } else {
+    ctx.moveTo(headX - headRx, headY);
+    ctx.lineTo(headX - headRx, headY + LG * 2.6);
+  }
+  ctx.stroke();
+
+  // Tête de note (ovale plein, légèrement incliné)
+  ctx.fillStyle = COLORS.ink;
+  ctx.beginPath();
+  ctx.ellipse(headX, headY, headRx, headRy, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Altération dièse éventuelle
+  const pc = ((midi % 12) + 12) % 12;
+  if (SHARP_PCS.has(pc)) {
+    ctx.font = `${Math.round(LG * 2.6)}px serif`;
+    ctx.fillText("♯", headX - headRx - 6, headY + LG * 0.9);
+  }
+
+  // Nom de la note (notation latine)
+  ctx.font = "bold 8px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText(noteDegreeName(midi), cardX + cardW / 2, cardY + cardH - 2);
+  ctx.textAlign = "left";
 }
 
 // Ligne de lecture (curseur) fixe + petits repères triangulaires
@@ -625,6 +772,12 @@ function attachInteractions() {
 
   // Bouton play/pause
   document.getElementById("playBtn").addEventListener("click", togglePlay);
+
+  // Affichage de la notation (mini-portées)
+  document.getElementById("notationToggle").addEventListener("change", (e) => {
+    state.showNotation = e.target.checked;
+    draw();
+  });
 
   // Raccourci clavier : Espace = play/pause
   window.addEventListener("keydown", (e) => {

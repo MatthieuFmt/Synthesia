@@ -62,6 +62,16 @@ body {
 .btn:hover,
 .file-btn:hover { background: #2d333b; }
 
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+}
+
 .legend {
   display: flex;
   gap: 16px;

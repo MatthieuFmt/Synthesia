@@ -36,6 +36,22 @@ démarre **en bas** et monte vers le **haut**).
 > ℹ️ L'audio démarre au premier clic sur ▶ (politique « user gesture » des
 > navigateurs pour l'`AudioContext`).
 
+## Étape 3 — lecture de partition (mini-portées)
+
+Chaque note qui défile porte une **mini-portée** pour apprendre à lire le
+solfège en jouant :
+
+- 5 lignes + **clé de sol** (main droite) ou **clé de fa** (main gauche),
+- la **tête de note** placée à la bonne hauteur, avec **lignes supplémentaires**
+  (ledger) au-delà de la portée,
+- la **hampe** (trait vertical) orientée selon la règle classique,
+- l'éventuelle **altération** (♯),
+- le **nom** de la note en **notation latine** (Do, Ré, Mi…).
+
+Case **Notation** dans la barre d'outils pour activer/désactiver l'affichage.
+
+> Pas de clavier interactif : l'app est pensée pour jouer sur un vrai piano.
+
 ## Lancer le projet
 
 Comme on utilise des modules ES + un CDN, il faut servir les fichiers via HTTP
