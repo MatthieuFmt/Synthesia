@@ -97,6 +97,52 @@ const state = {
 };
 
 // ----------------------------------------------------------------------------
+//  Persistance des réglages (localStorage)
+//
+//  On mémorise les derniers réglages — vitesse, notation, morceau et position
+//  de lecture — pour les restaurer au prochain chargement. L'écriture est
+//  périodique (une fois par minute, cf. startAutoSave) plutôt qu'à chaque
+//  changement.
+// ----------------------------------------------------------------------------
+const STORAGE_KEY = "synthesia.settings";
+const AUTOSAVE_INTERVAL_MS = 60_000; // une sauvegarde par minute
+
+function saveSettings() {
+  // Le morceau n'est restaurable que s'il provient de la bibliothèque : un
+  // fichier importé par l'utilisateur n'est pas re-téléchargeable. On retient
+  // l'indice ET le titre pour rester robuste à un réordonnancement de songs.json.
+  const idx = parseInt(document.getElementById("songSelect").value, 10);
+  const fromLibrary = !isNaN(idx) && songLibrary[idx];
+  const data = {
+    speed: state.speed,
+    showNotation: state.showNotation,
+    currentTime: state.currentTime,
+    songIndex: fromLibrary ? idx : null,
+    songTitle: fromLibrary ? songLibrary[idx].title : null,
+  };
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch {
+    /* quota dépassé ou storage indisponible (navigation privée) : on ignore */
+  }
+}
+
+function loadSettings() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+let autoSaveTimer = null;
+function startAutoSave() {
+  if (autoSaveTimer !== null) return;
+  autoSaveTimer = setInterval(saveSettings, AUTOSAVE_INTERVAL_MS);
+}
+
+// ----------------------------------------------------------------------------
 //  Disposition du clavier : position horizontale de chaque note MIDI
 // ----------------------------------------------------------------------------
 function isWhite(midi) {
@@ -1310,12 +1356,44 @@ function init() {
 // Au démarrage : on charge la bibliothèque puis son premier morceau ; si elle
 // est vide ou introuvable, on retombe sur la démo générée en interne.
 async function start() {
+  const saved = loadSettings();
   const hasLibrary = await loadSongLibrary();
+
+  // Réglages indépendants du morceau : applicables immédiatement.
+  if (saved) {
+    if (typeof saved.speed === "number") {
+      document.getElementById("speedRange").value = String(saved.speed);
+      setSpeed(saved.speed);
+    }
+    if (typeof saved.showNotation === "boolean") {
+      state.showNotation = saved.showNotation;
+      document.getElementById("notationToggle").checked = saved.showNotation;
+    }
+  }
+
+  // Choix du morceau à charger.
   if (hasLibrary) {
-    selectSong(0);
+    let idx = 0;
+    if (
+      saved &&
+      Number.isInteger(saved.songIndex) &&
+      songLibrary[saved.songIndex] &&
+      songLibrary[saved.songIndex].title === saved.songTitle
+    ) {
+      idx = saved.songIndex;
+    }
+    await selectSong(idx);
   } else {
     loadDemo();
   }
+
+  // La position de lecture est restaurée après coup : le chargement du morceau
+  // (resetForNewSong) remet currentTime à 0.
+  if (saved && saved.currentTime > 0) {
+    setTime(saved.currentTime);
+  }
+
+  startAutoSave();
 }
 
 init();
