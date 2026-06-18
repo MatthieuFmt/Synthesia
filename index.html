@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Synthesia Web — Apprentissage du piano</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1>🎹 Synthesia Web</h1>
+
+    <div class="controls">
+      <label class="file-btn">
+        Charger un fichier MIDI
+        <input type="file" id="midiInput" accept=".mid,.midi" hidden />
+      </label>
+
+      <button id="demoBtn" class="btn">Charger la démo</button>
+
+      <div class="legend">
+        <span class="legend-item"><span class="swatch right-hand"></span>Main droite</span>
+        <span class="legend-item"><span class="swatch left-hand"></span>Main gauche</span>
+      </div>
+    </div>
+
+    <div id="songInfo" class="song-info">Aucun morceau chargé.</div>
+  </header>
+
+  <main class="stage">
+    <!-- Canvas principal : grille de repères + notes -->
+    <canvas id="rollCanvas"></canvas>
+    <div class="hint">Molette / glisser pour défiler · le morceau démarre en bas et monte</div>
+  </main>
+
+  <!-- @tonejs/midi pour parser les fichiers .mid, + logique applicative -->
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
