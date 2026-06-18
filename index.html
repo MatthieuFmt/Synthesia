@@ -7,11 +7,14 @@
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
+    <!-- Conteneur pivotable : sert de cible à la rotation CSS du mode paysage
+         de secours (cf. body.force-landscape dans style.css). -->
+    <div class="app">
     <header class="topbar">
       <div class="titlebar">
         <h1>🎹 Synthesia Web</h1>
         <button id="landscapeBtn" class="btn landscape-btn" type="button">
-          🔄 Mode paysage
+          🔄 Paysage
         </button>
       </div>
 
@@ -78,6 +81,7 @@
       <!-- Canvas principal : grille de repères + notes -->
       <canvas id="rollCanvas"></canvas>
     </main>
+    </div>
 
     <!-- @tonejs/midi pour parser les fichiers .mid, + logique applicative -->
     <script type="module" src="src/main.js"></script>

@@ -150,11 +150,22 @@ function isMobileLandscape() {
   return w > h && h <= 500;
 }
 
+// Écran étroit (téléphone) : on réduit aussi la part du clavier en portrait.
+function isNarrow() {
+  return canvas.clientWidth <= 700;
+}
+
 function keyboardHeight() {
+  const h = canvas.clientHeight;
   if (isMobileLandscape()) {
-    return Math.round(Math.min(96, Math.max(60, canvas.clientHeight * 0.14)));
+    return Math.round(Math.min(96, Math.max(60, h * 0.14)));
   }
-  return Math.round(Math.min(150, Math.max(96, canvas.clientHeight * 0.18)));
+  // Mobile en portrait : clavier plus court pour libérer de la hauteur à la
+  // chute des notes (l'en-tête occupe déjà une bonne part de l'écran).
+  if (isNarrow()) {
+    return Math.round(Math.min(112, Math.max(76, h * 0.15)));
+  }
+  return Math.round(Math.min(150, Math.max(96, h * 0.18)));
 }
 
 function keyboardTop() {
@@ -1035,32 +1046,127 @@ function loadDemo() {
 //  écran, puis on demande le verrouillage. Les deux peuvent échouer (desktop,
 //  iOS Safari…) sans casser l'expérience : on échoue silencieusement.
 // ----------------------------------------------------------------------------
-async function goLandscape() {
-  const el = document.documentElement;
-  try {
-    const request =
-      el.requestFullscreen ||
-      el.webkitRequestFullscreen ||
-      el.mozRequestFullScreen;
-    if (request && !document.fullscreenElement) {
-      await request.call(el);
-    }
-  } catch {
-    /* plein écran refusé : on tente quand même le verrouillage */
-  }
+// État « paysage forcé » : rotation CSS de secours appliquée quand le
+// verrouillage natif d'orientation n'existe pas (iOS Safari, desktop…).
+function isForcedLandscape() {
+  return document.body.classList.contains("force-landscape");
+}
 
+function enableForcedLandscape() {
+  document.body.classList.add("force-landscape");
+  resizeCanvas(); // le canvas adopte les dimensions pivotées
+  updateLandscapeButton();
+}
+
+function disableForcedLandscape() {
+  document.body.classList.remove("force-landscape");
+  resizeCanvas();
+  updateLandscapeButton();
+}
+
+async function requestFullscreenSafely() {
+  const el = document.documentElement;
+  const request =
+    el.requestFullscreen ||
+    el.webkitRequestFullscreen ||
+    el.mozRequestFullScreen;
+  if (request && !document.fullscreenElement) {
+    try {
+      await request.call(el);
+    } catch {
+      /* plein écran refusé : on continue (verrouillage / rotation CSS) */
+    }
+  }
+}
+
+async function exitFullscreenSafely() {
+  const exit =
+    document.exitFullscreen ||
+    document.webkitExitFullscreen ||
+    document.mozCancelFullScreen;
+  if (exit && document.fullscreenElement) {
+    try {
+      await exit.call(document);
+    } catch {
+      /* sans effet */
+    }
+  }
+}
+
+// Active le mode paysage, en cascade :
+//   1. plein écran (immersion, requis pour le verrouillage sur Android) ;
+//   2. verrouillage natif de l'orientation (Android Chrome) ;
+//   3. à défaut, rotation CSS de l'interface (iOS Safari, etc.).
+async function enterLandscape() {
+  await requestFullscreenSafely();
+
+  let locked = false;
   try {
     if (screen.orientation && screen.orientation.lock) {
       await screen.orientation.lock("landscape");
+      locked = true;
     }
   } catch {
-    /* verrouillage non supporté (iOS, desktop) : sans effet */
+    locked = false; // verrouillage non supporté
   }
+
+  // Si on n'a pas pu verrouiller et qu'on est encore en portrait, on pivote
+  // l'interface nous-mêmes.
+  if (!locked && window.matchMedia("(orientation: portrait)").matches) {
+    enableForcedLandscape();
+  } else {
+    updateLandscapeButton();
+  }
+}
+
+// Quitte le mode paysage : rotation CSS, verrouillage puis plein écran.
+async function exitLandscape() {
+  if (isForcedLandscape()) disableForcedLandscape();
+  try {
+    if (screen.orientation && screen.orientation.unlock) {
+      screen.orientation.unlock();
+    }
+  } catch {
+    /* sans effet */
+  }
+  await exitFullscreenSafely();
+  updateLandscapeButton();
+}
+
+function inLandscapeMode() {
+  return isForcedLandscape() || !!document.fullscreenElement;
+}
+
+async function toggleLandscape() {
+  if (inLandscapeMode()) {
+    await exitLandscape();
+  } else {
+    await enterLandscape();
+  }
+}
+
+function updateLandscapeButton() {
+  const btn = document.getElementById("landscapeBtn");
+  if (!btn) return;
+  btn.textContent = inLandscapeMode() ? "↩ Quitter" : "🔄 Paysage";
 }
 
 // ----------------------------------------------------------------------------
 //  Interactions : molette, glisser, clic-seek, transport, clavier
 // ----------------------------------------------------------------------------
+// Convertit les coordonnées d'un évènement pointeur (repère écran) vers le
+// repère interne du canvas. En « paysage forcé » le canvas est pivoté de 90°
+// (sens horaire) par CSS : on inverse alors la rotation. Pour une rotation de
+// 90°, les coins de la bounding-box correspondent exactement aux coins du
+// canvas, d'où le mapping direct ci-dessous.
+function pointerPos(clientX, clientY) {
+  const rect = canvas.getBoundingClientRect();
+  if (isForcedLandscape()) {
+    return { x: clientY - rect.top, y: rect.right - clientX };
+  }
+  return { x: clientX - rect.left, y: clientY - rect.top };
+}
+
 function attachInteractions() {
   // Molette : vers le haut = avancer
   canvas.addEventListener(
@@ -1072,37 +1178,37 @@ function attachInteractions() {
     { passive: false }
   );
 
-  // Glisser : vers le bas = reculer, vers le haut = avancer
+  // Glisser : vers le bas = reculer, vers le haut = avancer.
+  // lastY / downY sont exprimés dans le repère interne du canvas (via
+  // pointerPos) pour rester corrects même en paysage forcé (rotation CSS).
   let dragging = false;
   let moved = false;
   let lastY = 0;
   let downY = 0;
   canvas.addEventListener("pointerdown", (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const y = e.clientY - rect.top;
+    const p = pointerPos(e.clientX, e.clientY);
     // Clic dans la zone clavier : on joue la touche, sans défiler.
-    if (y >= keyboardTop()) {
-      const midi = keyAtPosition(e.clientX - rect.left, y);
+    if (p.y >= keyboardTop()) {
+      const midi = keyAtPosition(p.x, p.y);
       if (midi != null) pressKey(midi);
       return;
     }
     dragging = true;
     moved = false;
-    lastY = downY = e.clientY;
+    lastY = downY = p.y;
     canvas.style.cursor = "grabbing";
     canvas.setPointerCapture(e.pointerId);
   });
   canvas.addEventListener("pointermove", (e) => {
+    const p = pointerPos(e.clientX, e.clientY);
     if (!dragging) {
       // Curseur « main » au survol du clavier, « grab » sur le rouleau.
-      const rect = canvas.getBoundingClientRect();
-      canvas.style.cursor =
-        e.clientY - rect.top >= keyboardTop() ? "pointer" : "grab";
+      canvas.style.cursor = p.y >= keyboardTop() ? "pointer" : "grab";
       return;
     }
-    if (Math.abs(e.clientY - downY) > 3) moved = true;
-    setTime(state.currentTime + (e.clientY - lastY) / PIXELS_PER_SECOND);
-    lastY = e.clientY;
+    if (Math.abs(p.y - downY) > 3) moved = true;
+    setTime(state.currentTime + (p.y - lastY) / PIXELS_PER_SECOND);
+    lastY = p.y;
   });
   const endDrag = (e) => {
     if (!dragging) return;
@@ -1110,8 +1216,8 @@ function attachInteractions() {
     canvas.style.cursor = "grab";
     // Clic simple (sans glisser) = placer le curseur à l'endroit cliqué
     if (!moved) {
-      const rect = canvas.getBoundingClientRect();
-      setTime(screenYToTime(e.clientY - rect.top));
+      const p = pointerPos(e.clientX, e.clientY);
+      setTime(screenYToTime(p.y));
     }
   };
   canvas.addEventListener("pointerup", endDrag);
@@ -1125,9 +1231,19 @@ function attachInteractions() {
   // Bouton play/pause
   document.getElementById("playBtn").addEventListener("click", togglePlay);
 
-  // Bouton « mode paysage » : plein écran + verrouillage de l'orientation.
+  // Bouton « mode paysage » : bascule plein écran + verrouillage, avec repli
+  // sur une rotation CSS quand le verrouillage natif n'est pas disponible.
   const landscapeBtn = document.getElementById("landscapeBtn");
-  if (landscapeBtn) landscapeBtn.addEventListener("click", goLandscape);
+  if (landscapeBtn) landscapeBtn.addEventListener("click", toggleLandscape);
+
+  // Sortie de plein écran via le système : on nettoie la rotation CSS et on
+  // remet le libellé du bouton à jour.
+  document.addEventListener("fullscreenchange", () => {
+    if (!document.fullscreenElement && isForcedLandscape()) {
+      disableForcedLandscape();
+    }
+    updateLandscapeButton();
+  });
 
   // Affichage de la notation (mini-portées)
   document.getElementById("notationToggle").addEventListener("change", (e) => {
@@ -1172,9 +1288,21 @@ function init() {
     if (!isNaN(idx)) selectSong(idx);
   });
 
-  window.addEventListener("resize", resizeCanvas);
+  window.addEventListener("resize", () => {
+    // Si l'appareil passe réellement en paysage, on retire la rotation CSS de
+    // secours pour éviter un double pivot (disableForcedLandscape redimensionne).
+    if (
+      isForcedLandscape() &&
+      window.matchMedia("(orientation: landscape)").matches
+    ) {
+      disableForcedLandscape();
+      return;
+    }
+    resizeCanvas();
+  });
 
   attachInteractions();
+  updateLandscapeButton();
   resizeCanvas();
   start();
 }

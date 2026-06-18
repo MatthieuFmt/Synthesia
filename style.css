@@ -26,6 +26,14 @@ body {
   flex-direction: column;
 }
 
+/* Conteneur principal : colonne en-tête + scène, pivotable en paysage forcé. */
+.app {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
 /* ---------- Barre supérieure ---------- */
 .topbar {
   padding: 12px 18px;
@@ -268,20 +276,80 @@ body {
    Responsive — petits écrans & téléphones en paysage
    ============================================================ */
 
-/* Le bouton « paysage » n'a de sens qu'en portrait : déjà en paysage (ou sur
-   desktop large où le verrouillage n'existe pas), on le masque. */
+/* Le bouton « paysage » n'a de sens qu'en portrait : déjà en paysage réel (ou
+   sur desktop large où le verrouillage n'existe pas), on le masque. En paysage
+   forcé l'appareil reste en portrait, donc le bouton reste visible pour sortir. */
 @media (orientation: landscape), (min-width: 900px) {
   .landscape-btn { display: none; }
 }
+body.force-landscape .landscape-btn { display: inline-flex; }
 
-/* Écrans étroits : barre d'outils plus compacte, sélecteur souple. */
+/* Écrans étroits (téléphones) : en-tête nettement plus compact pour laisser un
+   maximum de place au canvas et au piano. */
 @media (max-width: 700px) {
-  .topbar { padding: 10px 12px; }
-  .topbar h1 { font-size: 16px; margin-bottom: 8px; }
-  .controls { gap: 10px; }
-  .legend { margin-left: 0; gap: 12px; }
-  .song-select { max-width: none; flex: 1 1 160px; }
+  .topbar { padding: 8px 10px; }
+  .titlebar { margin-bottom: 8px; min-width: 0; }
+  /* Le titre cède la place au bouton paysage si l'espace manque. */
+  .topbar h1 {
+    font-size: 15px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .landscape-btn { height: 32px; padding: 0 10px; font-size: 12px; }
+
+  .controls { gap: 8px; }
+  .btn,
+  .file-btn,
+  .song-select { height: 32px; font-size: 12px; }
+  .toggle,
+  .speed { font-size: 12px; }
+  .speed-range { width: 90px; }
+
+  /* Légende explicative : superflue sur petit écran, on récupère la ligne. */
+  .legend { display: none; }
+
+  .song-select { max-width: none; flex: 1 1 140px; }
+
+  .transport { margin-top: 8px; gap: 8px; }
+  .play-btn { width: 38px; height: 32px; }
+  .time-label { font-size: 12px; min-width: 78px; }
+
+  .song-info {
+    margin-top: 6px;
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 }
+
+/* ---------- Mode paysage forcé (rotation CSS de secours) ----------
+   Quand le verrouillage natif d'orientation n'est pas supporté (iOS Safari,
+   desktop…), on pivote l'interface de 90° pour simuler le paysage. L'origine
+   au coin supérieur droit du viewport amène le conteneur pivoté pile dans la
+   zone visible. */
+body.force-landscape { overflow: hidden; }
+
+body.force-landscape .app {
+  position: fixed;
+  top: 0;
+  left: 100%;
+  width: 100vh;
+  height: 100vw;
+  transform-origin: top left;
+  -webkit-transform-origin: top left;
+  transform: rotate(90deg);
+  -webkit-transform: rotate(90deg);
+}
+
+/* En paysage forcé, on replie l'en-tête comme en paysage réel étroit. */
+body.force-landscape .topbar { padding: 6px 10px; }
+body.force-landscape .topbar h1 { display: none; }
+body.force-landscape .legend { display: none; }
+body.force-landscape .transport { margin-top: 8px; }
+body.force-landscape .song-info { margin-top: 6px; font-size: 12px; }
 
 /* Téléphone en paysage : la hauteur est rare, on replie l'en-tête au minimum
    pour donner un maximum de surface au canvas (.stage est en flex: 1). */
