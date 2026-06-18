@@ -358,13 +358,6 @@ function drawNotes() {
       : isBlackKey
       ? COLORS.leftHandDark
       : COLORS.leftHand;
-    ctx.strokeStyle = isActive
-      ? COLORS.active
-      : isRight
-      ? COLORS.rightHandEdge
-      : COLORS.leftHandEdge;
-    ctx.lineWidth = isActive ? 2.5 : 1.5;
-
     const pad = 1;
     roundRect(
       g.x + pad,
@@ -374,7 +367,12 @@ function drawNotes() {
       4
     );
     ctx.fill();
-    ctx.stroke();
+
+    if (isActive) {
+      ctx.strokeStyle = COLORS.active;
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+    }
   }
 }
 
