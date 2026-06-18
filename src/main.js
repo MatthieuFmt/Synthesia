@@ -85,7 +85,7 @@ const state = {
   song: null,        // morceau parsé (voir buildSong)
   currentTime: 0,    // position de lecture, en secondes (source de vérité)
   isPlaying: false,
-  showNotation: true, // mini-portées sur les notes
+  showNotation: false, // mini-portées sur les notes (désactivées par défaut)
   speed: 1,           // multiplicateur de vitesse de lecture (1 = normal)
   dpr: 1,
   pressedKeys: new Set(), // touches enfoncées au clic (assombrissement temporaire)
@@ -142,7 +142,18 @@ function whiteLeftEdge(midi) {
 //  Les notes « tombent » et atterrissent sur les touches ; le bord supérieur
 //  du clavier sert de ligne de lecture (playhead).
 // ----------------------------------------------------------------------------
+// Mobile en paysage : viewport large mais bas. On réduit alors la hauteur du
+// clavier pour laisser plus de place à la chute des notes.
+function isMobileLandscape() {
+  const w = canvas.clientWidth;
+  const h = canvas.clientHeight;
+  return w > h && h <= 500;
+}
+
 function keyboardHeight() {
+  if (isMobileLandscape()) {
+    return Math.round(Math.min(96, Math.max(60, canvas.clientHeight * 0.14)));
+  }
   return Math.round(Math.min(150, Math.max(96, canvas.clientHeight * 0.18)));
 }
 
@@ -1017,6 +1028,37 @@ function loadDemo() {
 }
 
 // ----------------------------------------------------------------------------
+//  Mode paysage : plein écran + verrouillage de l'orientation
+//
+//  Le verrouillage d'orientation n'est autorisé qu'en plein écran sur la
+//  plupart des navigateurs mobiles : on passe donc d'abord la page en plein
+//  écran, puis on demande le verrouillage. Les deux peuvent échouer (desktop,
+//  iOS Safari…) sans casser l'expérience : on échoue silencieusement.
+// ----------------------------------------------------------------------------
+async function goLandscape() {
+  const el = document.documentElement;
+  try {
+    const request =
+      el.requestFullscreen ||
+      el.webkitRequestFullscreen ||
+      el.mozRequestFullScreen;
+    if (request && !document.fullscreenElement) {
+      await request.call(el);
+    }
+  } catch {
+    /* plein écran refusé : on tente quand même le verrouillage */
+  }
+
+  try {
+    if (screen.orientation && screen.orientation.lock) {
+      await screen.orientation.lock("landscape");
+    }
+  } catch {
+    /* verrouillage non supporté (iOS, desktop) : sans effet */
+  }
+}
+
+// ----------------------------------------------------------------------------
 //  Interactions : molette, glisser, clic-seek, transport, clavier
 // ----------------------------------------------------------------------------
 function attachInteractions() {
@@ -1082,6 +1124,10 @@ function attachInteractions() {
 
   // Bouton play/pause
   document.getElementById("playBtn").addEventListener("click", togglePlay);
+
+  // Bouton « mode paysage » : plein écran + verrouillage de l'orientation.
+  const landscapeBtn = document.getElementById("landscapeBtn");
+  if (landscapeBtn) landscapeBtn.addEventListener("click", goLandscape);
 
   // Affichage de la notation (mini-portées)
   document.getElementById("notationToggle").addEventListener("change", (e) => {

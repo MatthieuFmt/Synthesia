@@ -33,11 +33,30 @@ body {
   border-bottom: 1px solid var(--border);
 }
 
+.titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
 .topbar h1 {
-  margin: 0 0 10px;
+  margin: 0;
   font-size: 18px;
   font-weight: 600;
 }
+
+/* Bouton « mode paysage » : accentué pour être bien repérable sur mobile. */
+.landscape-btn {
+  background: var(--cursor, #ffae57);
+  color: #1b1b1b;
+  border-color: var(--cursor, #ffae57);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.landscape-btn:hover { background: #ffbd76; }
 
 .controls {
   display: flex;
@@ -245,21 +264,15 @@ body {
 
 #rollCanvas:active { cursor: grabbing; }
 
-.hint {
-  position: absolute;
-  bottom: 10px;
-  right: 14px;
-  font-size: 12px;
-  color: var(--muted);
-  background: rgba(13, 17, 23, .7);
-  padding: 4px 10px;
-  border-radius: 6px;
-  pointer-events: none;
-}
-
 /* ============================================================
    Responsive — petits écrans & téléphones en paysage
    ============================================================ */
+
+/* Le bouton « paysage » n'a de sens qu'en portrait : déjà en paysage (ou sur
+   desktop large où le verrouillage n'existe pas), on le masque. */
+@media (orientation: landscape), (min-width: 900px) {
+  .landscape-btn { display: none; }
+}
 
 /* Écrans étroits : barre d'outils plus compacte, sélecteur souple. */
 @media (max-width: 700px) {
@@ -280,5 +293,4 @@ body {
   .transport { margin-top: 8px; }
   .play-btn { width: 40px; height: 32px; }
   .song-info { margin-top: 6px; font-size: 12px; }
-  .hint { display: none; }            /* le geste de défilement est tactile */
 }

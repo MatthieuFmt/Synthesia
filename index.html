@@ -8,7 +8,12 @@
   </head>
   <body>
     <header class="topbar">
-      <h1>🎹 Synthesia Web</h1>
+      <div class="titlebar">
+        <h1>🎹 Synthesia Web</h1>
+        <button id="landscapeBtn" class="btn landscape-btn" type="button">
+          🔄 Mode paysage
+        </button>
+      </div>
 
       <div class="controls">
         <label class="file-btn">
@@ -21,7 +26,7 @@
         </select>
 
         <label class="toggle">
-          <input type="checkbox" id="notationToggle" checked />
+          <input type="checkbox" id="notationToggle" />
           Notation
         </label>
 
@@ -72,10 +77,6 @@
     <main class="stage">
       <!-- Canvas principal : grille de repères + notes -->
       <canvas id="rollCanvas"></canvas>
-      <div class="hint">
-        Molette / glisser pour défiler · cliquez les touches du clavier pour
-        jouer
-      </div>
     </main>
 
     <!-- @tonejs/midi pour parser les fichiers .mid, + logique applicative -->
