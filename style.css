@@ -48,12 +48,14 @@ body {
 
 .btn,
 .file-btn {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
   cursor: pointer;
   border: 1px solid var(--border);
   background: #21262d;
   color: var(--text);
-  padding: 8px 14px;
+  height: 36px;
+  padding: 0 14px;
   border-radius: 6px;
   font-size: 13px;
   transition: background .15s ease;
@@ -61,6 +63,38 @@ body {
 
 .btn:hover,
 .file-btn:hover { background: #2d333b; }
+
+.song-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  border: 1px solid var(--border);
+  background-color: #21262d;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238b949e'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 10px 6px;
+  color: var(--text);
+  height: 36px;
+  max-width: 260px;
+  padding: 0 32px 0 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 34px;
+  cursor: pointer;
+  outline: none;
+  transition: background-color .15s ease;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.song-select:hover { background-color: #2d333b; }
+
+.song-select option {
+  background: var(--panel);
+  color: var(--text);
+}
 
 .toggle {
   display: flex;
@@ -70,6 +104,49 @@ body {
   color: var(--muted);
   cursor: pointer;
   user-select: none;
+}
+
+.speed {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+  user-select: none;
+}
+
+.speed-range {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 120px;
+  height: 6px;
+  border-radius: 3px;
+  background: #21262d;
+  outline: none;
+  cursor: pointer;
+}
+
+.speed-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--cursor, #ffae57);
+  border: none;
+}
+
+.speed-range::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: none;
+  border-radius: 50%;
+  background: var(--cursor, #ffae57);
+}
+
+.speed-value {
+  font-variant-numeric: tabular-nums;
+  min-width: 38px;
+  color: var(--text);
 }
 
 .legend {
@@ -178,4 +255,30 @@ body {
   padding: 4px 10px;
   border-radius: 6px;
   pointer-events: none;
+}
+
+/* ============================================================
+   Responsive — petits écrans & téléphones en paysage
+   ============================================================ */
+
+/* Écrans étroits : barre d'outils plus compacte, sélecteur souple. */
+@media (max-width: 700px) {
+  .topbar { padding: 10px 12px; }
+  .topbar h1 { font-size: 16px; margin-bottom: 8px; }
+  .controls { gap: 10px; }
+  .legend { margin-left: 0; gap: 12px; }
+  .song-select { max-width: none; flex: 1 1 160px; }
+}
+
+/* Téléphone en paysage : la hauteur est rare, on replie l'en-tête au minimum
+   pour donner un maximum de surface au canvas (.stage est en flex: 1). */
+@media (orientation: landscape) and (max-height: 520px) {
+  .topbar { padding: 6px 10px; }
+  .topbar h1 { display: none; }       /* titre non indispensable pour jouer */
+  .controls { gap: 8px; }
+  .legend { display: none; }          /* économise une ligne */
+  .transport { margin-top: 8px; }
+  .play-btn { width: 40px; height: 32px; }
+  .song-info { margin-top: 6px; font-size: 12px; }
+  .hint { display: none; }            /* le geste de défilement est tactile */
 }

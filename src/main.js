@@ -23,7 +23,7 @@ const MIDI_LOW = 21;            // A0  : note la plus grave d'un piano 88 touche
 const MIDI_HIGH = 108;          // C8  : note la plus aiguë
 const PIXELS_PER_SECOND = 140;  // échelle temporelle verticale
 const SPLIT_NOTE = 60;          // Do central : seuil graves/aigus pour le fallback
-const PLAYHEAD_RATIO = 0.18;    // position de la ligne de lecture (fraction du bas)
+const KEY_PRESS_MS = 220;       // durée de l'assombrissement après un clic sur une touche
 
 // Demi-tons appartenant à une touche blanche (Do, Ré, Mi, Fa, Sol, La, Si)
 const WHITE_PITCH_CLASSES = [0, 2, 4, 5, 7, 9, 11];
@@ -64,8 +64,10 @@ const COLORS = {
   blackKey: "#0a0d12",
   rightHand: "#4ea1ff",
   rightHandEdge: "#9ccbff",
+  rightHandDark: "#1a4a8a",  // touche noire (dièse/bémol), main droite : bleu foncé
   leftHand: "#2ecc71",
   leftHandEdge: "#86e9b0",
+  leftHandDark: "#177a40",   // touche noire (dièse/bémol), main gauche : vert foncé
   active: "#ffffff",
   cursor: "#ffae57",
   label: "#6e7681",
@@ -84,7 +86,9 @@ const state = {
   currentTime: 0,    // position de lecture, en secondes (source de vérité)
   isPlaying: false,
   showNotation: true, // mini-portées sur les notes
+  speed: 1,           // multiplicateur de vitesse de lecture (1 = normal)
   dpr: 1,
+  pressedKeys: new Set(), // touches enfoncées au clic (assombrissement temporaire)
 
   // Audio (Tone.js), initialisé paresseusement au premier play
   audioReady: false,
@@ -134,15 +138,28 @@ function whiteLeftEdge(midi) {
 }
 
 // ----------------------------------------------------------------------------
+//  Clavier en bas de l'écran : hauteur et bord supérieur.
+//  Les notes « tombent » et atterrissent sur les touches ; le bord supérieur
+//  du clavier sert de ligne de lecture (playhead).
+// ----------------------------------------------------------------------------
+function keyboardHeight() {
+  return Math.round(Math.min(150, Math.max(96, canvas.clientHeight * 0.18)));
+}
+
+function keyboardTop() {
+  return canvas.clientHeight - keyboardHeight();
+}
+
+// ----------------------------------------------------------------------------
 //  Temps <-> coordonnée écran (Y)
 //
-//  La ligne de lecture (playhead) est fixe à `playheadY`. La note dont le temps
-//  vaut `currentTime` s'y trouve toujours. On en déduit :
+//  La ligne de lecture (playhead) est fixe à `playheadY` (= haut du clavier).
+//  La note dont le temps vaut `currentTime` s'y trouve toujours. On en déduit :
 //      screenY(time) = playheadY - (time - currentTime) * PIXELS_PER_SECOND
 //  Le temps croît vers le haut (delta positif => plus haut).
 // ----------------------------------------------------------------------------
 function playheadY() {
-  return canvas.clientHeight * (1 - PLAYHEAD_RATIO);
+  return keyboardTop();
 }
 
 function timeToScreenY(time) {
@@ -253,11 +270,19 @@ function draw() {
   drawDoMiLines(w, h);
 
   if (state.song) {
+    // Le « rouleau » de notes est limité à la zone au-dessus du clavier : une
+    // note qui franchit la ligne de lecture est « consommée » par les touches.
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, w, keyboardTop());
+    ctx.clip();
     drawMeasureLines(w, h);
     drawNotes();
     if (state.showNotation) drawNotationCards();
+    ctx.restore();
   }
 
+  drawKeyboard(w, h);
   drawPlayhead(w, h);
 }
 
@@ -287,10 +312,11 @@ function drawDoMiLines(w, h) {
 
   ctx.fillStyle = COLORS.label;
   ctx.font = "10px system-ui, sans-serif";
+  const labelY = keyboardTop() - 4;
   for (let m = MIDI_LOW; m <= MIDI_HIGH; m++) {
     if (((m % 12) + 12) % 12 === 0) {
       const octave = Math.floor(m / 12) - 1;
-      ctx.fillText(`C${octave}`, whiteLeftEdge(m) + 2, h - 4);
+      ctx.fillText(`C${octave}`, whiteLeftEdge(m) + 2, labelY);
     }
   }
 }
@@ -323,8 +349,15 @@ function drawNotes() {
     const g = noteGeometry(n.midi);
     const isRight = n.hand === "right";
     const isActive = now >= n.time && now <= n.time + n.duration;
+    const isBlackKey = !g.white; // dièse/bémol -> teinte plus foncée
 
-    ctx.fillStyle = isRight ? COLORS.rightHand : COLORS.leftHand;
+    ctx.fillStyle = isRight
+      ? isBlackKey
+        ? COLORS.rightHandDark
+        : COLORS.rightHand
+      : isBlackKey
+      ? COLORS.leftHandDark
+      : COLORS.leftHand;
     ctx.strokeStyle = isActive
       ? COLORS.active
       : isRight
@@ -351,14 +384,15 @@ function drawNotes() {
 function drawNotationCards() {
   const h = canvas.clientHeight;
   for (const n of state.song.notes) {
-    const edgeY = timeToScreenY(n.time); // bord d'attaque (départ de la note)
-    if (edgeY < -40 || edgeY > h + 40) continue;
+    const yBottom = timeToScreenY(n.time);
+    const yTop = timeToScreenY(n.time + n.duration);
+    if (yBottom < -40 || yTop > h + 40) continue;
     const g = noteGeometry(n.midi);
-    drawNotationCard(g.centerX, edgeY, n.midi, n.hand);
+    drawNotationCard(g.centerX, yTop, yBottom, n.midi, n.hand);
   }
 }
 
-function drawNotationCard(cx, edgeY, midi, hand) {
+function drawNotationCard(cx, noteTop, noteBottom, midi, hand) {
   const clef = hand === "right" ? "treble" : "bass";
 
   const LG = 4;             // espacement des interlignes (px)
@@ -370,7 +404,13 @@ function drawNotationCard(cx, edgeY, midi, hand) {
   const cardH = topPad + staffH + captionH;
 
   const cardX = Math.round(cx - cardW / 2);
-  const cardY = Math.round(edgeY - cardH / 2);
+  const cardY = Math.round(noteTop); // ancrée au bord supérieur de la note
+
+  // Clip : la carte ne dépasse pas en-dehors du rectangle de la note
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(cardX - 1, noteTop, cardW + 2, Math.max(0, noteBottom - noteTop));
+  ctx.clip();
 
   // Carte « papier » bordée de la couleur de la main
   ctx.fillStyle = COLORS.cardBg;
@@ -457,6 +497,169 @@ function drawNotationCard(cx, edgeY, midi, hand) {
   ctx.textAlign = "center";
   ctx.fillText(noteDegreeName(midi), cardX + cardW / 2, cardY + cardH - 2);
   ctx.textAlign = "left";
+
+  ctx.restore(); // fin du clipping
+}
+
+// ----------------------------------------------------------------------------
+//  Clavier de piano en bas de l'écran
+//
+//  - Chaque touche est alignée horizontalement avec sa colonne de notes.
+//  - Une touche s'illumine (vert / bleu) tant qu'une note de la main
+//    correspondante est « en cours » à la position de lecture.
+//  - Un clic joue le son et assombrit brièvement la touche (state.pressedKeys).
+// ----------------------------------------------------------------------------
+
+// Map midi -> "left" | "right" : touches actuellement traversées par une note.
+function computeActiveKeys() {
+  const map = new Map();
+  if (!state.song) return map;
+  const now = state.currentTime;
+  for (const n of state.song.notes) {
+    if (now >= n.time && now <= n.time + n.duration) map.set(n.midi, n.hand);
+  }
+  return map;
+}
+
+function drawKeyboard(w, h) {
+  const top = keyboardTop();
+  const kbH = h - top;
+  const active = computeActiveKeys();
+  const wkW = whiteKeyWidth();
+
+  // Feutrine + ombre sous la ligne de lecture
+  ctx.fillStyle = "#05070a";
+  ctx.fillRect(0, top, w, kbH);
+  ctx.fillStyle = "#b23a2e"; // bandeau « feutrine » rouge, signature Synthesia
+  ctx.fillRect(0, top, w, 3);
+
+  // Touches blanches (en premier : les noires se dessinent par-dessus)
+  for (let m = MIDI_LOW; m <= MIDI_HIGH; m++) {
+    if (isWhite(m)) drawWhiteKey(whiteIndex(m) * wkW, top + 3, wkW, kbH - 3, m, active);
+  }
+
+  // Repères d'octave (Do) sur les touches blanches correspondantes
+  ctx.fillStyle = "#9b927f";
+  ctx.font = "9px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  for (let m = MIDI_LOW; m <= MIDI_HIGH; m++) {
+    if (((m % 12) + 12) % 12 === 0) {
+      const oct = Math.floor(m / 12) - 1;
+      ctx.fillText(`C${oct}`, whiteIndex(m) * wkW + wkW / 2, h - 5);
+    }
+  }
+  ctx.textAlign = "left";
+
+  // Touches noires par-dessus
+  const bkH = (kbH - 3) * 0.62;
+  for (let m = MIDI_LOW; m <= MIDI_HIGH; m++) {
+    if (!isWhite(m)) {
+      const g = noteGeometry(m);
+      drawBlackKey(g.x, top + 3, g.width, bkH, m, active);
+    }
+  }
+}
+
+function drawWhiteKey(x, top, w, kbH, midi, active) {
+  const hand = active.get(midi);
+  const grad = ctx.createLinearGradient(0, top, 0, top + kbH);
+  if (hand === "right") {
+    grad.addColorStop(0, COLORS.rightHandEdge);
+    grad.addColorStop(1, COLORS.rightHand);
+  } else if (hand === "left") {
+    grad.addColorStop(0, COLORS.leftHandEdge);
+    grad.addColorStop(1, COLORS.leftHand);
+  } else {
+    grad.addColorStop(0, "#ffffff");
+    grad.addColorStop(1, "#d7d0c2");
+  }
+  ctx.fillStyle = grad;
+  roundRectBottom(x + 0.5, top, w - 1, kbH, 4);
+  ctx.fill();
+
+  if (state.pressedKeys.has(midi)) {
+    ctx.fillStyle = "rgba(0, 0, 0, 0.32)";
+    roundRectBottom(x + 0.5, top, w - 1, kbH, 4);
+    ctx.fill();
+  }
+}
+
+function drawBlackKey(x, top, w, bkH, midi, active) {
+  const hand = active.get(midi);
+  const grad = ctx.createLinearGradient(0, top, 0, top + bkH);
+  if (hand === "right") {
+    grad.addColorStop(0, COLORS.rightHand);
+    grad.addColorStop(1, COLORS.rightHandDark);
+  } else if (hand === "left") {
+    grad.addColorStop(0, COLORS.leftHand);
+    grad.addColorStop(1, COLORS.leftHandDark);
+  } else {
+    grad.addColorStop(0, "#2b313b");
+    grad.addColorStop(1, "#080a0e");
+  }
+  ctx.fillStyle = grad;
+  roundRectBottom(x, top, w, bkH, 3);
+  ctx.fill();
+
+  if (state.pressedKeys.has(midi)) {
+    ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
+    roundRectBottom(x, top, w, bkH, 3);
+    ctx.fill();
+  }
+}
+
+// Rectangle aux coins inférieurs arrondis (le haut reste droit, accolé au roll)
+function roundRectBottom(x, y, w, hgt, r) {
+  const rr = Math.min(r, w / 2, hgt / 2);
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x + w, y);
+  ctx.lineTo(x + w, y + hgt - rr);
+  ctx.arcTo(x + w, y + hgt, x + w - rr, y + hgt, rr);
+  ctx.lineTo(x + rr, y + hgt);
+  ctx.arcTo(x, y + hgt, x, y + hgt - rr, rr);
+  ctx.closePath();
+}
+
+// Touche MIDI sous le point (x, y) du clavier, ou null hors zone clavier.
+// On teste d'abord les touches noires (au-dessus), puis les blanches.
+function keyAtPosition(x, y) {
+  const top = keyboardTop();
+  if (y < top) return null;
+
+  const bkH = (canvas.clientHeight - top - 3) * 0.62;
+  if (y <= top + 3 + bkH) {
+    for (let m = MIDI_LOW; m <= MIDI_HIGH; m++) {
+      if (isWhite(m)) continue;
+      const g = noteGeometry(m);
+      if (x >= g.x && x <= g.x + g.width) return m;
+    }
+  }
+
+  let idx = Math.floor(x / whiteKeyWidth());
+  let i = 0;
+  for (let m = MIDI_LOW; m <= MIDI_HIGH; m++) {
+    if (!isWhite(m)) continue;
+    if (i === idx) return m;
+    i++;
+  }
+  return null;
+}
+
+// Joue la note cliquée et l'assombrit le temps d'une pression.
+async function pressKey(midi) {
+  state.pressedKeys.add(midi);
+  draw();
+  setTimeout(() => {
+    state.pressedKeys.delete(midi);
+    draw();
+  }, KEY_PRESS_MS);
+
+  await ensureAudio();
+  state.synth.triggerAttackRelease(
+    Tone.Frequency(midi, "midi").toNote(),
+    0.6
+  );
 }
 
 // Ligne de lecture (curseur) fixe + petits repères triangulaires
@@ -523,7 +726,7 @@ function setTime(t, { fromTransport = false } = {}) {
   // Si on déplace manuellement le curseur pendant la lecture, on repositionne
   // le transport audio pour rester synchronisé.
   if (!fromTransport && state.isPlaying) {
-    Tone.Transport.seconds = state.currentTime;
+    Tone.Transport.seconds = state.currentTime / state.speed;
   }
 
   syncTransportUI();
@@ -549,8 +752,27 @@ function fmt(seconds) {
 async function ensureAudio() {
   if (state.audioReady) return;
   await Tone.start(); // doit être déclenché par un geste utilisateur
-  state.synth = new Tone.PolySynth(Tone.Synth).toDestination();
-  state.synth.volume.value = -8;
+
+  // Vrai son de piano : échantillons acoustiques (Salamander Grand Piano),
+  // un fichier toutes les tierces mineures ; Tone.Sampler transpose le reste.
+  const reverb = new Tone.Reverb({ decay: 1.6, wet: 0.18 }).toDestination();
+  state.synth = new Tone.Sampler({
+    urls: {
+      A0: "A0.mp3", C1: "C1.mp3", "D#1": "Ds1.mp3", "F#1": "Fs1.mp3",
+      A1: "A1.mp3", C2: "C2.mp3", "D#2": "Ds2.mp3", "F#2": "Fs2.mp3",
+      A2: "A2.mp3", C3: "C3.mp3", "D#3": "Ds3.mp3", "F#3": "Fs3.mp3",
+      A3: "A3.mp3", C4: "C4.mp3", "D#4": "Ds4.mp3", "F#4": "Fs4.mp3",
+      A4: "A4.mp3", C5: "C5.mp3", "D#5": "Ds5.mp3", "F#5": "Fs5.mp3",
+      A5: "A5.mp3", C6: "C6.mp3", "D#6": "Ds6.mp3", "F#6": "Fs6.mp3",
+      A6: "A6.mp3", C7: "C7.mp3", "D#7": "Ds7.mp3", "F#7": "Fs7.mp3",
+      A7: "A7.mp3", C8: "C8.mp3",
+    },
+    release: 1,
+    baseUrl: "https://tonejs.github.io/audio/salamander/",
+  }).connect(reverb);
+  state.synth.volume.value = -6;
+
+  await Tone.loaded(); // attendre le téléchargement des échantillons
   state.audioReady = true;
 }
 
@@ -563,10 +785,12 @@ function buildPart() {
   Tone.Transport.cancel();
   if (!state.song) return;
 
+  // Les évènements sont planifiés sur l'échelle de temps (dilatée) du Transport :
+  // un morceau plus lent étire chaque note sur davantage de secondes réelles.
   const events = state.song.notes.map((n) => ({
-    time: n.time,
+    time: n.time / state.speed,
     note: Tone.Frequency(n.midi, "midi").toNote(),
-    duration: n.duration,
+    duration: n.duration / state.speed,
     velocity: n.velocity,
   }));
 
@@ -589,7 +813,7 @@ async function play() {
   // Reprise depuis le début si on est à la fin
   if (state.currentTime >= songDuration() - 1e-3) setTime(0);
 
-  Tone.Transport.seconds = state.currentTime;
+  Tone.Transport.seconds = state.currentTime / state.speed;
   Tone.Transport.start();
   state.isPlaying = true;
   updatePlayButton();
@@ -606,6 +830,23 @@ function togglePlay() {
   state.isPlaying ? pause() : play();
 }
 
+// Change la vitesse de lecture sans perdre la position courante (en temps
+// morceau). On replanifie les évènements à la nouvelle échelle et on réaligne
+// le Transport.
+function setSpeed(speed) {
+  state.speed = speed;
+  updateSpeedLabel(speed);
+  if (state.audioReady) {
+    buildPart();
+    Tone.Transport.seconds = state.currentTime / state.speed;
+  }
+}
+
+function updateSpeedLabel(speed) {
+  const el = document.getElementById("speedValue");
+  if (el) el.textContent = `${speed % 1 === 0 ? speed : speed.toFixed(2).replace(/0+$/, "").replace(/\.$/, "")}×`;
+}
+
 function updatePlayButton() {
   document.getElementById("playBtn").textContent = state.isPlaying ? "⏸" : "▶";
 }
@@ -614,7 +855,7 @@ function updatePlayButton() {
 function tick() {
   if (!state.isPlaying) return;
 
-  setTime(Tone.Transport.seconds, { fromTransport: true });
+  setTime(Tone.Transport.seconds * state.speed, { fromTransport: true });
 
   if (state.currentTime >= songDuration() - 1e-3) {
     pause();
@@ -662,6 +903,53 @@ async function loadMidiFile(file) {
   }
 }
 
+async function loadMidiFromUrl(url, displayName) {
+  try {
+    updateSongInfo(null, `Chargement de « ${displayName} »…`);
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const buffer = await res.arrayBuffer();
+    const midi = new Midi(buffer);
+    state.song = buildSong(midi);
+    resetForNewSong(displayName);
+  } catch (err) {
+    console.error(err);
+    updateSongInfo(null, `Erreur : ${err.message}`);
+  }
+}
+
+// Catalogue des morceaux (chargé depuis songs.json)
+let songLibrary = [];
+
+// Remplit le <select> à partir de songs.json. Renvoie true si au moins un
+// morceau a été trouvé.
+async function loadSongLibrary() {
+  const select = document.getElementById("songSelect");
+  try {
+    const res = await fetch("songs.json");
+    if (!res.ok) return false;
+    songLibrary = await res.json();
+    songLibrary.forEach((song, i) => {
+      select.appendChild(new Option(song.title, String(i)));
+    });
+    return songLibrary.length > 0;
+  } catch {
+    return false; // pas de songs.json — on retombera sur la démo
+  }
+}
+
+// Charge le morceau d'indice `idx` de la bibliothèque et synchronise le <select>.
+async function selectSong(idx) {
+  const song = songLibrary[idx];
+  if (!song) return;
+  document.getElementById("songSelect").value = String(idx);
+  if (song.builtin === "demo") {
+    loadDemo();
+  } else if (song.file) {
+    await loadMidiFromUrl(song.file, song.title);
+  }
+}
+
 function updateSongInfo(fileName, error) {
   const el = document.getElementById("songInfo");
   if (error) {
@@ -673,8 +961,16 @@ function updateSongInfo(fileName, error) {
     return;
   }
   const m = state.song.meta;
+  // Titre affiché : celui fourni (bibliothèque / nom de fichier) en priorité,
+  // sinon le nom interne du MIDI. On ajoute le nom interne seulement s'il est
+  // pertinent et différent, pour éviter un « — Sans titre » disgracieux.
+  const hasName = m.name && m.name !== "Sans titre";
+  const title =
+    fileName && hasName && m.name !== fileName
+      ? `${fileName} — ${m.name}`
+      : fileName || m.name;
   el.textContent =
-    `${fileName ? fileName + " — " : ""}${m.name} · ` +
+    `${title} · ` +
     `${m.bpm} BPM · mesure ${m.timeSignature[0]}/${m.timeSignature[1]} · ` +
     `${state.song.notes.length} notes · ${state.song.duration.toFixed(1)} s`;
 }
@@ -742,13 +1038,28 @@ function attachInteractions() {
   let lastY = 0;
   let downY = 0;
   canvas.addEventListener("pointerdown", (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    // Clic dans la zone clavier : on joue la touche, sans défiler.
+    if (y >= keyboardTop()) {
+      const midi = keyAtPosition(e.clientX - rect.left, y);
+      if (midi != null) pressKey(midi);
+      return;
+    }
     dragging = true;
     moved = false;
     lastY = downY = e.clientY;
+    canvas.style.cursor = "grabbing";
     canvas.setPointerCapture(e.pointerId);
   });
   canvas.addEventListener("pointermove", (e) => {
-    if (!dragging) return;
+    if (!dragging) {
+      // Curseur « main » au survol du clavier, « grab » sur le rouleau.
+      const rect = canvas.getBoundingClientRect();
+      canvas.style.cursor =
+        e.clientY - rect.top >= keyboardTop() ? "pointer" : "grab";
+      return;
+    }
     if (Math.abs(e.clientY - downY) > 3) moved = true;
     setTime(state.currentTime + (e.clientY - lastY) / PIXELS_PER_SECOND);
     lastY = e.clientY;
@@ -756,6 +1067,7 @@ function attachInteractions() {
   const endDrag = (e) => {
     if (!dragging) return;
     dragging = false;
+    canvas.style.cursor = "grab";
     // Clic simple (sans glisser) = placer le curseur à l'endroit cliqué
     if (!moved) {
       const rect = canvas.getBoundingClientRect();
@@ -779,6 +1091,17 @@ function attachInteractions() {
     draw();
   });
 
+  // Curseur de vitesse de lecture : étiquette en direct, application au relâché
+  // (reconstruire le Part de Tone à chaque micro-pas pendant le glissé serait
+  //  inutilement coûteux pendant la lecture).
+  const speedRange = document.getElementById("speedRange");
+  speedRange.addEventListener("input", (e) => {
+    updateSpeedLabel(parseFloat(e.target.value));
+  });
+  speedRange.addEventListener("change", (e) => {
+    setSpeed(parseFloat(e.target.value));
+  });
+
   // Raccourci clavier : Espace = play/pause
   window.addEventListener("keydown", (e) => {
     if (e.code === "Space" && e.target.tagName !== "INPUT") {
@@ -794,16 +1117,33 @@ function attachInteractions() {
 function init() {
   document.getElementById("midiInput").addEventListener("change", (e) => {
     const file = e.target.files[0];
-    if (file) loadMidiFile(file);
+    if (file) {
+      document.getElementById("songSelect").value = ""; // fichier hors bibliothèque
+      loadMidiFile(file);
+    }
   });
 
-  document.getElementById("demoBtn").addEventListener("click", loadDemo);
+  document.getElementById("songSelect").addEventListener("change", (e) => {
+    const idx = parseInt(e.target.value, 10);
+    if (!isNaN(idx)) selectSong(idx);
+  });
 
   window.addEventListener("resize", resizeCanvas);
 
   attachInteractions();
   resizeCanvas();
-  loadDemo();
+  start();
+}
+
+// Au démarrage : on charge la bibliothèque puis son premier morceau ; si elle
+// est vide ou introuvable, on retombe sur la démo générée en interne.
+async function start() {
+  const hasLibrary = await loadSongLibrary();
+  if (hasLibrary) {
+    selectSong(0);
+  } else {
+    loadDemo();
+  }
 }
 
 init();

@@ -52,7 +52,34 @@ Case **Notation** dans la barre d'outils pour activer/désactiver l'affichage.
 
 > Pas de clavier interactif : l'app est pensée pour jouer sur un vrai piano.
 
-## Lancer le projet
+## Ajouter des morceaux à la bibliothèque
+
+1. Copie tes fichiers `.mid` dans le dossier **`midi/`**.
+2. Édite **`songs.json`** à la racine du projet et ajoute une entrée :
+
+```json
+[
+  { "title": "Démo — Gamme & accords", "builtin": "demo" },
+  { "title": "Frère Jacques",          "file": "midi/frere-jacques.mid" },
+  { "title": "Ode à la joie",          "file": "midi/ode-to-joy.mid" }
+]
+```
+
+Le champ `"builtin": "demo"` est réservé à la démo générée en interne.
+Pour tes propres morceaux, utilise `"file"` avec le chemin relatif.
+
+## Déployer sur GitHub Pages
+
+1. **Pousse** le dépôt sur GitHub.
+2. Dans les **Settings** du dépôt → **Pages** :
+   - Source : **Deploy from a branch**
+   - Branch : `main` — dossier `/` (root)
+3. GitHub génère l'URL `https://<user>.github.io/<repo>/` en quelques minutes.
+
+L'app tourne entièrement côté client (aucun serveur nécessaire) : les scripts
+viennent de CDN et les fichiers MIDI sont servis directement par GitHub Pages.
+
+## Lancer le projet en local
 
 Comme on utilise des modules ES + un CDN, il faut servir les fichiers via HTTP
 (l'ouverture directe `file://` est bloquée par le navigateur).
@@ -72,6 +99,8 @@ Puis ouvrir <http://localhost:8000>.
 index.html     # structure de la page + contrôles
 style.css      # mise en forme (thème sombre)
 src/main.js    # parsing MIDI, calcul des repères, rendu Canvas, défilement
+songs.json     # catalogue des morceaux de la bibliothèque
+midi/          # tes fichiers .mid
 ```
 
 ## Prochaines étapes envisagées
