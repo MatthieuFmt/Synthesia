@@ -68,6 +68,18 @@ Case **Notation** dans la barre d'outils pour activer/désactiver l'affichage.
 Le champ `"builtin": "demo"` est réservé à la démo générée en interne.
 Pour tes propres morceaux, utilise `"file"` avec le chemin relatif.
 
+## Mode performance
+
+L'application active automatiquement un profil allégé quand le navigateur
+signale au maximum 4 Go de mémoire ou 4 processeurs logiques. Ce profil limite
+la résolution interne du Canvas, vise environ 30 images par seconde et charge
+9 échantillons de piano au lieu de 30, sans modifier les notes ni leur timing.
+
+Le profil peut aussi être forcé dans l'URL :
+
+- `?performance=low` pour privilégier les appareils anciens ;
+- `?performance=high` pour conserver la qualité maximale.
+
 ## Déployer sur GitHub Pages
 
 1. **Pousse** le dépôt sur GitHub.
