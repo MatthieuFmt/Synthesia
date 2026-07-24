@@ -877,6 +877,59 @@ function resizeCanvas() {
 }
 
 // ----------------------------------------------------------------------------
+//  Plein écran
+// ----------------------------------------------------------------------------
+function fullscreenElement() {
+  return document.fullscreenElement || document.webkitFullscreenElement || null;
+}
+
+function fullscreenIsSupported() {
+  return Boolean(
+    document.fullscreenEnabled ||
+      document.webkitFullscreenEnabled ||
+      document.documentElement.requestFullscreen ||
+      document.documentElement.webkitRequestFullscreen
+  );
+}
+
+function updateFullscreenButton() {
+  const button = document.getElementById("fullscreenBtn");
+  const isFullscreen = Boolean(fullscreenElement());
+  const label = isFullscreen
+    ? "Quitter le plein écran"
+    : "Passer en plein écran";
+
+  button.setAttribute("aria-label", label);
+  button.title = label;
+  button.querySelector(".fullscreen-enter-icon").hidden = isFullscreen;
+  button.querySelector(".fullscreen-exit-icon").hidden = !isFullscreen;
+}
+
+async function toggleFullscreen() {
+  try {
+    if (fullscreenElement()) {
+      if (document.exitFullscreen) {
+        await document.exitFullscreen();
+      } else {
+        document.webkitExitFullscreen();
+      }
+    } else if (document.documentElement.requestFullscreen) {
+      await document.documentElement.requestFullscreen();
+    } else {
+      document.documentElement.webkitRequestFullscreen();
+    }
+  } catch (err) {
+    console.error("Impossible de changer le mode plein écran.", err);
+  }
+}
+
+function handleFullscreenChange() {
+  updateFullscreenButton();
+  // Le navigateur applique les nouvelles dimensions juste après l'évènement.
+  requestAnimationFrame(resizeCanvas);
+}
+
+// ----------------------------------------------------------------------------
 //  Chargement d'un fichier MIDI / démo
 // ----------------------------------------------------------------------------
 function resetForNewSong(label) {
@@ -890,6 +943,7 @@ function resetForNewSong(label) {
 }
 
 async function loadMidiFile(file) {
+  setCurrentSongTitle(file.name);
   try {
     const buffer = await file.arrayBuffer();
     const midi = new Midi(buffer);
@@ -902,6 +956,7 @@ async function loadMidiFile(file) {
 }
 
 async function loadMidiFromUrl(url, displayName) {
+  setCurrentSongTitle(displayName);
   try {
     updateSongInfo(null, `Chargement de « ${displayName} »…`);
     const res = await fetch(url);
@@ -955,20 +1010,15 @@ function updateSongInfo(fileName, error) {
     return;
   }
   if (!state.song) {
+    setCurrentSongTitle(null);
     el.textContent = "Aucun morceau chargé.";
     return;
   }
   const m = state.song.meta;
-  // Titre affiché : celui fourni (bibliothèque / nom de fichier) en priorité,
-  // sinon le nom interne du MIDI. On ajoute le nom interne seulement s'il est
-  // pertinent et différent, pour éviter un « — Sans titre » disgracieux.
-  const hasName = m.name && m.name !== "Sans titre";
   const title =
-    fileName && hasName && m.name !== fileName
-      ? `${fileName} — ${m.name}`
-      : fileName || m.name;
+    fileName || (m.name && m.name !== "Sans titre" ? m.name : "Morceau sans titre");
+  setCurrentSongTitle(title);
   el.textContent =
-    `${title} · ` +
     `${m.bpm} BPM · mesure ${m.timeSignature[0]}/${m.timeSignature[1]} · ` +
     `${state.song.notes.length} notes · ${state.song.duration.toFixed(1)} s`;
 }
@@ -1013,7 +1063,7 @@ function buildDemoSong() {
 
 function loadDemo() {
   state.song = buildDemoSong();
-  resetForNewSong("Démo");
+  resetForNewSong(state.song.meta.name);
 }
 
 // ----------------------------------------------------------------------------
@@ -1082,6 +1132,17 @@ function attachInteractions() {
 
   // Bouton play/pause
   document.getElementById("playBtn").addEventListener("click", togglePlay);
+
+  // Plein écran de l'application entière, afin de garder les contrôles visibles.
+  const fullscreenBtn = document.getElementById("fullscreenBtn");
+  if (fullscreenIsSupported()) {
+    fullscreenBtn.addEventListener("click", toggleFullscreen);
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
+    updateFullscreenButton();
+  } else {
+    fullscreenBtn.hidden = true;
+  }
 
   // Affichage de la notation (mini-portées)
   document.getElementById("notationToggle").addEventListener("change", (e) => {

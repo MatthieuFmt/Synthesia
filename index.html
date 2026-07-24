@@ -8,7 +8,6 @@
   </head>
   <body>
     <header class="topbar">
-      <h1>🎹 Synthesia Web</h1>
 
       <div class="controls">
         <label class="file-btn">
@@ -39,14 +38,6 @@
           <span id="speedValue" class="speed-value">1×</span>
         </label>
 
-        <div class="legend">
-          <span class="legend-item"
-            ><span class="swatch left-hand"></span>Main gauche</span
-          >
-          <span class="legend-item"
-            ><span class="swatch right-hand"></span>Main droite</span
-          >
-        </div>
       </div>
 
       <!-- Barre de transport : lecture / curseur de position -->
@@ -64,9 +55,30 @@
           step="0.01"
           value="0"
         />
+        <button
+          id="fullscreenBtn"
+          class="btn fullscreen-btn"
+          type="button"
+          aria-label="Passer en plein écran"
+          title="Passer en plein écran"
+        >
+          <svg
+            class="fullscreen-icon fullscreen-enter-icon"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path d="M8 3H3v5M16 3h5v5M21 16v5h-5M8 21H3v-5" />
+          </svg>
+          <svg
+            class="fullscreen-icon fullscreen-exit-icon"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+            hidden
+          >
+            <path d="M3 8h5V3M21 8h-5V3M16 21v-5h5M8 21v-5H3" />
+          </svg>
+        </button>
       </div>
-
-      <div id="songInfo" class="song-info">Aucun morceau chargé.</div>
     </header>
 
     <main class="stage">

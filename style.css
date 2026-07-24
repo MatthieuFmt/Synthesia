@@ -5,10 +5,7 @@
   --text: #e6edf3;
   --muted: #8b949e;
 
-  /* Couleurs des deux mains */
-  --right-hand: #4ea1ff; /* main droite (aigus)  */
-  --left-hand:  #2ecc71; /* main gauche (graves) */
-  --cursor:     #ffae57; /* ligne de lecture     */
+  --cursor: #ffae57;
 }
 
 * { box-sizing: border-box; }
@@ -149,25 +146,17 @@ body {
   color: var(--text);
 }
 
-.legend {
-  display: flex;
-  gap: 16px;
+.current-song-title {
   margin-left: auto;
-  font-size: 13px;
-  color: var(--muted);
+  min-width: 0;
+  max-width: min(380px, 38vw);
+  overflow: hidden;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-
-.legend-item { display: flex; align-items: center; gap: 6px; }
-
-.swatch {
-  width: 14px;
-  height: 14px;
-  border-radius: 3px;
-  display: inline-block;
-}
-
-.swatch.right-hand { background: var(--right-hand); }
-.swatch.left-hand  { background: var(--left-hand); }
 
 /* ---------- Barre de transport ---------- */
 .transport {
@@ -185,6 +174,28 @@ body {
   align-items: center;
   justify-content: center;
   padding: 0;
+}
+
+.fullscreen-btn {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  justify-content: center;
+  padding: 0;
+}
+
+.fullscreen-btn[hidden] {
+  display: none;
+}
+
+.fullscreen-icon {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .time-label {
@@ -266,7 +277,11 @@ body {
   .topbar { padding: 10px 12px; }
   .topbar h1 { font-size: 16px; margin-bottom: 8px; }
   .controls { gap: 10px; }
-  .legend { margin-left: 0; gap: 12px; }
+  .current-song-title {
+    flex: 1 1 100%;
+    margin-left: 0;
+    max-width: 100%;
+  }
   .song-select { max-width: none; flex: 1 1 160px; }
 }
 
@@ -276,9 +291,9 @@ body {
   .topbar { padding: 6px 10px; }
   .topbar h1 { display: none; }       /* titre non indispensable pour jouer */
   .controls { gap: 8px; }
-  .legend { display: none; }          /* économise une ligne */
   .transport { margin-top: 8px; }
   .play-btn { width: 40px; height: 32px; }
+  .fullscreen-btn { width: 34px; height: 32px; }
   .song-info { margin-top: 6px; font-size: 12px; }
   .hint { display: none; }            /* le geste de défilement est tactile */
 }
