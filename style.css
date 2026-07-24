@@ -144,6 +144,48 @@ body {
   user-select: none;
 }
 
+.annotation-toggle {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  gap: 0;
+}
+
+.annotation-toggle .toolbar-icon {
+  width: 36px;
+  height: 36px;
+  padding: 8px;
+  color: var(--muted);
+  background: #21262d;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  transition:
+    color .15s ease,
+    background .15s ease,
+    border-color .15s ease;
+}
+
+.annotation-toggle:hover .toolbar-icon {
+  color: var(--text);
+  background: #2d333b;
+}
+
+.annotation-toggle input:checked + .toolbar-icon {
+  color: var(--bg);
+  background: var(--cursor);
+  border-color: var(--cursor);
+}
+
+.annotation-toggle input:checked + .toolbar-icon:hover {
+  background: #ffc078;
+  border-color: #ffc078;
+}
+
+.annotation-toggle input:focus-visible + .toolbar-icon {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+
 .speed {
   display: flex;
   align-items: center;

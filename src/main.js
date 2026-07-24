@@ -70,6 +70,7 @@ const COLORS = {
   leftHandDark: "#177a40",   // touche noire (dièse/bémol), main gauche : vert foncé
   active: "#ffffff",
   cursor: "#ffae57",
+  pedal: "#d2a8ff",
   label: "#6e7681",
   cardBg: "#f6f1e3", // fond « papier » des mini-portées
   ink: "#1b1b1b",    // encre des portées / notes
@@ -213,6 +214,7 @@ function buildSong(midi) {
     notes.reduce((m, n) => Math.max(m, n.time + n.duration), 0)
   );
 
+  const pedalIntervals = extractPedalIntervals(midi, duration);
   const measures = computeMeasures(midi, ppq, duration);
 
   const tempo = midi.header.tempos[0];
@@ -223,7 +225,73 @@ function buildSong(midi) {
     timeSignature: sig ? sig.timeSignature : [4, 4],
   };
 
-  return { notes, measures, duration, meta };
+  return { notes, pedalIntervals, measures, duration, meta };
+}
+
+// Transforme les changements de contrôle MIDI CC64 en périodes pendant
+// lesquelles la pédale de sustain est maintenue. Aucun intervalle n'est créé si
+// le fichier ne fournit pas lui-même ces événements.
+function extractPedalIntervals(midi, duration) {
+  const events = [];
+
+  midi.tracks.forEach((track, trackIndex) => {
+    const byNumber = track.controlChanges?.[64];
+    const byName = track.controlChanges?.sustain;
+    const sustainEvents = byNumber?.length ? byNumber : byName || [];
+
+    for (const event of sustainEvents) {
+      if (!Number.isFinite(event.time) || !Number.isFinite(event.value)) continue;
+      events.push({
+        time: Math.max(0, Math.min(duration, event.time)),
+        value: event.value,
+        trackIndex,
+      });
+    }
+  });
+
+  if (events.length === 0) return [];
+
+  events.sort(
+    (a, b) => a.time - b.time || a.trackIndex - b.trackIndex
+  );
+
+  const downTracks = new Set();
+  const intervals = [];
+  let intervalStart = null;
+  let index = 0;
+
+  // Les événements ayant exactement le même temps sont regroupés afin qu'un
+  // relâchement et un nouvel appui simultanés ne créent pas de coupure visuelle.
+  while (index < events.length) {
+    const time = events[index].time;
+    const wasDown = downTracks.size > 0;
+
+    while (index < events.length && events[index].time === time) {
+      const event = events[index];
+      if (event.value >= 0.5) {
+        downTracks.add(event.trackIndex);
+      } else {
+        downTracks.delete(event.trackIndex);
+      }
+      index++;
+    }
+
+    const isDown = downTracks.size > 0;
+    if (!wasDown && isDown) {
+      intervalStart = time;
+    } else if (wasDown && !isDown && intervalStart !== null) {
+      if (time > intervalStart) {
+        intervals.push({ start: intervalStart, end: time });
+      }
+      intervalStart = null;
+    }
+  }
+
+  if (downTracks.size > 0 && intervalStart !== null && duration > intervalStart) {
+    intervals.push({ start: intervalStart, end: duration });
+  }
+
+  return intervals;
 }
 
 // ----------------------------------------------------------------------------
@@ -279,6 +347,7 @@ function draw() {
     drawMeasureLines(w, h);
     drawNotes();
     if (state.showNotation) drawNotationCards();
+    drawPedalCues(w);
     ctx.restore();
   }
 
@@ -370,10 +439,93 @@ function drawNotes() {
 
     if (isActive) {
       ctx.strokeStyle = COLORS.active;
-      ctx.lineWidth = 2.5;
+      ctx.lineWidth = 1.25;
       ctx.stroke();
     }
   }
+}
+
+// Repères de pédale : une ligne violette matérialise la durée de l'appui.
+// L'icône de pédale descend jusqu'à la ligne de lecture, puis reste allumée
+// pendant l'appui ; le chevron indique le moment du relâchement.
+function drawPedalCues(w) {
+  const intervals = state.song?.pedalIntervals;
+  if (!intervals?.length) return;
+
+  const bottom = keyboardTop();
+  const x = Math.max(14, w - 18);
+  let pedalIsDown = false;
+
+  ctx.save();
+  ctx.strokeStyle = COLORS.pedal;
+  ctx.lineWidth = 4;
+  ctx.lineCap = "round";
+
+  for (const interval of intervals) {
+    const pressY = timeToScreenY(interval.start);
+    const releaseY = timeToScreenY(interval.end);
+
+    if (pressY >= 0 && releaseY <= bottom) {
+      const visibleTop = Math.max(0, releaseY);
+      const visibleBottom = Math.min(bottom, pressY);
+      if (visibleBottom >= visibleTop) {
+        line(x, visibleTop, x, visibleBottom);
+      }
+    }
+
+    if (pressY >= 7 && pressY <= bottom - 7) {
+      drawPedalPressCue(x, pressY);
+    }
+    if (releaseY >= 7 && releaseY <= bottom - 7) {
+      drawPedalReleaseCue(x, releaseY);
+    }
+
+    if (
+      state.currentTime >= interval.start &&
+      state.currentTime < interval.end
+    ) {
+      pedalIsDown = true;
+    }
+  }
+
+  if (pedalIsDown) {
+    drawPedalPressCue(x, bottom - 13, true);
+  }
+
+  ctx.restore();
+}
+
+function drawPedalPressCue(x, y, active = false) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.fillStyle = COLORS.pedal;
+  if (active) {
+    ctx.shadowColor = COLORS.pedal;
+    ctx.shadowBlur = 10;
+  }
+  ctx.beginPath();
+  ctx.moveTo(-8, 4);
+  ctx.lineTo(-5, -4);
+  ctx.quadraticCurveTo(0, -6, 6, -4);
+  ctx.lineTo(9, 4);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawPedalReleaseCue(x, y) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.strokeStyle = COLORS.pedal;
+  ctx.lineWidth = 2;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.beginPath();
+  ctx.moveTo(-6, 3);
+  ctx.lineTo(0, -3);
+  ctx.lineTo(6, 3);
+  ctx.stroke();
+  ctx.restore();
 }
 
 // Mini-portées : sur chaque note visible, une petite « carte » de partition
@@ -948,7 +1100,6 @@ function resetForNewSong(label) {
 }
 
 async function loadMidiFile(file) {
-  setCurrentSongTitle(file.name);
   try {
     const buffer = await file.arrayBuffer();
     const midi = new Midi(buffer);
@@ -961,7 +1112,6 @@ async function loadMidiFile(file) {
 }
 
 async function loadMidiFromUrl(url, displayName) {
-  setCurrentSongTitle(displayName);
   try {
     updateSongInfo(null, `Chargement de « ${displayName} »…`);
     const res = await fetch(url);
@@ -1010,21 +1160,24 @@ async function selectSong(idx) {
 
 function updateSongInfo(fileName, error) {
   const el = document.getElementById("songInfo");
+  // Les métadonnées détaillées ne sont plus affichées dans l'en-tête compact.
+  // On conserve cette fonction pour les variantes de page qui possèdent encore
+  // la zone correspondante, sans interrompre le chargement lorsqu'elle est absente.
+  if (!el) return;
+
   if (error) {
     el.textContent = error;
     return;
   }
   if (!state.song) {
-    setCurrentSongTitle(null);
     el.textContent = "Aucun morceau chargé.";
     return;
   }
   const m = state.song.meta;
   const title =
     fileName || (m.name && m.name !== "Sans titre" ? m.name : "Morceau sans titre");
-  setCurrentSongTitle(title);
   el.textContent =
-    `${m.bpm} BPM · mesure ${m.timeSignature[0]}/${m.timeSignature[1]} · ` +
+    `${title} · ${m.bpm} BPM · mesure ${m.timeSignature[0]}/${m.timeSignature[1]} · ` +
     `${state.song.notes.length} notes · ${state.song.duration.toFixed(1)} s`;
 }
 
