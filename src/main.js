@@ -24,6 +24,71 @@ const MIDI_HIGH = 108;          // C8  : note la plus aiguë
 const PIXELS_PER_SECOND = 140;  // échelle temporelle verticale
 const SPLIT_NOTE = 60;          // Do central : seuil graves/aigus pour le fallback
 const KEY_PRESS_MS = 220;       // durée de l'assombrissement après un clic sur une touche
+const FULL_PIANO_SAMPLES = {
+  A0: "A0.mp3",
+  C1: "C1.mp3",
+  "D#1": "Ds1.mp3",
+  "F#1": "Fs1.mp3",
+  A1: "A1.mp3",
+  C2: "C2.mp3",
+  "D#2": "Ds2.mp3",
+  "F#2": "Fs2.mp3",
+  A2: "A2.mp3",
+  C3: "C3.mp3",
+  "D#3": "Ds3.mp3",
+  "F#3": "Fs3.mp3",
+  A3: "A3.mp3",
+  C4: "C4.mp3",
+  "D#4": "Ds4.mp3",
+  "F#4": "Fs4.mp3",
+  A4: "A4.mp3",
+  C5: "C5.mp3",
+  "D#5": "Ds5.mp3",
+  "F#5": "Fs5.mp3",
+  A5: "A5.mp3",
+  C6: "C6.mp3",
+  "D#6": "Ds6.mp3",
+  "F#6": "Fs6.mp3",
+  A6: "A6.mp3",
+  C7: "C7.mp3",
+  "D#7": "Ds7.mp3",
+  "F#7": "Fs7.mp3",
+  A7: "A7.mp3",
+  C8: "C8.mp3",
+};
+const LIGHT_PIANO_SAMPLES = {
+  A0: "A0.mp3",
+  C1: "C1.mp3",
+  C2: "C2.mp3",
+  C3: "C3.mp3",
+  C4: "C4.mp3",
+  C5: "C5.mp3",
+  C6: "C6.mp3",
+  C7: "C7.mp3",
+  C8: "C8.mp3",
+};
+
+function detectPerformanceProfile() {
+  const override = new URLSearchParams(window.location.search).get("performance");
+  const memory = Number(navigator.deviceMemory) || 0;
+  const cores = Number(navigator.hardwareConcurrency) || 0;
+  const memoryLimited = memory > 0 && memory <= 4;
+  const cpuLimited = cores > 0 && cores <= 4;
+  const constrained =
+    override === "low" ||
+    (override !== "high" && (memoryLimited || cpuLimited));
+
+  return Object.freeze({
+    constrained,
+    maxCanvasDpr: constrained ? 1.5 : Infinity,
+    maxCanvasPixels: constrained ? 1_500_000 : 8_000_000,
+    minFrameInterval: constrained ? 30 : 12,
+    transportUiInterval: constrained ? 100 : 50,
+    lightAudio: constrained,
+  });
+}
+
+const PERFORMANCE_PROFILE = detectPerformanceProfile();
 
 // Demi-tons appartenant à une touche blanche (Do, Ré, Mi, Fa, Sol, La, Si)
 const WHITE_PITCH_CLASSES = [0, 2, 4, 5, 7, 9, 11];
@@ -80,7 +145,7 @@ const COLORS = {
 //  État global
 // ----------------------------------------------------------------------------
 const canvas = document.getElementById("rollCanvas");
-const ctx = canvas.getContext("2d");
+const ctx = canvas.getContext("2d", { alpha: false });
 
 const state = {
   song: null,        // morceau parsé (voir buildSong)
@@ -90,10 +155,19 @@ const state = {
   speed: 1,           // multiplicateur de vitesse de lecture (1 = normal)
   dpr: 1,
   pressedKeys: new Set(), // touches enfoncées au clic (assombrissement temporaire)
+  activeKeys: new Uint8Array(128),
+  pendingDraw: null,
+  pendingUiSync: false,
+  lastTransportUiUpdate: -Infinity,
+  lastVisualFrame: -Infinity,
+  animationFrame: null,
 
   // Audio (Tone.js), initialisé paresseusement au premier play
   audioReady: false,
+  audioPromise: null,
+  playPending: false,
   synth: null,
+  reverb: null,
   part: null,
 };
 
@@ -104,38 +178,101 @@ function isWhite(midi) {
   return WHITE_PITCH_CLASSES.includes(((midi % 12) + 12) % 12);
 }
 
-function countWhiteKeys() {
-  let n = 0;
-  for (let m = MIDI_LOW; m <= MIDI_HIGH; m++) if (isWhite(m)) n++;
-  return n;
-}
-
-const TOTAL_WHITE_KEYS = countWhiteKeys();
+const WHITE_INDEX_BY_MIDI = new Int16Array(128);
+const TOTAL_WHITE_KEYS = (() => {
+  let index = 0;
+  let total = 0;
+  for (let midi = 0; midi < 128; midi++) {
+    if (midi < MIDI_LOW) {
+      WHITE_INDEX_BY_MIDI[midi] = 0;
+      continue;
+    }
+    WHITE_INDEX_BY_MIDI[midi] = index;
+    if (isWhite(midi)) index++;
+    if (midi === MIDI_HIGH) total = index;
+  }
+  return total;
+})();
+const ACTIVE_NONE = 0;
+const ACTIVE_LEFT = 1;
+const ACTIVE_RIGHT = 2;
+const layout = {
+  width: 0,
+  height: 0,
+  keyboardHeight: 0,
+  keyboardTop: 0,
+  whiteKeyWidth: 0,
+  noteGeometries: new Array(128),
+  whiteGradients: null,
+  blackGradients: null,
+};
 
 function whiteIndex(midi) {
-  let idx = 0;
-  for (let m = MIDI_LOW; m < midi; m++) if (isWhite(m)) idx++;
-  return idx;
+  return WHITE_INDEX_BY_MIDI[midi];
 }
 
 function whiteKeyWidth() {
-  return canvas.clientWidth / TOTAL_WHITE_KEYS;
+  return layout.whiteKeyWidth;
 }
 
 function noteGeometry(midi) {
-  const w = whiteKeyWidth();
-  if (isWhite(midi)) {
-    const x = whiteIndex(midi) * w;
-    return { x, width: w, centerX: x + w / 2, white: true };
+  return layout.noteGeometries[midi];
+}
+
+function makeGradient(top, bottom, topColor, bottomColor) {
+  const gradient = ctx.createLinearGradient(0, top, 0, bottom);
+  gradient.addColorStop(0, topColor);
+  gradient.addColorStop(1, bottomColor);
+  return gradient;
+}
+
+function rebuildLayout(w, h) {
+  layout.width = w;
+  layout.height = h;
+  layout.keyboardHeight = Math.round(Math.min(150, Math.max(96, h * 0.18)));
+  layout.keyboardTop = h - layout.keyboardHeight;
+  layout.whiteKeyWidth = w / TOTAL_WHITE_KEYS;
+
+  for (let midi = 0; midi < 128; midi++) {
+    const keyWidth = layout.whiteKeyWidth;
+    if (isWhite(midi)) {
+      const x = whiteIndex(midi) * keyWidth;
+      layout.noteGeometries[midi] = {
+        x,
+        width: keyWidth,
+        centerX: x + keyWidth / 2,
+        white: true,
+      };
+      continue;
+    }
+
+    const centerX = whiteIndex(midi - 1) * keyWidth + keyWidth;
+    const blackWidth = keyWidth * 0.62;
+    layout.noteGeometries[midi] = {
+      x: centerX - blackWidth / 2,
+      width: blackWidth,
+      centerX,
+      white: false,
+    };
   }
-  const prevWhiteX = whiteIndex(midi - 1) * w;
-  const centerX = prevWhiteX + w;
-  const blackW = w * 0.62;
-  return { x: centerX - blackW / 2, width: blackW, centerX, white: false };
+
+  const whiteTop = layout.keyboardTop + 3;
+  const whiteHeight = layout.keyboardHeight - 3;
+  const blackHeight = whiteHeight * 0.62;
+  layout.whiteGradients = [
+    makeGradient(whiteTop, whiteTop + whiteHeight, "#ffffff", "#d7d0c2"),
+    makeGradient(whiteTop, whiteTop + whiteHeight, COLORS.leftHandEdge, COLORS.leftHand),
+    makeGradient(whiteTop, whiteTop + whiteHeight, COLORS.rightHandEdge, COLORS.rightHand),
+  ];
+  layout.blackGradients = [
+    makeGradient(whiteTop, whiteTop + blackHeight, "#2b313b", "#080a0e"),
+    makeGradient(whiteTop, whiteTop + blackHeight, COLORS.leftHand, COLORS.leftHandDark),
+    makeGradient(whiteTop, whiteTop + blackHeight, COLORS.rightHand, COLORS.rightHandDark),
+  ];
 }
 
 function whiteLeftEdge(midi) {
-  return whiteIndex(midi) * whiteKeyWidth();
+  return whiteIndex(midi) * layout.whiteKeyWidth;
 }
 
 // ----------------------------------------------------------------------------
@@ -144,11 +281,11 @@ function whiteLeftEdge(midi) {
 //  du clavier sert de ligne de lecture (playhead).
 // ----------------------------------------------------------------------------
 function keyboardHeight() {
-  return Math.round(Math.min(150, Math.max(96, canvas.clientHeight * 0.18)));
+  return layout.keyboardHeight;
 }
 
 function keyboardTop() {
-  return canvas.clientHeight - keyboardHeight();
+  return layout.keyboardTop;
 }
 
 // ----------------------------------------------------------------------------
@@ -192,6 +329,7 @@ function buildSong(midi) {
   for (const track of tracksWithNotes) {
     const trackHand = handForTrack.get(track);
     for (const n of track.notes) {
+      const endTime = n.time + n.duration;
       const hand =
         trackHand !== undefined
           ? trackHand
@@ -202,19 +340,28 @@ function buildSong(midi) {
         midi: n.midi,
         time: n.time,
         duration: n.duration,
+        endTime,
         velocity: n.velocity ?? 0.8,
         hand,
       });
     }
   }
   notes.sort((a, b) => a.time - b.time);
+  const maxNoteDuration = notes.reduce(
+    (max, note) => Math.max(max, note.duration),
+    0
+  );
 
   const duration = Math.max(
     midi.duration,
-    notes.reduce((m, n) => Math.max(m, n.time + n.duration), 0)
+    notes.reduce((max, note) => Math.max(max, note.endTime), 0)
   );
 
   const pedalIntervals = extractPedalIntervals(midi, duration);
+  const maxPedalDuration = pedalIntervals.reduce(
+    (max, interval) => Math.max(max, interval.end - interval.start),
+    0
+  );
   const measures = computeMeasures(midi, ppq, duration);
 
   const tempo = midi.header.tempos[0];
@@ -225,7 +372,15 @@ function buildSong(midi) {
     timeSignature: sig ? sig.timeSignature : [4, 4],
   };
 
-  return { notes, pedalIntervals, measures, duration, meta };
+  return {
+    notes,
+    pedalIntervals,
+    measures,
+    duration,
+    maxNoteDuration,
+    maxPedalDuration,
+    meta,
+  };
 }
 
 // Transforme les changements de contrôle MIDI CC64 en périodes pendant
@@ -323,14 +478,39 @@ function computeMeasures(midi, ppq, duration) {
   return measures;
 }
 
+function lowerBound(items, target, valueOf) {
+  let low = 0;
+  let high = items.length;
+  while (low < high) {
+    const middle = (low + high) >>> 1;
+    if (valueOf(items[middle]) < target) low = middle + 1;
+    else high = middle;
+  }
+  return low;
+}
+
+function upperBound(items, target, valueOf) {
+  let low = 0;
+  let high = items.length;
+  while (low < high) {
+    const middle = (low + high) >>> 1;
+    if (valueOf(items[middle]) <= target) low = middle + 1;
+    else high = middle;
+  }
+  return low;
+}
+
+const noteStart = (note) => note.time;
+const measureTime = (time) => time;
+const pedalStart = (interval) => interval.start;
+
 // ----------------------------------------------------------------------------
 //  Rendu
 // ----------------------------------------------------------------------------
 function draw() {
-  const w = canvas.clientWidth;
-  const h = canvas.clientHeight;
+  const w = layout.width;
+  const h = layout.height;
 
-  ctx.clearRect(0, 0, w, h);
   ctx.fillStyle = COLORS.background;
   ctx.fillRect(0, 0, w, h);
 
@@ -344,9 +524,24 @@ function draw() {
     ctx.beginPath();
     ctx.rect(0, 0, w, keyboardTop());
     ctx.clip();
+    const earliestVisibleEnd =
+      screenYToTime(h + 50) - state.song.maxNoteDuration;
+    const latestVisibleStart = screenYToTime(-50);
+    const firstVisibleNote = lowerBound(
+      state.song.notes,
+      earliestVisibleEnd,
+      noteStart
+    );
+    const afterLastVisibleNote = upperBound(
+      state.song.notes,
+      latestVisibleStart,
+      noteStart
+    );
     drawMeasureLines(w, h);
-    drawNotes();
-    if (state.showNotation) drawNotationCards();
+    drawNotes(firstVisibleNote, afterLastVisibleNote);
+    if (state.showNotation) {
+      drawNotationCards(firstVisibleNote, afterLastVisibleNote);
+    }
     drawPedalCues(w);
     ctx.restore();
   }
@@ -368,16 +563,21 @@ function drawKeyboardColumns(w, h) {
 function drawDoMiLines(w, h) {
   ctx.strokeStyle = COLORS.gridDoMi;
   ctx.lineWidth = 1;
+  ctx.beginPath();
 
   for (let m = MIDI_LOW; m <= MIDI_HIGH; m++) {
     const pc = ((m % 12) + 12) % 12;
     if (pc === 0) {
-      line(crisp(whiteLeftEdge(m)), 0, crisp(whiteLeftEdge(m)), h);
+      const x = crisp(whiteLeftEdge(m));
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, h);
     } else if (pc === 4) {
-      const right = whiteLeftEdge(m) + whiteKeyWidth();
-      line(crisp(right), 0, crisp(right), h);
+      const x = crisp(whiteLeftEdge(m) + whiteKeyWidth());
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, h);
     }
   }
+  ctx.stroke();
 
   ctx.fillStyle = COLORS.label;
   ctx.font = "10px system-ui, sans-serif";
@@ -397,27 +597,45 @@ function drawMeasureLines(w, h) {
   ctx.fillStyle = COLORS.label;
   ctx.font = "10px system-ui, sans-serif";
 
-  state.song.measures.forEach((t, i) => {
-    const y = timeToScreenY(t);
-    if (y < -20 || y > h + 20) return;
-    line(0, crisp(y), w, crisp(y));
+  const first = lowerBound(
+    state.song.measures,
+    screenYToTime(h + 20),
+    measureTime
+  );
+  const afterLast = upperBound(
+    state.song.measures,
+    screenYToTime(-20),
+    measureTime
+  );
+
+  ctx.beginPath();
+  for (let i = first; i < afterLast; i++) {
+    const y = crisp(timeToScreenY(state.song.measures[i]));
+    ctx.moveTo(0, y);
+    ctx.lineTo(w, y);
+  }
+  ctx.stroke();
+
+  for (let i = first; i < afterLast; i++) {
+    const y = timeToScreenY(state.song.measures[i]);
     ctx.fillText(`${i + 1}`, 4, y - 3);
-  });
+  }
 }
 
 // Notes : rectangles arrondis colorés par main, surbrillance si en cours
-function drawNotes() {
-  const h = canvas.clientHeight;
+function drawNotes(first, afterLast) {
+  const h = layout.height;
   const now = state.currentTime;
 
-  for (const n of state.song.notes) {
+  for (let index = first; index < afterLast; index++) {
+    const n = state.song.notes[index];
     const yBottom = timeToScreenY(n.time);
-    const yTop = timeToScreenY(n.time + n.duration);
+    const yTop = timeToScreenY(n.endTime);
     if (yBottom < -50 || yTop > h + 50) continue;
 
     const g = noteGeometry(n.midi);
     const isRight = n.hand === "right";
-    const isActive = now >= n.time && now <= n.time + n.duration;
+    const isActive = now >= n.time && now <= n.endTime;
     const isBlackKey = !g.white; // dièse/bémol -> teinte plus foncée
 
     ctx.fillStyle = isRight
@@ -455,13 +673,24 @@ function drawPedalCues(w) {
   const bottom = keyboardTop();
   const x = Math.max(14, w - 18);
   let pedalIsDown = false;
+  const first = lowerBound(
+    intervals,
+    screenYToTime(bottom + 7) - state.song.maxPedalDuration,
+    pedalStart
+  );
+  const afterLast = upperBound(
+    intervals,
+    screenYToTime(-7),
+    pedalStart
+  );
 
   ctx.save();
   ctx.strokeStyle = COLORS.pedal;
   ctx.lineWidth = 4;
   ctx.lineCap = "round";
 
-  for (const interval of intervals) {
+  for (let index = first; index < afterLast; index++) {
+    const interval = intervals[index];
     const pressY = timeToScreenY(interval.start);
     const releaseY = timeToScreenY(interval.end);
 
@@ -499,7 +728,7 @@ function drawPedalPressCue(x, y, active = false) {
   ctx.save();
   ctx.translate(x, y);
   ctx.fillStyle = COLORS.pedal;
-  if (active) {
+  if (active && !PERFORMANCE_PROFILE.constrained) {
     ctx.shadowColor = COLORS.pedal;
     ctx.shadowBlur = 10;
   }
@@ -531,11 +760,12 @@ function drawPedalReleaseCue(x, y) {
 // Mini-portées : sur chaque note visible, une petite « carte » de partition
 // (5 lignes + clé + tête de note placée + lignes supplémentaires + hampe + nom)
 // pour apprendre à lire la note en même temps qu'on la joue.
-function drawNotationCards() {
-  const h = canvas.clientHeight;
-  for (const n of state.song.notes) {
+function drawNotationCards(first, afterLast) {
+  const h = layout.height;
+  for (let index = first; index < afterLast; index++) {
+    const n = state.song.notes[index];
     const yBottom = timeToScreenY(n.time);
-    const yTop = timeToScreenY(n.time + n.duration);
+    const yTop = timeToScreenY(n.endTime);
     if (yBottom < -40 || yTop > h + 40) continue;
     const g = noteGeometry(n.midi);
     drawNotationCard(g.centerX, yTop, yBottom, n.midi, n.hand);
@@ -660,15 +890,27 @@ function drawNotationCard(cx, noteTop, noteBottom, midi, hand) {
 //  - Un clic joue le son et assombrit brièvement la touche (state.pressedKeys).
 // ----------------------------------------------------------------------------
 
-// Map midi -> "left" | "right" : touches actuellement traversées par une note.
+// Code numérique par note MIDI : touches actuellement traversées par une note.
 function computeActiveKeys() {
-  const map = new Map();
-  if (!state.song) return map;
+  const active = state.activeKeys;
+  active.fill(ACTIVE_NONE);
+  if (!state.song) return active;
+
   const now = state.currentTime;
-  for (const n of state.song.notes) {
-    if (now >= n.time && now <= n.time + n.duration) map.set(n.midi, n.hand);
+  const first = lowerBound(
+    state.song.notes,
+    now - state.song.maxNoteDuration,
+    noteStart
+  );
+  const afterLast = upperBound(state.song.notes, now, noteStart);
+  for (let index = first; index < afterLast; index++) {
+    const note = state.song.notes[index];
+    if (now <= note.endTime) {
+      active[note.midi] =
+        note.hand === "right" ? ACTIVE_RIGHT : ACTIVE_LEFT;
+    }
   }
-  return map;
+  return active;
 }
 
 function drawKeyboard(w, h) {
@@ -685,7 +927,9 @@ function drawKeyboard(w, h) {
 
   // Touches blanches (en premier : les noires se dessinent par-dessus)
   for (let m = MIDI_LOW; m <= MIDI_HIGH; m++) {
-    if (isWhite(m)) drawWhiteKey(whiteIndex(m) * wkW, top + 3, wkW, kbH - 3, m, active);
+    if (isWhite(m)) {
+      drawWhiteKey(whiteIndex(m) * wkW, top + 3, wkW, kbH - 3, m, active);
+    }
   }
 
   // Repères d'octave (Do) sur les touches blanches correspondantes
@@ -711,19 +955,7 @@ function drawKeyboard(w, h) {
 }
 
 function drawWhiteKey(x, top, w, kbH, midi, active) {
-  const hand = active.get(midi);
-  const grad = ctx.createLinearGradient(0, top, 0, top + kbH);
-  if (hand === "right") {
-    grad.addColorStop(0, COLORS.rightHandEdge);
-    grad.addColorStop(1, COLORS.rightHand);
-  } else if (hand === "left") {
-    grad.addColorStop(0, COLORS.leftHandEdge);
-    grad.addColorStop(1, COLORS.leftHand);
-  } else {
-    grad.addColorStop(0, "#ffffff");
-    grad.addColorStop(1, "#d7d0c2");
-  }
-  ctx.fillStyle = grad;
+  ctx.fillStyle = layout.whiteGradients[active[midi]];
   roundRectBottom(x + 0.5, top, w - 1, kbH, 4);
   ctx.fill();
 
@@ -735,19 +967,7 @@ function drawWhiteKey(x, top, w, kbH, midi, active) {
 }
 
 function drawBlackKey(x, top, w, bkH, midi, active) {
-  const hand = active.get(midi);
-  const grad = ctx.createLinearGradient(0, top, 0, top + bkH);
-  if (hand === "right") {
-    grad.addColorStop(0, COLORS.rightHand);
-    grad.addColorStop(1, COLORS.rightHandDark);
-  } else if (hand === "left") {
-    grad.addColorStop(0, COLORS.leftHand);
-    grad.addColorStop(1, COLORS.leftHandDark);
-  } else {
-    grad.addColorStop(0, "#2b313b");
-    grad.addColorStop(1, "#080a0e");
-  }
-  ctx.fillStyle = grad;
+  ctx.fillStyle = layout.blackGradients[active[midi]];
   roundRectBottom(x, top, w, bkH, 3);
   ctx.fill();
 
@@ -777,7 +997,7 @@ function keyAtPosition(x, y) {
   const top = keyboardTop();
   if (y < top) return null;
 
-  const bkH = (canvas.clientHeight - top - 3) * 0.62;
+  const bkH = (layout.height - top - 3) * 0.62;
   if (y <= top + 3 + bkH) {
     for (let m = MIDI_LOW; m <= MIDI_HIGH; m++) {
       if (isWhite(m)) continue;
@@ -799,10 +1019,10 @@ function keyAtPosition(x, y) {
 // Joue la note cliquée et l'assombrit le temps d'une pression.
 async function pressKey(midi) {
   state.pressedKeys.add(midi);
-  draw();
+  scheduleDraw();
   setTimeout(() => {
     state.pressedKeys.delete(midi);
-    draw();
+    scheduleDraw();
   }, KEY_PRESS_MS);
 
   await ensureAudio();
@@ -819,8 +1039,10 @@ function drawPlayhead(w, h) {
   ctx.save();
   ctx.strokeStyle = COLORS.cursor;
   ctx.lineWidth = 2;
-  ctx.shadowColor = COLORS.cursor;
-  ctx.shadowBlur = 8;
+  if (!PERFORMANCE_PROFILE.constrained) {
+    ctx.shadowColor = COLORS.cursor;
+    ctx.shadowBlur = 8;
+  }
   line(0, crisp(y), w, crisp(y));
   ctx.restore();
 
@@ -862,6 +1084,28 @@ function roundRect(x, y, w, hgt, r) {
   ctx.closePath();
 }
 
+function drawImmediately() {
+  if (state.pendingDraw !== null) {
+    cancelAnimationFrame(state.pendingDraw);
+    state.pendingDraw = null;
+  }
+  state.pendingUiSync = false;
+  draw();
+}
+
+function scheduleDraw(syncUi = false) {
+  if (syncUi) state.pendingUiSync = true;
+  if (state.pendingDraw !== null) return;
+
+  state.pendingDraw = requestAnimationFrame(() => {
+    state.pendingDraw = null;
+    const shouldSyncUi = state.pendingUiSync;
+    state.pendingUiSync = false;
+    if (shouldSyncUi) syncTransportUI(true);
+    draw();
+  });
+}
+
 // ----------------------------------------------------------------------------
 //  Position de lecture (source de vérité) + synchronisation UI
 // ----------------------------------------------------------------------------
@@ -879,15 +1123,29 @@ function setTime(t, { fromTransport = false } = {}) {
     Tone.Transport.seconds = state.currentTime / state.speed;
   }
 
-  syncTransportUI();
-  draw();
+  if (fromTransport) {
+    syncTransportUI();
+    drawImmediately();
+  } else {
+    scheduleDraw(true);
+  }
 }
 
-function syncTransportUI() {
+function syncTransportUI(force = false) {
   const seek = document.getElementById("seek");
   const label = document.getElementById("timeLabel");
-  seek.value = String(state.currentTime);
-  label.textContent = `${fmt(state.currentTime)} / ${fmt(songDuration())}`;
+  const now = performance.now();
+  if (
+    force ||
+    now - state.lastTransportUiUpdate >=
+      PERFORMANCE_PROFILE.transportUiInterval
+  ) {
+    seek.value = String(state.currentTime);
+    state.lastTransportUiUpdate = now;
+  }
+
+  const text = `${fmt(state.currentTime)} / ${fmt(songDuration())}`;
+  if (label.textContent !== text) label.textContent = text;
 }
 
 function fmt(seconds) {
@@ -901,39 +1159,61 @@ function fmt(seconds) {
 // ----------------------------------------------------------------------------
 async function ensureAudio() {
   if (state.audioReady) return;
-  await Tone.start(); // doit être déclenché par un geste utilisateur
+  if (!state.audioPromise) {
+    state.audioPromise = (async () => {
+      await Tone.start(); // doit être déclenché par un geste utilisateur
 
-  // Vrai son de piano : échantillons acoustiques (Salamander Grand Piano),
-  // un fichier toutes les tierces mineures ; Tone.Sampler transpose le reste.
-  const reverb = new Tone.Reverb({ decay: 1.6, wet: 0.18 }).toDestination();
-  state.synth = new Tone.Sampler({
-    urls: {
-      A0: "A0.mp3", C1: "C1.mp3", "D#1": "Ds1.mp3", "F#1": "Fs1.mp3",
-      A1: "A1.mp3", C2: "C2.mp3", "D#2": "Ds2.mp3", "F#2": "Fs2.mp3",
-      A2: "A2.mp3", C3: "C3.mp3", "D#3": "Ds3.mp3", "F#3": "Fs3.mp3",
-      A3: "A3.mp3", C4: "C4.mp3", "D#4": "Ds4.mp3", "F#4": "Fs4.mp3",
-      A4: "A4.mp3", C5: "C5.mp3", "D#5": "Ds5.mp3", "F#5": "Fs5.mp3",
-      A5: "A5.mp3", C6: "C6.mp3", "D#6": "Ds6.mp3", "F#6": "Fs6.mp3",
-      A6: "A6.mp3", C7: "C7.mp3", "D#7": "Ds7.mp3", "F#7": "Fs7.mp3",
-      A7: "A7.mp3", C8: "C8.mp3",
-    },
-    release: 1,
-    baseUrl: "https://tonejs.github.io/audio/salamander/",
-  }).connect(reverb);
-  state.synth.volume.value = -6;
+      // Le profil léger conserve le même piano avec un échantillon par octave.
+      const sampler = new Tone.Sampler({
+        urls: PERFORMANCE_PROFILE.lightAudio
+          ? LIGHT_PIANO_SAMPLES
+          : FULL_PIANO_SAMPLES,
+        release: 1,
+        baseUrl: "https://tonejs.github.io/audio/salamander/",
+      });
 
-  await Tone.loaded(); // attendre le téléchargement des échantillons
-  state.audioReady = true;
+      if (PERFORMANCE_PROFILE.lightAudio) {
+        sampler.toDestination();
+      } else {
+        state.reverb = new Tone.Reverb({
+          decay: 1.6,
+          wet: 0.18,
+        }).toDestination();
+        sampler.connect(state.reverb);
+      }
+
+      state.synth = sampler;
+      state.synth.volume.value = -6;
+      await Tone.loaded(); // attendre le téléchargement des échantillons
+      state.audioReady = true;
+    })();
+  }
+
+  try {
+    await state.audioPromise;
+  } catch (error) {
+    state.synth?.dispose();
+    state.reverb?.dispose();
+    state.synth = null;
+    state.reverb = null;
+    throw error;
+  } finally {
+    if (!state.audioReady) state.audioPromise = null;
+  }
 }
 
 // (Re)construit le « Part » Tone qui planifie toutes les notes du morceau.
-function buildPart() {
+function disposePart() {
   if (state.part) {
     state.part.dispose();
     state.part = null;
   }
   Tone.Transport.cancel();
-  if (!state.song) return;
+}
+
+function buildPart() {
+  disposePart();
+  if (!state.song || !state.audioReady || !state.synth) return;
 
   // Les évènements sont planifiés sur l'échelle de temps (dilatée) du Transport :
   // un morceau plus lent étire chaque note sur davantage de secondes réelles.
@@ -956,24 +1236,49 @@ function buildPart() {
 }
 
 async function play() {
-  if (!state.song) return;
-  await ensureAudio();
-  if (!state.part) buildPart();
+  if (!state.song || state.isPlaying || state.playPending) return;
+  state.playPending = true;
+  try {
+    await ensureAudio();
+    if (!state.part) buildPart();
 
-  // Reprise depuis le début si on est à la fin
-  if (state.currentTime >= songDuration() - 1e-3) setTime(0);
+    // Reprise depuis le début si on est à la fin
+    if (state.currentTime >= songDuration() - 1e-3) setTime(0);
 
-  Tone.Transport.seconds = state.currentTime / state.speed;
-  Tone.Transport.start();
-  state.isPlaying = true;
-  updatePlayButton();
-  requestAnimationFrame(tick);
+    Tone.Transport.seconds = state.currentTime / state.speed;
+    Tone.Transport.start();
+    state.isPlaying = true;
+    state.lastVisualFrame = -Infinity;
+    updatePlayButton();
+    if (state.animationFrame !== null) {
+      cancelAnimationFrame(state.animationFrame);
+    }
+    state.animationFrame = requestAnimationFrame(tick);
+  } catch (error) {
+    console.error("Impossible d'initialiser l'audio.", error);
+  } finally {
+    state.playPending = false;
+  }
 }
 
-function pause() {
+function pause({ refresh = true } = {}) {
+  if (state.isPlaying) {
+    state.currentTime = Math.max(
+      0,
+      Math.min(songDuration(), Tone.Transport.seconds * state.speed)
+    );
+  }
   Tone.Transport.pause();
   state.isPlaying = false;
+  if (state.animationFrame !== null) {
+    cancelAnimationFrame(state.animationFrame);
+    state.animationFrame = null;
+  }
   updatePlayButton();
+  if (refresh) {
+    syncTransportUI(true);
+    drawImmediately();
+  }
 }
 
 function togglePlay() {
@@ -1002,30 +1307,69 @@ function updatePlayButton() {
 }
 
 // Boucle d'animation pendant la lecture : suit le transport audio
-function tick() {
+function tick(frameTime) {
+  state.animationFrame = null;
   if (!state.isPlaying) return;
 
-  setTime(Tone.Transport.seconds * state.speed, { fromTransport: true });
+  const transportTime = Math.max(
+    0,
+    Math.min(songDuration(), Tone.Transport.seconds * state.speed)
+  );
+  const reachedEnd = transportTime >= songDuration() - 1e-3;
 
-  if (state.currentTime >= songDuration() - 1e-3) {
-    pause();
+  if (
+    reachedEnd ||
+    frameTime - state.lastVisualFrame >=
+      PERFORMANCE_PROFILE.minFrameInterval
+  ) {
+    state.lastVisualFrame = frameTime;
+    setTime(transportTime, { fromTransport: true });
+  } else {
+    state.currentTime = transportTime;
+  }
+
+  if (reachedEnd) {
+    pause({ refresh: false });
+    syncTransportUI(true);
     return;
   }
-  requestAnimationFrame(tick);
+  state.animationFrame = requestAnimationFrame(tick);
 }
 
 // ----------------------------------------------------------------------------
 //  Redimensionnement / canvas haute densité
 // ----------------------------------------------------------------------------
 function resizeCanvas() {
-  const dpr = window.devicePixelRatio || 1;
-  state.dpr = dpr;
   const w = canvas.clientWidth;
   const h = canvas.clientHeight;
+  const nativeDpr = Math.max(1, window.devicePixelRatio || 1);
+  const pixelBudgetDpr = Math.sqrt(
+    PERFORMANCE_PROFILE.maxCanvasPixels / Math.max(1, w * h)
+  );
+  const dpr = Math.max(
+    1,
+    Math.min(
+      nativeDpr,
+      PERFORMANCE_PROFILE.maxCanvasDpr,
+      pixelBudgetDpr
+    )
+  );
+
+  state.dpr = dpr;
   canvas.width = Math.round(w * dpr);
   canvas.height = Math.round(h * dpr);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  draw();
+  rebuildLayout(w, h);
+  drawImmediately();
+}
+
+let pendingResize = null;
+function scheduleCanvasResize() {
+  if (pendingResize !== null) return;
+  pendingResize = requestAnimationFrame(() => {
+    pendingResize = null;
+    resizeCanvas();
+  });
 }
 
 // ----------------------------------------------------------------------------
@@ -1083,20 +1427,20 @@ async function toggleFullscreen() {
 function handleFullscreenChange() {
   updateFullscreenButton();
   // Le navigateur applique les nouvelles dimensions juste après l'évènement.
-  requestAnimationFrame(resizeCanvas);
+  scheduleCanvasResize();
 }
 
 // ----------------------------------------------------------------------------
 //  Chargement d'un fichier MIDI / démo
 // ----------------------------------------------------------------------------
 function resetForNewSong(label) {
-  pause();
-  buildPart();        // (re)planifie l'audio si l'audio est déjà initialisé
+  pause({ refresh: false });
+  disposePart();
   state.currentTime = 0;
   document.getElementById("seek").max = String(songDuration());
   updateSongInfo(label);
-  syncTransportUI();
-  draw();
+  syncTransportUI(true);
+  drawImmediately();
 }
 
 async function loadMidiFile(file) {
@@ -1305,7 +1649,7 @@ function attachInteractions() {
   // Affichage de la notation (mini-portées)
   document.getElementById("notationToggle").addEventListener("change", (e) => {
     state.showNotation = e.target.checked;
-    draw();
+    scheduleDraw();
   });
 
   // Curseur de vitesse de lecture : étiquette en direct, application au relâché
@@ -1345,7 +1689,7 @@ function init() {
     if (!isNaN(idx)) selectSong(idx);
   });
 
-  window.addEventListener("resize", resizeCanvas);
+  window.addEventListener("resize", scheduleCanvasResize);
 
   attachInteractions();
   resizeCanvas();
