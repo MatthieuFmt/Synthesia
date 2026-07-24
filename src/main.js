@@ -895,14 +895,19 @@ function fullscreenIsSupported() {
 function updateFullscreenButton() {
   const button = document.getElementById("fullscreenBtn");
   const isFullscreen = Boolean(fullscreenElement());
+  const iconPath = button.querySelector(".fullscreen-icon path");
   const label = isFullscreen
     ? "Quitter le plein écran"
     : "Passer en plein écran";
 
   button.setAttribute("aria-label", label);
   button.title = label;
-  button.querySelector(".fullscreen-enter-icon").hidden = isFullscreen;
-  button.querySelector(".fullscreen-exit-icon").hidden = !isFullscreen;
+  iconPath.setAttribute(
+    "d",
+    isFullscreen
+      ? "M3 8h5V3M21 8h-5V3M16 21v-5h5M8 21v-5H3"
+      : "M8 3H3v5M16 3h5v5M21 16v5h-5M8 21H3v-5"
+  );
 }
 
 async function toggleFullscreen() {
