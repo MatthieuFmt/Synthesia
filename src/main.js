@@ -334,7 +334,7 @@ function calculateKeyboardHeight(w, h) {
 
   // Mobile en portrait : clavier plus court pour libérer de la hauteur à la
   // chute des notes (l'en-tête occupe déjà une bonne part de l'écran).
-  if (w <= 700) {
+  if (w <= 899) {
     return Math.round(Math.min(112, Math.max(76, h * 0.15)));
   }
 
@@ -1735,7 +1735,7 @@ async function toggleLandscape() {
 function updateLandscapeButton() {
   const btn = document.getElementById("landscapeBtn");
   if (!btn) return;
-  btn.textContent = inLandscapeMode() ? "↩ Quitter" : "🔄 Paysage";
+  btn.textContent = inLandscapeMode() ? "↩ Quitter" : "🔄";
 }
 
 // ----------------------------------------------------------------------------

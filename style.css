@@ -39,12 +39,9 @@ body {
   padding: 12px 18px;
   background: var(--panel);
   border-bottom: 1px solid var(--border);
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.topbar::-webkit-scrollbar {
-  display: none;
+  flex-wrap: nowrap;
+  min-height: 0;
+  min-width: 0;
 }
 
 .titlebar {
@@ -66,8 +63,6 @@ body {
   background: var(--cursor, #ffae57);
   color: #1b1b1b;
   border-color: var(--cursor, #ffae57);
-  font-weight: 600;
-  white-space: nowrap;
 }
 
 .landscape-btn:hover { background: #ffbd76; }
@@ -76,8 +71,9 @@ body {
   display: flex;
   align-items: center;
   gap: 14px;
-  flex: 0 0 auto;
+  flex: 0 1 auto;
   flex-wrap: nowrap;
+  min-width: 0;
 }
 
 .btn,
@@ -140,8 +136,8 @@ body {
   background-size: 10px 6px;
   color: var(--text);
   height: 36px;
-  max-width: 260px;
-  padding: 0 32px 0 14px;
+  max-width: 180px;
+  padding: 0 28px 0 10px;
   border-radius: 6px;
   font-size: 13px;
   line-height: 34px;
@@ -217,10 +213,11 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
-  flex: 0 0 auto;
+  flex: 0 1 auto;
   font-size: 13px;
   color: var(--muted);
   user-select: none;
+  min-width: 0;
 }
 
 .speed-range {
@@ -375,40 +372,52 @@ body {
    Responsive — petits écrans & téléphones en paysage
    ============================================================ */
 
-/* Le bouton « paysage » n'a de sens qu'en portrait : déjà en paysage réel (ou
-   sur desktop large où le verrouillage n'existe pas), on le masque. En paysage
-   forcé l'appareil reste en portrait, donc le bouton reste visible pour sortir. */
-@media (orientation: landscape), (min-width: 900px) {
-  .landscape-btn { display: none; }
-}
+/* Le bouton « paysage » n'apparaît qu'en dessous de 900px (mobile portrait). */
+.landscape-btn { display: none; }
 
 body.force-landscape .landscape-btn { display: inline-flex; }
 
-/* Écrans étroits (téléphones) : en-tête nettement plus compact pour laisser un
-   maximum de place au canvas et au piano. */
-@media (max-width: 700px) {
-  .topbar { padding: 8px 10px; }
-  .titlebar { min-width: 0; }
-  /* Le bouton paysage reste accessible sans repousser les contrôles essentiels. */
-  .topbar h1 { display: none; }
-  .landscape-btn { height: 32px; padding: 0 10px; font-size: 12px; }
+/* Mobile : une seule rupture à 900px — tout est fluide en dessous. */
+@media (max-width: 899px) {
+  .landscape-btn { display: inline-flex; }
 
-  .controls { gap: 8px; }
+  .topbar { padding: 6px 8px; gap: 6px; }
+  .topbar h1 { display: none; }
+
+  .controls { gap: 6px; }
   .btn,
   .file-btn,
-  .song-select { height: 32px; font-size: 12px; }
+  .song-select { height: 30px; font-size: 12px; }
+  .btn { padding: 0 8px; }
+  .icon-btn { width: 30px; flex: 0 0 30px; }
+  .toolbar-icon { width: 15px; height: 15px; }
+
   .toggle,
   .speed { font-size: 12px; }
-  .speed-range { width: 90px; }
+  .speed { gap: 4px; }
+  .speed-range { width: auto; flex: 1 1 30px; min-width: 30px; max-width: 80px; }
+  .speed-value { min-width: 28px; }
 
-  /* Légende explicative : superflue sur petit écran, on récupère la ligne. */
   .legend { display: none; }
 
-  .song-select { max-width: none; flex: 1 1 140px; }
+  .song-select {
+    width: 30px;
+    min-width: 30px;
+    flex: 0 0 30px;
+    padding: 0 16px 0 0;
+    background-position: right 5px center;
+    color: transparent;
+  }
+  .song-select option { color: var(--text); }
 
-  .transport { margin-top: 0; gap: 8px; }
-  .play-btn { width: 38px; height: 32px; }
-  .time-label { font-size: 12px; min-width: 78px; }
+  .annotation-toggle { width: 30px; height: 30px; flex: 0 0 30px; }
+  .annotation-toggle .toolbar-icon { width: 30px; height: 30px; padding: 6px; }
+
+  .transport { margin-top: 0; gap: 6px; min-width: 0; flex: 1 1 0; }
+  .play-btn { width: 32px; height: 30px; flex: 0 0 32px; }
+  .fullscreen-btn { width: 30px; height: 30px; flex: 0 0 30px; }
+  .time-label { font-size: 12px; min-width: 60px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .seek { min-width: 0; }
 
   .song-info {
     margin-top: 6px;
