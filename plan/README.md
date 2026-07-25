@@ -22,7 +22,7 @@ pour avancer, pas avant.
 
 | Nº | Fondation | État actuel | Plan détaillé |
 | --- | --- | --- | --- |
-| F1 | Navigation entre les fonctionnalités | Planifiée | [F1-navigation.md](F1-navigation.md) |
+| F1 | Navigation entre les fonctionnalités | Première boucle en place | [F1-navigation.md](F1-navigation.md) |
 | F2 | Entrée clavier MIDI (reconnaissance des touches jouées) | Planifiée | [F2-entree-midi.md](F2-entree-midi.md) |
 | F3 | Suivi de progression | Planifiée | [F3-suivi-progression.md](F3-suivi-progression.md) |
 
@@ -31,7 +31,7 @@ pour avancer, pas avant.
 | Nº | Fonctionnalité | État actuel | Plan détaillé |
 | --- | --- | --- | --- |
 | 01 | Apprentissage d'un morceau | Version de lecture déjà en place | [01-apprentissage-morceau.md](01-apprentissage-morceau.md) |
-| 02 | Lecture de notes | Planifiée | [02-lecture-notes.md](02-lecture-notes.md) |
+| 02 | Lecture de notes | Boucle complète en Débutant, pour les trois mains | [02-lecture-notes.md](02-lecture-notes.md) |
 | 03 | Exercices techniques et agilité des doigts | Planifiée | [03-technique-doigts.md](03-technique-doigts.md) |
 | 04 | Programme d'entraînement | Planifiée | [04-programme-entrainement.md](04-programme-entrainement.md) |
 | 05 | Entraînement rythmique | Planifiée | [05-entrainement-rythmique.md](05-entrainement-rythmique.md) |
@@ -50,8 +50,10 @@ fonctionnalité d'origine au lieu de le dupliquer.
 
 ### Base déjà disponible
 
-- [x] Charger les morceaux de la bibliothèque.
-- [x] Importer un fichier MIDI.
+- [x] Charger les morceaux de la bibliothèque (17 morceaux : 4 de `midi/`,
+  10 études Czerny et 3 Gnossiennes de `morceaux-exercice/`).
+- [x] ~~Importer un fichier MIDI.~~ Retiré le 25/07/2026 : les morceaux sont
+  fournis avec l'application, il n'y a plus rien à charger depuis l'appareil.
 - [x] Analyser et afficher les notes d'un morceau.
 - [x] Distinguer visuellement la main droite et la main gauche.
 - [x] Lire, mettre en pause et déplacer la lecture.
@@ -64,11 +66,14 @@ fonctionnalité d'origine au lieu de le dupliquer.
 
 - [x] Définir le principe de l'écran d'accueil et du registre de fonctionnalités.
 - [x] Définir le contrat commun de démarrage/arrêt d'une fonctionnalité.
-- [ ] Ajouter un écran ou un sélecteur de fonctionnalité.
-- [ ] Séparer le mode Morceau du démarrage général de l'application.
+- [x] Ajouter un écran ou un sélecteur de fonctionnalité.
+- [x] Séparer le mode Morceau du démarrage général de l'application.
 - [ ] Partager proprement les fonctions musicales, le son et le piano.
-- [ ] Arrêter proprement une fonctionnalité lors d'un changement de mode.
-- [ ] Conserver une navigation claire sur ordinateur et mobile.
+  (`music.js`, `audio.js` et `perf.js` extraits le 25/07/2026, quand la
+  Lecture de notes en a eu besoin ; le piano reste propre à chaque mode, les
+  deux claviers n'ayant encore rien en commun — cf. [F1 § 6](F1-navigation.md))
+- [x] Arrêter proprement une fonctionnalité lors d'un changement de mode.
+- [x] Conserver une navigation claire sur ordinateur et mobile.
 
 Voir [le plan détaillé de la Navigation](F1-navigation.md).
 
@@ -113,13 +118,18 @@ Voir [le plan détaillé du mode Morceau](01-apprentissage-morceau.md).
 - [x] Définir les difficultés Débutant, Intermédiaire et Difficile.
 - [x] Définir les choix Main droite, Main gauche et Les deux.
 - [x] Définir la session de dix notes et son bilan.
-- [ ] Ajouter l'accès au mode Lecture de notes.
+- [x] Ajouter l'accès au mode Lecture de notes.
 - [ ] Implémenter les réglages de départ.
-- [ ] Implémenter la génération des questions.
-- [ ] Implémenter la validation des touches.
-- [ ] Implémenter les indices et les retours correct / incorrect.
-- [ ] Implémenter le bilan de session.
+  (écran en place ; les trois choix de main sont sélectionnables en Débutant,
+  les niveaux Intermédiaire et Difficile restent affichés « Bientôt » et
+  désactivés)
+- [x] Implémenter la génération des questions.
+- [x] Implémenter la validation des touches.
+- [x] Implémenter les indices et les retours correct / incorrect.
+- [x] Implémenter le bilan de session.
 - [ ] Tester les neuf combinaisons de niveau et de main.
+  (trois existent — Débutant × Main droite / Main gauche / Les deux —, toutes
+  vérifiées le 25/07/2026)
 
 Voir [le plan détaillé de la Lecture de notes](02-lecture-notes.md).
 
@@ -216,14 +226,23 @@ Voir [le plan détaillé des Exercices de pédale](09-pedale.md).
 
 ## Ordre de réalisation recommandé
 
-1. Construire la fondation Navigation ([F1](F1-navigation.md)) : écran
+1. ~~Construire la fondation Navigation ([F1](F1-navigation.md)) : écran
    d'accueil, registre des fonctionnalités, arrêt propre d'une fonctionnalité
-   au changement de mode.
-2. Migrer le mode Morceau existant vers cette navigation, sans régression.
-3. Isoler uniquement les briques réellement partagées par les modes (son,
-   piano, fonctions musicales).
-4. Construire la boucle Lecture de notes en Débutant / Main droite.
-5. Ajouter Main gauche puis Les deux.
+   au changement de mode.~~ **Fait** (première boucle, 25/07/2026).
+2. ~~Migrer le mode Morceau existant vers cette navigation, sans
+   régression.~~ **Fait** — voir la validation en
+   [F1 § 9](F1-navigation.md#validation-effectuée-25-juillet-2026).
+3. ~~Isoler uniquement les briques réellement partagées par les modes (son,
+   piano, fonctions musicales).~~ **Fait pour ce qui est réellement partagé**
+   (25/07/2026) : `music.js`, `audio.js` et `perf.js`. Le piano n'a pas
+   été mutualisé, les deux claviers n'ayant rien en commun — voir
+   [F1 § 6](F1-navigation.md#6-découpage-technique-proposé).
+4. ~~Construire la boucle Lecture de notes en Débutant / Main droite.~~
+   **Fait** — voir [02 § 9](02-lecture-notes.md#validation-effectuée-25-juillet-2026).
+5. ~~Ajouter Main gauche puis Les deux.~~ **Fait** (25/07/2026) : groupe grave
+   Do3 → Sol3 en clé de fa, main tirée par question et équilibrée sur la
+   session en mode Les deux — voir
+   [02 § 9](02-lecture-notes.md#validation-de-la-main-gauche-et-du-mode-les-deux-25-juillet-2026).
 6. Ajouter les niveaux Intermédiaire et Difficile.
 7. Ajouter le bilan, l'adaptation aux erreurs et la validation complète de la
    Lecture de notes.

@@ -3,6 +3,12 @@
 //  Chargement / parsing MIDI, grille de repères (mesures + Do/Mi),
 //  lecture audio (Tone.js) et curseur de lecture play/pause synchronisé.
 //
+//  Ce qui est partagé avec les autres fonctionnalités vit ailleurs :
+//  `music.js` (noms de notes, positions sur portée), `audio.js`
+//  (échantillonneur piano) et `perf.js` (profil de l'appareil). Reste
+//  ici tout ce qui n'appartient qu'au mode : le rendu du roll et du clavier,
+//  et la planification du morceau sur le Transport.
+//
 //  Modèle d'affichage :
 //    - Axe X  = hauteur des notes (clavier piano de gauche à droite)
 //    - Axe Y  = temps. Le bas du canvas = début du morceau ; on défile
@@ -22,112 +28,25 @@
 import { Midi } from "https://cdn.jsdelivr.net/npm/@tonejs/midi@2.0.28/+esm";
 import * as Tone from "https://cdn.jsdelivr.net/npm/tone@14.8.49/+esm";
 import { isForcedLandscape, VIEWPORT_CHANGE_EVENT } from "./viewport.js";
+import { PERFORMANCE_PROFILE } from "./perf.js";
+import { createAudio, midiToNote } from "./audio.js";
+import {
+  CLEF_GLYPH,
+  isWhite,
+  MIDI_HIGH,
+  MIDI_LOW,
+  noteDegreeName,
+  pitchClass,
+  SHARP_PCS,
+  staffStep,
+} from "./music.js";
 
 // ----------------------------------------------------------------------------
 //  Constantes de configuration
 // ----------------------------------------------------------------------------
-const MIDI_LOW = 21;            // A0  : note la plus grave d'un piano 88 touches
-const MIDI_HIGH = 108;          // C8  : note la plus aiguë
 const PIXELS_PER_SECOND = 140;  // échelle temporelle verticale
 const SPLIT_NOTE = 60;          // Do central : seuil graves/aigus pour le fallback
 const KEY_PRESS_MS = 220;       // durée de l'assombrissement après un clic sur une touche
-const FULL_PIANO_SAMPLES = {
-  A0: "A0.mp3",
-  C1: "C1.mp3",
-  "D#1": "Ds1.mp3",
-  "F#1": "Fs1.mp3",
-  A1: "A1.mp3",
-  C2: "C2.mp3",
-  "D#2": "Ds2.mp3",
-  "F#2": "Fs2.mp3",
-  A2: "A2.mp3",
-  C3: "C3.mp3",
-  "D#3": "Ds3.mp3",
-  "F#3": "Fs3.mp3",
-  A3: "A3.mp3",
-  C4: "C4.mp3",
-  "D#4": "Ds4.mp3",
-  "F#4": "Fs4.mp3",
-  A4: "A4.mp3",
-  C5: "C5.mp3",
-  "D#5": "Ds5.mp3",
-  "F#5": "Fs5.mp3",
-  A5: "A5.mp3",
-  C6: "C6.mp3",
-  "D#6": "Ds6.mp3",
-  "F#6": "Fs6.mp3",
-  A6: "A6.mp3",
-  C7: "C7.mp3",
-  "D#7": "Ds7.mp3",
-  "F#7": "Fs7.mp3",
-  A7: "A7.mp3",
-  C8: "C8.mp3",
-};
-const LIGHT_PIANO_SAMPLES = {
-  A0: "A0.mp3",
-  C1: "C1.mp3",
-  C2: "C2.mp3",
-  C3: "C3.mp3",
-  C4: "C4.mp3",
-  C5: "C5.mp3",
-  C6: "C6.mp3",
-  C7: "C7.mp3",
-  C8: "C8.mp3",
-};
-
-function detectPerformanceProfile() {
-  const override = new URLSearchParams(window.location.search).get("performance");
-  const memory = Number(navigator.deviceMemory) || 0;
-  const cores = Number(navigator.hardwareConcurrency) || 0;
-  const memoryLimited = memory > 0 && memory <= 4;
-  const cpuLimited = cores > 0 && cores <= 4;
-  const constrained =
-    override === "low" ||
-    (override !== "high" && (memoryLimited || cpuLimited));
-
-  return Object.freeze({
-    constrained,
-    maxCanvasDpr: constrained ? 1.5 : Infinity,
-    maxCanvasPixels: constrained ? 1_500_000 : 8_000_000,
-    minFrameInterval: constrained ? 30 : 12,
-    transportUiInterval: constrained ? 100 : 50,
-    lightAudio: constrained,
-  });
-}
-
-const PERFORMANCE_PROFILE = detectPerformanceProfile();
-
-// Demi-tons appartenant à une touche blanche (Do, Ré, Mi, Fa, Sol, La, Si)
-const WHITE_PITCH_CLASSES = [0, 2, 4, 5, 7, 9, 11];
-
-// --- Notation musicale (mini-portée) ----------------------------------------
-const LATIN_NAMES = ["Do", "Ré", "Mi", "Fa", "Sol", "La", "Si"];
-// Degré diatonique (0..6) de chaque demi-ton ; les noires reprennent le degré
-// de la blanche située juste en dessous + une altération dièse.
-const PC_TO_DEGREE = [0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 5, 6];
-const SHARP_PCS = new Set([1, 3, 6, 8, 10]);
-
-// Référence : ligne du bas de la portée
-//   - Clé de sol  -> Mi3 (MIDI 64)  index diatonique 37
-//   - Clé de fa   -> Sol1 (MIDI 43) index diatonique 25
-const TREBLE_BOTTOM = 37;
-const BASS_BOTTOM = 25;
-
-function diatonicIndex(midi) {
-  const pc = ((midi % 12) + 12) % 12;
-  return Math.floor(midi / 12) * 7 + PC_TO_DEGREE[pc];
-}
-
-// Position verticale sur la portée, en demi-interlignes (0 = ligne du bas,
-// +1 par degré vers le haut). Les lignes sont aux valeurs paires 0,2,4,6,8.
-function staffStep(midi, clef) {
-  return diatonicIndex(midi) - (clef === "treble" ? TREBLE_BOTTOM : BASS_BOTTOM);
-}
-
-function noteDegreeName(midi) {
-  const pc = ((midi % 12) + 12) % 12;
-  return LATIN_NAMES[PC_TO_DEGREE[pc]] + (SHARP_PCS.has(pc) ? "♯" : "");
-}
 
 const COLORS = {
   background: "#0d1117",
@@ -194,12 +113,10 @@ function createSession() {
     lastVisualFrame: -Infinity,
     animationFrame: null,
 
-    // Audio (Tone.js), initialisé paresseusement au premier play
-    audioReady: false,
-    audioPromise: null,
+    // Audio partagé (audio.js), initialisé paresseusement au premier play.
+    // La chaîne appartient à la session : `stop()` la libère entièrement.
+    audio: createAudio(),
     playPending: false,
-    synth: null,
-    reverb: null,
     part: null,
   };
 }
@@ -223,9 +140,9 @@ const STORAGE_KEY = "synthesia.settings";
 const AUTOSAVE_INTERVAL_MS = 60_000; // une sauvegarde par minute
 
 function saveSettings() {
-  // Le morceau n'est restaurable que s'il provient de la bibliothèque : un
-  // fichier importé par l'utilisateur n'est pas re-téléchargeable. On retient
-  // l'indice ET le titre pour rester robuste à un réordonnancement de songs.json.
+  // Tous les morceaux viennent de la bibliothèque ; on retient l'indice ET le
+  // titre pour rester robuste à un réordonnancement de songs.json. La valeur
+  // vide correspond à l'option d'invite du <select> : rien à restaurer.
   const idx = parseInt(document.getElementById("songSelect").value, 10);
   const fromLibrary = !isNaN(idx) && songLibrary[idx];
   const data = {
@@ -266,10 +183,6 @@ function stopAutoSave() {
 // ----------------------------------------------------------------------------
 //  Disposition du clavier : position horizontale de chaque note MIDI
 // ----------------------------------------------------------------------------
-function isWhite(midi) {
-  return WHITE_PITCH_CLASSES.includes(((midi % 12) + 12) % 12);
-}
-
 const WHITE_INDEX_BY_MIDI = new Int16Array(128);
 const TOTAL_WHITE_KEYS = (() => {
   let index = 0;
@@ -669,7 +582,7 @@ function drawDoMiLines(w, h) {
   ctx.beginPath();
 
   for (let m = MIDI_LOW; m <= MIDI_HIGH; m++) {
-    const pc = ((m % 12) + 12) % 12;
+    const pc = pitchClass(m);
     if (pc === 0) {
       const x = crisp(whiteLeftEdge(m));
       ctx.moveTo(x, 0);
@@ -686,7 +599,7 @@ function drawDoMiLines(w, h) {
   ctx.font = "10px system-ui, sans-serif";
   const labelY = keyboardTop() - 4;
   for (let m = MIDI_LOW; m <= MIDI_HIGH; m++) {
-    if (((m % 12) + 12) % 12 === 0) {
+    if (pitchClass(m) === 0) {
       const octave = Math.floor(m / 12) - 1;
       ctx.fillText(`C${octave}`, whiteLeftEdge(m) + 2, labelY);
     }
@@ -922,10 +835,10 @@ function drawNotationCard(cx, noteTop, noteBottom, midi, hand) {
   ctx.textBaseline = "alphabetic";
   if (clef === "treble") {
     ctx.font = `${Math.round(staffH * 1.7)}px serif`;
-    ctx.fillText("\u{1D11E}", cardX + 1, bottomLineY + LG * 0.6); // 𝄞 clé de sol
+    ctx.fillText(CLEF_GLYPH.treble, cardX + 1, bottomLineY + LG * 0.6);
   } else {
     ctx.font = `${Math.round(staffH * 1.1)}px serif`;
-    ctx.fillText("\u{1D122}", cardX + 1, staffTopY + LG * 2.7); // 𝄢 clé de fa
+    ctx.fillText(CLEF_GLYPH.bass, cardX + 1, staffTopY + LG * 2.7);
   }
 
   // Tête de note
@@ -969,8 +882,7 @@ function drawNotationCard(cx, noteTop, noteBottom, midi, hand) {
   ctx.fill();
 
   // Altération dièse éventuelle
-  const pc = ((midi % 12) + 12) % 12;
-  if (SHARP_PCS.has(pc)) {
+  if (SHARP_PCS.has(pitchClass(midi))) {
     ctx.font = `${Math.round(LG * 2.6)}px serif`;
     ctx.fillText("♯", headX - headRx - 6, headY + LG * 0.9);
   }
@@ -1040,7 +952,7 @@ function drawKeyboard(w, h) {
   ctx.font = "9px system-ui, sans-serif";
   ctx.textAlign = "center";
   for (let m = MIDI_LOW; m <= MIDI_HIGH; m++) {
-    if (((m % 12) + 12) % 12 === 0) {
+    if (pitchClass(m) === 0) {
       const oct = Math.floor(m / 12) - 1;
       ctx.fillText(`C${oct}`, whiteIndex(m) * wkW + wkW / 2, h - 5);
     }
@@ -1133,14 +1045,9 @@ async function pressKey(midi) {
   session.keyPressTimers.add(timer);
 
   try {
-    await ensureAudio();
-    // Quitter le mode pendant le chargement des échantillons ne doit pas
-    // faire sonner la note après coup.
-    if (session.stopped) return;
-    session.synth.triggerAttackRelease(
-      Tone.Frequency(midi, "midi").toNote(),
-      0.6
-    );
+    // Quitter le mode pendant le chargement des échantillons ne doit pas faire
+    // sonner la note après coup : `playNote` abandonne si la chaîne est libérée.
+    await session.audio.playNote(midi);
   } catch (error) {
     console.error("Impossible de jouer la note.", error);
   }
@@ -1273,63 +1180,11 @@ function fmt(seconds) {
 
 // ----------------------------------------------------------------------------
 //  Audio (Tone.js)
+//
+//  L'échantillonneur lui-même vit dans `audio.js`, partagé avec les autres
+//  fonctionnalités. Reste ici ce qui est propre au mode : la planification du
+//  morceau sur le Transport (Tone.Part).
 // ----------------------------------------------------------------------------
-async function ensureAudio() {
-  const session = state;
-  if (session.audioReady) return;
-  if (!session.audioPromise) {
-    session.audioPromise = (async () => {
-      await Tone.start(); // doit être déclenché par un geste utilisateur
-
-      // Le profil léger conserve le même piano avec un échantillon par octave.
-      const sampler = new Tone.Sampler({
-        urls: PERFORMANCE_PROFILE.lightAudio
-          ? LIGHT_PIANO_SAMPLES
-          : FULL_PIANO_SAMPLES,
-        release: 1,
-        baseUrl: "https://tonejs.github.io/audio/salamander/",
-      });
-
-      let reverb = null;
-      if (PERFORMANCE_PROFILE.lightAudio) {
-        sampler.toDestination();
-      } else {
-        reverb = new Tone.Reverb({
-          decay: 1.6,
-          wet: 0.18,
-        }).toDestination();
-        sampler.connect(reverb);
-      }
-      sampler.volume.value = -6;
-
-      // Quitter le mode pendant l'initialisation ne doit pas laisser un
-      // échantillonneur branché sur la sortie audio.
-      if (session.stopped) {
-        sampler.dispose();
-        reverb?.dispose();
-        return;
-      }
-
-      session.synth = sampler;
-      session.reverb = reverb;
-      await Tone.loaded(); // attendre le téléchargement des échantillons
-      if (session.stopped) return; // stop() a déjà libéré les nœuds
-      session.audioReady = true;
-    })();
-  }
-
-  try {
-    await session.audioPromise;
-  } catch (error) {
-    session.synth?.dispose();
-    session.reverb?.dispose();
-    session.synth = null;
-    session.reverb = null;
-    throw error;
-  } finally {
-    if (!session.audioReady) session.audioPromise = null;
-  }
-}
 
 // (Re)construit le « Part » Tone qui planifie toutes les notes du morceau.
 function disposePart() {
@@ -1345,37 +1200,32 @@ function disposePart() {
 function disposeAudio() {
   disposePart(); // annule aussi les évènements planifiés sur le Transport
   Tone.Transport.stop();
-  state.synth?.releaseAll?.();
-  state.synth?.dispose();
-  state.reverb?.dispose();
-  state.synth = null;
-  state.reverb = null;
-  state.audioReady = false;
-  state.audioPromise = null;
+  state.audio.dispose();
 }
 
 function buildPart() {
+  const session = state;
   disposePart();
-  if (!state.song || !state.audioReady || !state.synth) return;
+  if (!session.song || !session.audio.ready) return;
 
   // Les évènements sont planifiés sur l'échelle de temps (dilatée) du Transport :
   // un morceau plus lent étire chaque note sur davantage de secondes réelles.
-  const events = state.song.notes.map((n) => ({
-    time: n.time / state.speed,
-    note: Tone.Frequency(n.midi, "midi").toNote(),
-    duration: n.duration / state.speed,
+  const events = session.song.notes.map((n) => ({
+    time: n.time / session.speed,
+    note: midiToNote(n.midi),
+    duration: n.duration / session.speed,
     velocity: n.velocity,
   }));
 
-  state.part = new Tone.Part((time, value) => {
-    state.synth.triggerAttackRelease(
+  session.part = new Tone.Part((time, value) => {
+    session.audio.sampler?.triggerAttackRelease(
       value.note,
       value.duration,
       time,
       value.velocity
     );
   }, events);
-  state.part.start(0); // les évènements suivent le temps du Transport
+  session.part.start(0); // les évènements suivent le temps du Transport
 }
 
 async function play() {
@@ -1383,7 +1233,7 @@ async function play() {
   if (!session.song || session.isPlaying || session.playPending) return;
   session.playPending = true;
   try {
-    await ensureAudio();
+    await session.audio.ensureReady();
     // L'utilisateur a pu revenir à l'accueil pendant le chargement audio.
     if (session.stopped) return;
     if (!state.part) buildPart();
@@ -1437,7 +1287,7 @@ function togglePlay() {
 function setSpeed(speed) {
   state.speed = speed;
   updateSpeedLabel(speed);
-  if (state.audioReady) {
+  if (state.audio.ready) {
     buildPart();
     Tone.Transport.seconds = state.currentTime / state.speed;
   }
@@ -1521,7 +1371,7 @@ function scheduleCanvasResize() {
 }
 
 // ----------------------------------------------------------------------------
-//  Chargement d'un fichier MIDI / démo
+//  Chargement d'un morceau de la bibliothèque / démo
 // ----------------------------------------------------------------------------
 function resetForNewSong(label) {
   pause({ refresh: false });
@@ -1531,20 +1381,6 @@ function resetForNewSong(label) {
   updateSongInfo(label);
   syncTransportUI(true);
   drawImmediately();
-}
-
-async function loadMidiFile(file) {
-  const session = state;
-  try {
-    const buffer = await file.arrayBuffer();
-    if (session.stopped) return;
-    const midi = new Midi(buffer);
-    session.song = buildSong(midi);
-    resetForNewSong(file.name);
-  } catch (err) {
-    console.error(err);
-    updateSongInfo(null, `Erreur de lecture : ${err.message}`);
-  }
 }
 
 async function loadMidiFromUrl(url, displayName) {
@@ -1760,19 +1596,6 @@ function attachInteractions(signal) {
   document
     .getElementById("playBtn")
     .addEventListener("click", togglePlay, { signal });
-
-  // Import d'un fichier MIDI local
-  document.getElementById("midiInput").addEventListener(
-    "change",
-    (e) => {
-      const file = e.target.files[0];
-      if (file) {
-        document.getElementById("songSelect").value = ""; // hors bibliothèque
-        loadMidiFile(file);
-      }
-    },
-    { signal }
-  );
 
   // Bibliothèque de morceaux
   document.getElementById("songSelect").addEventListener(

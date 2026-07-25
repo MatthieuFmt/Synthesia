@@ -12,8 +12,10 @@ jouer et, à terme, de s'entraîner jusqu'à pouvoir le jouer lui-même.
 
 ## Ce qui existe
 
-- [x] Bibliothèque alimentée par `songs.json`.
-- [x] Import d'un fichier `.mid` ou `.midi`.
+- [x] Bibliothèque alimentée par `songs.json` (17 morceaux fournis avec
+  l'application).
+- [x] ~~Import d'un fichier `.mid` ou `.midi`.~~ Retiré : tout le répertoire
+  est livré dans le dépôt, l'utilisateur n'a rien à charger.
 - [x] Analyse des pistes MIDI.
 - [x] Distinction main droite / main gauche.
 - [x] Piano roll synchronisé avec le morceau.
@@ -56,7 +58,6 @@ si l'évolution devient suffisamment importante.
 ## Critères déjà remplis
 
 - [x] Un morceau de la bibliothèque peut être chargé.
-- [x] Un fichier MIDI local peut être importé.
 - [x] La visualisation et l'audio restent synchronisés.
 - [x] La vitesse peut être modifiée.
 - [x] Le piano à l'écran produit un son au clic ou au toucher.
@@ -65,6 +66,18 @@ si l'évolution devient suffisamment importante.
 
 - [ ] Définir des tests reproductibles pour le mode actuel.
 - [ ] Vérifier explicitement les usages mobile et tactile.
-- [ ] Vérifier que le futur changement de mode arrête correctement la lecture.
-- [ ] Vérifier qu'une future extraction de modules ne modifie pas la
+  (mise en page vérifiée de 360 px à 1280 px ; le toucher réel reste à faire)
+- [x] Vérifier que le futur changement de mode arrête correctement la lecture.
+  Le retour à l'accueil arrête le transport, fige la position, libère la
+  chaîne audio et annule les boucles d'animation — voir
+  [F1 § 9](F1-navigation.md#validation-effectuée-25-juillet-2026).
+- [x] Vérifier qu'une future extraction de modules ne modifie pas la
   synchronisation audio-visuelle.
+  `music.js`, `audio.js` et `perf.js` ont été sortis de `song-mode.js`
+  le 25/07/2026 : la planification des notes (`Tone.Part`) et le curseur de
+  lecture sont restés dans le mode, seul l'échantillonneur a déménagé. Vérifié
+  après extraction — morceau chargé, notation, vitesse à 1.5×, clic sur une
+  touche, lecture réelle dont la position avance, puis arrêt propre au retour à
+  l'accueil (voir
+  [F1 § 9](F1-navigation.md#deuxième-validation--deux-fonctionnalités-au-registre-25-juillet-2026)).
+  `piano.js` n'a pas été extrait : le clavier reste propre au mode.

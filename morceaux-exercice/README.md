@@ -86,14 +86,15 @@ soit une pédalisation saisie à la main dans l'application.
 - **Morceaux sous droits** : rien n'a été récupéré ailleurs que sur Mutopia,
   pour que la licence de chaque fichier soit connue et vérifiable.
 
-## Intégrer ces fichiers à la bibliothèque
+## Intégration à la bibliothèque — faite
 
-Ils ne sont pas encore référencés dans `songs.json` : l'application ne les
-propose donc pas. Pour les y ajouter, suivre le format existant, par exemple :
+Les treize fichiers sont référencés dans `songs.json` depuis le 25/07/2026 et
+apparaissent dans le sélecteur de morceaux. Le bouton d'import de fichier a
+été retiré de l'application au passage : tout le répertoire est livré avec le
+dépôt.
 
-```json
-{ "title": "Czerny — Op. 840 nº 1", "file": "morceaux-exercice/czerny-op840-01.mid" }
-```
-
-Décider au préalable si les Gnossiennes doivent y figurer, compte tenu de
-l'attribution CC BY-SA à afficher.
+L'attribution des Gnossiennes n'est **pas** affichée dans l'application :
+celle-ci est un usage personnel, sur le dépôt de son auteur, et n'est pas
+destinée au public. Si elle devait être publiée (GitHub Pages ouvert,
+partage), la clause BY-SA imposerait alors d'afficher l'attribution Mutopia
+Project et de conserver la même licence pour ces trois fichiers.

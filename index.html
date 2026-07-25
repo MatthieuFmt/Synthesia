@@ -11,7 +11,21 @@
          de secours (cf. body.force-landscape dans style.css). -->
     <div class="app">
     <header class="topbar">
-      <div class="titlebar">
+      <!-- =====================================================================
+           Barre commune : présente quelle que soit la fonctionnalité active
+           (retour à l'accueil, nom du mode, paysage, plein écran).
+           ================================================================== -->
+      <div class="appbar">
+        <button id="homeBtn" class="btn home-btn" type="button" hidden
+          aria-label="Revenir à l'accueil" title="Revenir à l'accueil">
+          <svg class="toolbar-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M19 12H5m0 0 6-6m-6 6 6 6" />
+          </svg>
+          <span class="home-btn-label">Accueil</span>
+        </button>
+
+        <span id="featureTitle" class="feature-title">Accueil</span>
+
         <button id="landscapeBtn" class="btn icon-btn landscape-btn" type="button"
           aria-label="Passer en mode paysage" title="Passer en mode paysage">
           <svg class="toolbar-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -19,72 +33,7 @@
             <path d="M20.5 15a9 9 0 1 1 2.2-9.5" />
           </svg>
         </button>
-      </div>
 
-      <div class="controls">
-        <label
-          class="file-btn icon-btn"
-          title="Charger un fichier MIDI"
-        >
-          <svg class="toolbar-icon" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M12 16V4m0 0L8 8m4-4 4 4M5 14v5h14v-5" />
-          </svg>
-          <span class="visually-hidden">Charger un fichier MIDI</span>
-          <input type="file" id="midiInput" accept=".mid,.midi" hidden />
-        </label>
-
-        <select id="songSelect" class="song-select">
-          <option value="">Bibliothèque de morceaux…</option>
-        </select>
-
-        <label class="toggle annotation-toggle" title="Afficher la notation">
-          <input
-            type="checkbox"
-            id="notationToggle"
-            class="visually-hidden"
-            aria-label="Afficher la notation"
-          />
-          <svg class="toolbar-icon" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M9 18V5l10-2v13" />
-            <circle cx="6" cy="18" r="3" />
-            <circle cx="16" cy="16" r="3" />
-          </svg>
-        </label>
-
-        <label class="speed" title="Vitesse de lecture">
-          <svg class="toolbar-icon" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M3.34 19a10 10 0 1 1 17.32 0M12 15l4-4" />
-          </svg>
-          <input
-            type="range"
-            id="speedRange"
-            class="speed-range"
-            aria-label="Vitesse de lecture"
-            min="0.25"
-            max="2"
-            step="0.05"
-            value="1"
-          />
-          <span id="speedValue" class="speed-value">1×</span>
-        </label>
-
-      </div>
-
-      <!-- Barre de transport : lecture / curseur de position -->
-      <div class="transport">
-        <button id="playBtn" class="btn play-btn" aria-label="Lecture / Pause">
-          ▶
-        </button>
-        <span id="timeLabel" class="time-label">0:00 / 0:00</span>
-        <input
-          id="seek"
-          class="seek"
-          type="range"
-          min="0"
-          max="0"
-          step="0.01"
-          value="0"
-        />
         <button
           id="fullscreenBtn"
           class="btn fullscreen-btn"
@@ -101,12 +50,71 @@
           </svg>
         </button>
       </div>
+
+      <!-- =====================================================================
+           Contrôles propres au mode Morceau : bibliothèque, notation, vitesse
+           et transport. Affichés par song-mode.js pendant que le mode est
+           actif, masqués dès son arrêt.
+           ================================================================== -->
+      <div id="songControls" class="mode-controls" hidden>
+        <div class="controls">
+          <select id="songSelect" class="song-select">
+            <option value="">Bibliothèque de morceaux…</option>
+          </select>
+
+          <label class="toggle annotation-toggle" title="Afficher la notation">
+            <input
+              type="checkbox"
+              id="notationToggle"
+              class="visually-hidden"
+              aria-label="Afficher la notation"
+            />
+            <svg class="toolbar-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M9 18V5l10-2v13" />
+              <circle cx="6" cy="18" r="3" />
+              <circle cx="16" cy="16" r="3" />
+            </svg>
+          </label>
+
+          <label class="speed" title="Vitesse de lecture">
+            <svg class="toolbar-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3.34 19a10 10 0 1 1 17.32 0M12 15l4-4" />
+            </svg>
+            <input
+              type="range"
+              id="speedRange"
+              class="speed-range"
+              aria-label="Vitesse de lecture"
+              min="0.25"
+              max="2"
+              step="0.05"
+              value="1"
+            />
+            <span id="speedValue" class="speed-value">1×</span>
+          </label>
+        </div>
+
+        <!-- Barre de transport : lecture / curseur de position -->
+        <div class="transport">
+          <button id="playBtn" class="btn play-btn" aria-label="Lecture / Pause">
+            ▶
+          </button>
+          <span id="timeLabel" class="time-label">0:00 / 0:00</span>
+          <input
+            id="seek"
+            class="seek"
+            type="range"
+            min="0"
+            max="0"
+            step="0.01"
+            value="0"
+          />
+        </div>
+      </div>
     </header>
 
-    <main class="stage">
-      <!-- Canvas principal : grille de repères + notes -->
-      <canvas id="rollCanvas"></canvas>
-    </main>
+    <!-- Scène : l'écran d'accueil ou la fonctionnalité active y est rendue. -->
+    <main class="stage" id="stage"></main>
     </div>
 
     <!-- @tonejs/midi pour parser les fichiers .mid, + logique applicative -->
