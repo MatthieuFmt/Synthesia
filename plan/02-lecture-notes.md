@@ -279,12 +279,22 @@ navigateur.
 
 ### Étape D — Progression
 
-- [ ] Enregistrer localement les résultats et le dernier niveau.
+- [ ] Enregistrer localement les résultats et le dernier niveau (via
+  [F3 — Suivi de progression](F3-suivi-progression.md)).
 - [ ] Afficher un bilan séparé par main lorsque Les deux est sélectionné.
-- [ ] Reprendre une session avec les notes qui posent le plus de difficultés.
+- [ ] Reprendre une session avec les notes qui posent le plus de difficultés
+  (vue « révisions adaptées » de [F3](F3-suivi-progression.md)).
 - [ ] Introduire les dièses et les bémols.
 - [ ] Proposer plus tard une vraie double portée avec deux notes simultanées.
 - [ ] Ajouter ensuite le mode chronométré avec notes défilantes.
+
+Les trois dernières lignes sont détaillées dans
+[08 — Lecture de partitions](08-lecture-partitions.md), qui poursuit cette
+étape : petites mesures, valeurs rythmiques et silences, altérations, notes
+simultanées puis vraie double portée. Le moteur de session, les niveaux et
+les choix de main définis ici y sont réutilisés, pas redéfinis — de même que
+dans [07 — Entraînement de l'oreille](07-entrainement-oreille.md), qui
+reprend le même moteur avec un stimulus sonore au lieu d'une note écrite.
 
 ## 8. Critères d'acceptation du MVP
 

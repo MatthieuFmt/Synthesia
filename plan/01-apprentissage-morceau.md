@@ -33,13 +33,22 @@ d'un lecteur pédagogique que d'un exercice guidé.
 
 ## Décisions à prendre avant la prochaine évolution
 
+> Ces décisions sont désormais tranchées dans
+> [06 — Travail intelligent d'un morceau](06-travail-intelligent-morceau.md),
+> qui détaille le passage du lecteur actuel à un véritable outil de travail
+> (passages, mains séparées, boucle, attente de la bonne note, tempo
+> progressif). Le tableau de correspondance figure dans
+> [sa section 3](06-travail-intelligent-morceau.md#3-relation-avec-la-feature-01).
+
 - [ ] Définir si l'entraînement utilise le piano à l'écran, un piano MIDI
-  physique ou les deux.
+  physique ou les deux (la brique de connexion sera fournie par
+  [F2 — Entrée MIDI](F2-entree-midi.md) une fois la décision prise).
 - [ ] Définir si le morceau attend la bonne note avant de continuer.
 - [ ] Définir comment travailler séparément la main droite, la main gauche ou
   les deux.
 - [ ] Définir le bilan d'un passage et le critère « morceau appris ».
-- [ ] Définir les données de progression à conserver localement.
+- [ ] Définir les données de progression à conserver localement (déléguées à
+  [F3 — Suivi de progression](F3-suivi-progression.md)).
 
 Ces décisions seront prises après le MVP Lecture de notes, avec un plan séparé
 si l'évolution devient suffisamment importante.

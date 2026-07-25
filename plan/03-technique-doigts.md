@@ -64,6 +64,9 @@ donc nécessaires :
 
 ### Pratique avec clavier MIDI
 
+S'appuie sur la fondation [F2 — Entrée MIDI](F2-entree-midi.md) pour la
+détection, la connexion et la réception des notes :
+
 - l'application reçoit les notes d'un piano MIDI compatible ;
 - elle peut attendre les bonnes notes en mode guidé ;
 - elle mesure la précision des notes et la régularité rythmique ;
@@ -169,6 +172,10 @@ de l'exercice et ne doit pas varier au hasard.
 
 ## 9. Retour et bilan
 
+Les résultats durables (exercices maîtrisés, tempo maximal joué proprement,
+évolution par main) sont conservés par
+[F3 — Suivi de progression](F3-suivi-progression.md) et non par ce mode.
+
 Sans clavier MIDI, afficher uniquement des mesures réellement connues :
 
 - durée de la séance ;
@@ -236,6 +243,11 @@ src/
   metronome.js                  # décompte et pulsation partagés
 ```
 
+`metronome.js` est réutilisé et étendu par l'
+[Entraînement rythmique](05-entrainement-rythmique.md) (réglage de tempo
+visible, exposition de la pulsation pour mesurer l'avance/le retard) : il ne
+doit pas être dupliqué entre les deux fonctionnalités.
+
 Ce découpage reste indicatif. Les modules partagés avec les autres modes ne
 doivent être extraits que lorsque leurs responsabilités sont claires.
 
@@ -269,9 +281,12 @@ doivent être extraits que lorsque leurs responsabilités sont claires.
 
 ### Étape D — Validation MIDI
 
-- [ ] Détecter explicitement la compatibilité Web MIDI.
-- [ ] Gérer la connexion et la déconnexion d'un clavier.
-- [ ] Valider les notes seules et les accords.
+Réutilise la fondation [F2 — Entrée MIDI](F2-entree-midi.md) pour la
+détection, la connexion et la réception des notes ; cette étape ne recode
+pas cette partie et se concentre sur la validation propre aux exercices.
+
+- [ ] S'abonner aux évènements de F2 pendant une séance d'exercice.
+- [ ] Valider les notes seules et les accords attendus par l'exercice.
 - [ ] Mesurer le rythme sans rendre l'exercice inutilement punitif.
 - [ ] Conserver la pratique libre lorsque MIDI n'est pas disponible.
 
