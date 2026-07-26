@@ -32,8 +32,19 @@ Chaque fonctionnalité (mode) est un objet avec cette signature :
 src/main.js                 # bootstrap : enregistre les features, init viewport + navigation
 src/navigation.js           # registre des features, switchTo(), rendu de l'écran d'accueil
 src/song-mode.js            # mode Morceau (~1770 lignes) : piano roll, clavier, notation
-src/note-reading-mode.js    # mode Lecture de notes : portée SVG + clavier DOM d'une octave
+src/note-reading-mode.js    # mode Lecture de notes : portée SVG + clavier DOM (1 à 2 octaves)
 src/note-reading-engine.js  # moteur de l'exercice : tirage, validation, bilan (sans DOM)
+src/exercise-mode.js        # mode Exercices : rouleau Canvas étroit + transport + bilan
+src/exercises/catalog.js    # définition des exercices (degrés de gamme, doigtés)
+src/exercises/generate-exercise.js  # motif → notes de la forme du mode Morceau (sans DOM)
+src/rhythm-mode.js          # mode Rythme : métronome, reconnaissance, reproduction
+src/rhythm/patterns.js      # figures (durées/silences), motifs par niveau (sans DOM)
+src/rhythm/timing.js        # jugement à l'heure/avance/retard, appariement (sans DOM)
+src/metronome.js            # PARTAGÉ (03, 05) : grille de pulsation + décompte, sans DOM
+src/midi-input.js           # PARTAGÉ (F2) : Web MIDI, appareils, notes normalisées (sans DOM)
+src/midi-controls.js        # PARTAGÉ (F2) : panneau de connexion, affiché sur l'accueil
+src/progress/store.js       # PARTAGÉ (F3) : journal d'évènements dans localStorage
+src/progress/review.js      # PARTAGÉ (F3) : ce qu'il faut faire revenir en priorité
 src/music.js                # PARTAGÉ : noms latins, hauteurs MIDI, positions sur portée
 src/audio.js                # PARTAGÉ : createAudio() → ensureReady/playNote/dispose
 src/perf.js                 # PARTAGÉ : profil de l'appareil (canvas bridé, audio léger)
@@ -45,9 +56,24 @@ songs.json                  # catalogue des morceaux (titres + chemins)
 
 Les briques marquées PARTAGÉ ont été extraites de `song-mode.js` seulement au
 moment où une deuxième fonctionnalité en a eu besoin. Même règle pour la suite :
-pas d'extraction préventive. `piano.js` n'existe donc pas — les deux claviers de
-l'application (88 touches Canvas / une octave de `<button>`) n'ont rien en
-commun.
+pas d'extraction préventive. `src/progress/` fait exception au sens où rien n'en
+a été extrait : c'est une fondation (F3) écrite directement, mais au même
+moment — quand la première fonctionnalité a réellement eu des résultats à
+conserver. Son format d'évènement est figé et sert aussi aux modes à venir. `piano.js` n'existe donc pas — les quatre claviers de
+l'application (88 touches Canvas, une à deux octaves de `<button>`, étendue d'un
+exercice en Canvas, une octave de `<button>` où la hauteur est ignorée) n'ont
+rien en commun. **Le piano roll non plus n'est pas mutualisé** : le mode Morceau
+et le mode Exercices gardent chacun le leur, pour la raison écrite dans
+[plan/03 § 12](plan/03-technique-doigts.md#le-rouleau-na-pas-été-mutualisé-avec-le-mode-morceau) ;
+même chose pour les deux portées (cinq lignes en 02, une seule en 05), qui ne
+partagent aucune coordonnée.
+
+Deux briques *sont* partagées dès le premier jour, parce qu'un second
+consommateur en avait besoin de la **même** version, pas d'une variante :
+`metronome.js` (la grille de pulsation de 03 et 05) et le vocabulaire de figures
+de `rhythm/patterns.js`, que reprendra la Lecture de partitions (08). Contre-exemple
+instructif : `nearestBeat()`, écrite d'avance *pour* 05, n'est pas ce dont 05 a eu
+besoin — cf. [plan/05 § 11](plan/05-entrainement-rythmique.md#metronomejs-na-eu-besoin-daucune-extension).
 
 ### Ajouter une fonctionnalité
 
@@ -62,13 +88,13 @@ Tous les plans sont dans `plan/`. Le backlog maître est `plan/README.md`.
 | # | Statut |
 |---|---|
 | F1 — Navigation | ✅ Implémenté |
-| F2 — Entrée MIDI clavier | 📋 Planifié |
-| F3 — Suivi progression | 📋 Planifié |
+| F2 — Entrée MIDI clavier | ✅ Fondation ; aucune feature ne la consomme encore |
+| F3 — Suivi progression | ✅ Étape A (journal) ; vues → étapes B-E |
 | 01 — Apprentissage morceau | ✅ Lecteur ; guidé → 06 |
-| 02 — Lecture de notes | 🚧 Boucle complète en Débutant (droite, gauche, les deux) |
-| 03 — Technique doigts | 📋 Planifié |
+| 02 — Lecture de notes | ✅ MVP + progression ; altérations → 08 |
+| 03 — Technique doigts | ✅ MVP pratique libre ; validation MIDI → F2 |
 | 04 — Programme entraînement | 📋 Planifié |
-| 05 — Rythme | 📋 Planifié |
+| 05 — Rythme | ✅ MVP 3 familles ; MIDI physique → F2 |
 | 06 — Travail intelligent morceau | 📋 Planifié (suite 01) |
 | 07 — Oreille | 📋 Planifié |
 | 08 — Lecture partitions | 📋 Planifié (suite 02) |
@@ -84,7 +110,7 @@ L'app tourne sur une **vieille tablette Android** avec un petit écran et peu de
 - **Pas de framework lourd**. Pas de React, Vue, Svelte, etc. Vanilla JS uniquement.
 - **Pas de build step**. Pas de webpack, vite, etc. Modules ES natifs chargés directement par le navigateur.
 - **Pas de bibliothèque externe superflue**. Actuellement les seules dépendances sont Tone.js et @tonejs/midi (CDN), strictement nécessaires à l'audio et au parsing MIDI.
-- **Canvas, pas de DOM pour le rendu principal**. Le piano roll et le clavier sont dessinés sur un seul `<canvas>`. Ne pas introduire de rendu DOM pour la partie temps réel. La Lecture de notes est l'exception assumée : rien n'y bouge (une note fixe, un clic), donc portée en SVG statique et touches en `<button>` — aucune boucle `requestAnimationFrame`, et des cibles tactiles plus grandes.
+- **Canvas, pas de DOM pour le rendu principal**. Le piano roll et le clavier sont dessinés sur un seul `<canvas>` — c'est le cas du mode Morceau et du mode Exercices. Ne pas introduire de rendu DOM pour la partie temps réel *qui défile*. Deux exceptions assumées, parce que rien n'y défile : la **Lecture de notes** (une note fixe, un clic) et le **Rythme** (une portée fixe, une pulsation) utilisent une portée SVG statique et des `<button>` — cibles tactiles plus grandes, et zéro boucle d'animation. Le Rythme va plus loin : ce qui bouge (le point de pulsation, les changements de phase) est **planifié à l'avance sur le Transport et rendu par `Tone.Draw`**, donc aucun `requestAnimationFrame` du tout. À privilégier quand les changements visuels sont peu nombreux et connus d'avance.
 - **`requestAnimationFrame` avec throttling**. Ne pas dépasser 30 FPS sur profil bas. Toujours annuler les rAF dans `stop()`.
 - **Éviter les allocations dans la boucle de rendu**. Pré-calculer les géométries, réutiliser les tableaux typés (`Int16Array` pour WHITE_INDEX_BY_MIDI).
 - **Pas d'animations CSS lourdes**. Les transitions sont limitées à `background .15s ease`.
@@ -128,6 +154,14 @@ L'app tourne sur une **vieille tablette Android** avec un petit écran et peu de
 - **`stop()` doit TOUJOURS disposer l'audio** : `dispose()` sur le Part, `stop()` sur Transport, `releaseAll()` ou `dispose()` sur le synth/sampler, `dispose()` sur la reverb.
 - **Pas de cache audio entre les visites d'un mode**. Chaque `start()` réinitialise, chaque `stop()` dispose tout.
 - **Un seul `AudioContext`** partagé via Tone.js.
+
+## Entrée MIDI (F2)
+
+- **Une seule instance partagée**, dans `midi-input.js`. L'accès MIDI est une ressource unique du navigateur : aucun mode ne doit appeler `navigator.requestMIDIAccess` lui-même.
+- **Contrairement à l'audio, l'état MIDI survit à `stop()`** : une permission accordée et un appareil choisi n'ont aucune raison d'être redemandés à chaque changement de mode. C'est l'exception assumée à la règle « rien ne survit à stop() ».
+- **Un mode s'abonne, il ne configure rien** : `onMidiNote(cb)` rend sa fonction de désabonnement, à appeler dans `stop()`. Le panneau de connexion vit sur l'accueil, pas dans les modes.
+- **Le MIDI est toujours optionnel.** Aucun mode ne doit devenir inutilisable sans clavier branché, sans permission, ou dans un navigateur sans Web MIDI.
+- **Le CC 64 (pédale) n'est pas encore écouté** : décidé pour plus tard, au moment de [plan/09](plan/09-pedale.md). `midi-input.js` reste le seul endroit qui écoutera le MIDI.
 
 ## Servir en local
 

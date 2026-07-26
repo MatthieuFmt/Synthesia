@@ -13,8 +13,10 @@ import { initViewportControls } from "./viewport.js";
 import { initNavigation } from "./navigation.js";
 import { songFeature } from "./song-mode.js";
 import { noteReadingFeature } from "./note-reading-mode.js";
+import { exerciseFeature } from "./exercise-mode.js";
+import { rhythmFeature } from "./rhythm-mode.js";
 
-const FEATURES = [songFeature, noteReadingFeature];
+const FEATURES = [songFeature, noteReadingFeature, exerciseFeature, rhythmFeature];
 
 initViewportControls();
 initNavigation(FEATURES);

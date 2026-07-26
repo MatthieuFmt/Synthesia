@@ -30,6 +30,7 @@ import * as Tone from "https://cdn.jsdelivr.net/npm/tone@14.8.49/+esm";
 import { isForcedLandscape, VIEWPORT_CHANGE_EVENT } from "./viewport.js";
 import { PERFORMANCE_PROFILE } from "./perf.js";
 import { createAudio, midiToNote } from "./audio.js";
+import { midiInput } from "./midi-input.js";
 import {
   CLEF_GLYPH,
   isWhite,
@@ -118,6 +119,10 @@ function createSession() {
     audio: createAudio(),
     playPending: false,
     part: null,
+
+    // Désabonnement du clavier physique (F2). L'entrée, elle, est partagée et
+    // survit au changement de mode.
+    stopMidi: null,
   };
 }
 
@@ -1671,8 +1676,47 @@ function start(host) {
   ctx = canvas.getContext("2d", { alpha: false });
 
   attachInteractions(listeners.signal);
+  attachMidiKeyboard();
   resizeCanvas();
   loadInitialSong();
+}
+
+// ----------------------------------------------------------------------------
+//  Clavier physique (fondation F2)
+//
+//  Une note jouée sur le clavier branché doit produire le **même** retour que
+//  la même touche cliquée à l'écran : elle s'allume et elle sonne
+//  (plan/F2 § 7). C'est tout ce que le mode Morceau fait du MIDI pour
+//  l'instant — savoir si la note était la bonne appartient au travail guidé de
+//  plan/06, et n'est pas décidé ici.
+//
+//  Différence avec le clic : la touche reste allumée tant que la note est
+//  tenue, au lieu de se rallumer pendant 220 ms. Un vrai clavier dit quand on
+//  relâche, une souris ne le dit pas.
+// ----------------------------------------------------------------------------
+function attachMidiKeyboard() {
+  const session = state;
+  session.stopMidi = midiInput.onNote((event) => {
+    if (!isRunning() || session.stopped) return;
+    if (event.type === "noteon") holdKey(event.midi);
+    else releaseKey(event.midi);
+  });
+}
+
+function holdKey(midi) {
+  const session = state;
+  if (session.pressedKeys.has(midi)) return;
+  session.pressedKeys.add(midi);
+  scheduleDraw();
+  session.audio.playNote(midi).catch((error) => {
+    console.error("Impossible de jouer la note reçue du clavier MIDI.", error);
+  });
+}
+
+function releaseKey(midi) {
+  const session = state;
+  if (!session.pressedKeys.delete(midi)) return;
+  scheduleDraw();
 }
 
 function stop() {
@@ -1695,7 +1739,10 @@ function stop() {
   for (const timer of session.keyPressTimers) clearTimeout(timer);
   session.keyPressTimers.clear();
 
-  // 4. Retirer les écouteurs (canvas, contrôles, window, document).
+  // 4. Retirer les écouteurs (canvas, contrôles, window, document), et se
+  //    désabonner du clavier physique — qui reste connecté, étant partagé.
+  session.stopMidi?.();
+  session.stopMidi = null;
   listeners.abort();
   listeners = null;
 

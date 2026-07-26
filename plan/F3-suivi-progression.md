@@ -1,7 +1,18 @@
 # Fondation F3 — Suivi de progression
 
-> Statut : planifiée — aucune donnée de progression n'est conservée
-> aujourd'hui.
+> Statut : **étape A faite** (25/07/2026). Le format d'évènement est figé (§ 7),
+> le journal est persisté dans `localStorage` et la Lecture de notes est sa
+> première productrice de données. Les vues (étapes B à E) restent à construire ;
+> seules les révisions adaptées existent, dans leur forme minimale.
+>
+> Le format a tenu à l'épreuve de deux productrices supplémentaires, le
+> 26/07/2026, sans qu'un champ ni un `outcome` ait eu à être ajouté : les
+> Exercices techniques écrivent des `repetition` en `outcome: "none"`
+> ([03 § 15](03-technique-doigts.md#15-ce-que-la-séance-laisse-dans-le-journal)),
+> et l'Entraînement rythmique des `answer` **et** des `beat` — les premiers
+> `beat` du journal, avec la mesure brute dans `given: { deviationMs }` comme le
+> § 7 le prévoyait
+> ([05 § 14](05-entrainement-rythmique.md#14-ce-que-la-séance-laisse-dans-le-journal)).
 
 [Retour à la checklist générale](README.md)
 
@@ -10,10 +21,12 @@
 - [x] Définir le principe journal d'évènements + vues calculées.
 - [x] Définir qui produit et qui consomme les données.
 - [x] Trancher le chevauchement avec l'historique du Programme d'entraînement.
-- [ ] Définir et figer le format d'un évènement (à faire tôt).
-- [ ] Implémenter la persistance locale.
+- [x] Définir et figer le format d'un évènement (à faire tôt).
+- [x] Implémenter la persistance locale.
 - [ ] Implémenter les vues de progression.
-- [ ] Implémenter les révisions adaptées aux erreurs précédentes.
+- [x] Implémenter les révisions adaptées aux erreurs précédentes.
+  (forme minimale : les notes les plus ratées reviennent plus souvent ; le
+  volet « les moins vues récemment » attend l'étape D)
 
 ## 1. Pourquoi c'est une fondation et pas une fonctionnalité
 
@@ -66,9 +79,9 @@ fonctionnalité.
 
 | Fonctionnalité | Produit | Consomme |
 | --- | --- | --- |
-| [02 — Lecture de notes](02-lecture-notes.md) | Réponses par note, main, clé, niveau | Notes à revoir en priorité |
-| [03 — Exercices techniques](03-technique-doigts.md) | Répétitions, tempo, main, exercice | Exercices maîtrisés, tempo atteint |
-| [05 — Entraînement rythmique](05-entrainement-rythmique.md) | Jugements de timing par frappe | Motifs à revoir, tendance avance/retard |
+| [02 — Lecture de notes](02-lecture-notes.md) | Réponses par note, main, clé, niveau ✅ | Notes à revoir en priorité ✅ |
+| [03 — Exercices techniques](03-technique-doigts.md) | Répétitions, tempo, main, exercice ✅ | Exercices maîtrisés, tempo atteint |
+| [05 — Entraînement rythmique](05-entrainement-rythmique.md) | Jugements de timing par frappe, et réponses de Reconnaissance ✅ | Motifs à revoir, tendance avance/retard |
 | [06 — Travail d'un morceau](06-travail-intelligent-morceau.md) | Exécutions propres par passage, tempo | Passages maîtrisés, meilleur tempo propre |
 | [07 — Oreille](07-entrainement-oreille.md) | Réponses par note et par intervalle | Intervalles confondus |
 | [08 — Lecture de partitions](08-lecture-partitions.md) | Réponses par note, durée, altération | Difficultés de lecture à revoir |
@@ -111,39 +124,94 @@ Règle transversale, déjà posée ailleurs dans le dossier : **un élément n'e
 métrique n'est affichée si l'entrée correspondante n'a pas été mesurée
 ([03 § 9](03-technique-doigts.md#9-retour-et-bilan)).
 
-## 7. Modèle de données proposé
+## 7. Modèle de données — **figé le 25/07/2026**
+
+Un seul journal, une seule forme d'entrée. Une séance n'est pas une seconde
+structure : c'est une paire d'évènements `session-start` / `session-end` dans
+ce même journal.
 
 ```js
-// Un évènement : ce qui s'est passé, jamais recalculé ni modifié.
+// Une entrée du journal : ce qui s'est passé, jamais recalculée ni modifiée.
 const progressEvent = {
-  at: "2026-07-25T18:32:11.000Z",
+  at: 1785000000000,          // ms epoch
+  sessionId: 1785000000000,   // le `at` du session-start de la séance
   featureId: "note-reading",
-  type: "answer", // "answer" | "repetition" | "clean-run" | "session-end"
-  // ce sur quoi portait l'évènement, propre à la fonctionnalité
-  target: { midi: 65, clef: "treble", hand: "right" },
-  // le résultat, dans un vocabulaire volontairement restreint
-  outcome: "wrong", // "correct" | "wrong" | "on-time" | "early" | "late" | ...
-  // ce qui a été donné à la place, quand c'est pertinent
-  given: { midi: 69 },
-  // contexte utile aux vues
-  context: { level: "intermediate", tempoBpm: null, tempoPercent: null },
+  type: "answer",             // cf. tableau ci-dessous
+  target: { midi: 65, clef: "treble", hand: "right" }, // libre selon la feature
+  outcome: "wrong",           // vocabulaire fermé, cf. tableau ci-dessous
+  given: { midi: 69 },        // ce qui a été donné à la place, si pertinent
 };
 
-// Une séance : bornes de pratique, utilisée par l'historique et par 04.
-const sessionRecord = {
-  id: "2026-07-25-note-reading-1",
+// Bornes d'une séance : mêmes champs, sans `target` ni `given`.
+const start = {
+  at: 1785000000000,
+  sessionId: 1785000000000,
   featureId: "note-reading",
-  startedAt: "2026-07-25T18:30:00.000Z",
-  endedAt: "2026-07-25T18:41:00.000Z",
-  completed: true, // arrivée jusqu'au bilan, cf. règle de 04
+  type: "session-start",
+  context: { difficulty: "intermediate", handMode: "both", questionCount: 10 },
+};
+
+const end = {
+  at: 1785000660000,
+  sessionId: 1785000000000,
+  featureId: "note-reading",
+  type: "session-end",
+  outcome: "done",            // "done" = arrivé au bilan | "abandoned"
+  context: { answeredQuestions: 10 },
 };
 ```
 
-Le champ `target` reste libre selon la fonctionnalité (une note, un exercice,
-un passage, un intervalle, un changement de pédale) : c'est ce qui permet
-d'ajouter une fonctionnalité sans changer le format. À l'inverse, `outcome`
-doit rester un petit vocabulaire fermé, sinon les vues ne peuvent plus rien
-calculer de commun.
+### Les cinq `type`
+
+| `type` | Signification | Produit par |
+| --- | --- | --- |
+| `answer` | **Une tentative** de réponse, juste ou fausse | 02, **05** (Reconnaissance), 07, 08 |
+| `beat` | Un jugement de timing sur une frappe ou un changement de pédale | 05, 09 |
+| `repetition` | Une répétition d'exercice effectuée | 03 |
+| `run` | Une exécution complète d'un exercice ou d'un passage | 03, 06 |
+| `session-start` / `session-end` | Bornes d'une séance | toutes |
+
+### Le vocabulaire fermé des `outcome`
+
+| Famille | Valeurs | Utilisée par |
+| --- | --- | --- |
+| Réponse jugée | `correct`, `wrong` | 02, 07, 08 |
+| Timing | `on-time`, `early`, `late`, `missed` | 05, 09 |
+| Exécution | `clean`, `flawed` | 03, 06 |
+| Pédale | `blurred`, `gap` (+ `missed`) | 09 |
+| Séance | `done`, `abandoned` | toutes |
+| Non mesuré | `none` | 03 en pratique libre |
+
+`target` reste libre selon la fonctionnalité (une note, un exercice, un
+passage, un intervalle, un changement de pédale) : c'est ce qui permet
+d'ajouter une fonctionnalité sans changer le format. `outcome`, à l'inverse,
+est un vocabulaire fermé : sans lui, les vues ne peuvent plus rien calculer de
+commun. Une valeur nouvelle s'ajoute au tableau ci-dessus, jamais à la volée.
+
+### Quatre décisions structurantes
+
+1. **Une tentative = un évènement**, pas une question ni une session. C'est le
+   seul niveau qui conserve `given` — ce qui a été joué *à la place* —, sans
+   quoi la vue « notes souvent confondues » de la section 6 est impossible.
+   Coût réel mesuré : environ 14 évènements par session de Lecture de notes.
+2. **Un journal unique.** Le `sessionRecord` séparé des premières versions de
+   ce plan est abandonné : deux structures, c'était deux formats à versionner,
+   deux compactions et un risque de désynchronisation. L'historique des
+   séances redevient une vue comme les autres.
+3. **Le constant va dans `session-start`, pas sur chaque évènement.** Niveau,
+   réglage de main, tempo choisi : tout ce qui ne varie pas pendant la séance
+   n'est écrit qu'une fois. Un `context` répété sur chaque évènement pesait un
+   tiers du journal pour rien.
+4. **`at` en millisecondes**, pas en ISO : deux fois plus court et directement
+   comparable.
+
+### Degrés et seuils : jamais dans l'`outcome`
+
+[05 § 5](05-entrainement-rythmique.md#5-mesurer-la-précision-temporelle)
+distingue une avance *légère* d'une avance *nette*. Ce degré n'entre pas dans
+le vocabulaire : l'évènement porte la mesure brute
+(`given: { deviationMs: -180 }`) et la vue applique les seuils. Un seuil qui
+change ne doit jamais invalider un journal déjà écrit.
 
 ## 8. Stockage
 
@@ -162,29 +230,60 @@ navigateur** :
   serveur, et changer de navigateur ou vider son cache efface tout. Ce
   point doit être dit clairement à l'utilisateur.
 
+Décisions d'implémentation prises avec le format (25/07/2026) :
+
+- **une seule clé**, `synthesia.progress.v1`, contenant `{ v: 1, log: [...] }` ;
+  la version est celle du document, pas de chaque évènement ;
+- **plafond de 4 000 évènements** en attendant la compaction de l'étape E : les
+  plus anciens sont retirés en premier. À ~14 évènements par session de Lecture
+  de notes, cela représente plusieurs mois de pratique quotidienne, pour environ
+  600 Ko ;
+- **écriture groupée** : les évènements s'accumulent en mémoire et le journal
+  n'est réécrit qu'au plus une fois par seconde et demie, plus un enregistrement
+  forcé à la fin d'une séance et au masquage de la page. Sur la tablette, écrire
+  le journal entier à chaque touche pressée coûterait bien plus que l'exercice
+  lui-même ;
+- **un stockage refusé, plein ou illisible ne casse jamais l'exercice** : la
+  séance continue en mémoire, seule la persistance est perdue. Sur un quota
+  dépassé, la moitié la plus ancienne du journal est abandonnée et l'écriture
+  retentée une fois.
+
 ## 9. Découpage technique proposé
 
 ```text
 src/
   progress/
-    store.js        # écriture du journal, lecture, compaction, export/effacement
-    views.js        # les six vues calculées de la section 6
-    review.js       # sélection des éléments à revoir en priorité
+    store.js        # écriture du journal, lecture, compaction, export/effacement [fait]
+    views.js        # les six vues calculées de la section 6                 [à faire]
+    review.js       # sélection des éléments à revoir en priorité              [fait]
 ```
 
 Ces modules ne doivent **jamais** dépendre du Canvas ni du DOM, pour rester
 testables sans navigateur — même principe que le moteur d'exercice de
-[02 § 6](02-lecture-notes.md#6-découpage-technique-proposé).
+[02 § 6](02-lecture-notes.md#6-découpage-technique-proposé). `store.js` reçoit
+d'ailleurs son stockage **et** son horloge en paramètres, ce qui permet de
+vérifier hors navigateur le plafond, le quota dépassé et l'écriture groupée.
+
+`views.js` n'existe pas encore : aucune vue n'est construite tant que le
+journal ne contient pas de données réelles. C'est la conséquence assumée du
+découpage de F3 en deux temps.
 
 ## 10. Étapes de réalisation
 
-### Étape A — Format et persistance (à faire tôt)
+### Étape A — Format et persistance (à faire tôt) — **faite le 25/07/2026**
 
-- [ ] Figer le format d'évènement et le vocabulaire des `outcome`.
-- [ ] Écrire et relire le journal depuis `localStorage`.
-- [ ] Brancher la Lecture de notes comme première productrice d'évènements.
-- [ ] Gérer un stockage indisponible ou plein sans casser l'exercice en
+- [x] Figer le format d'évènement et le vocabulaire des `outcome`.
+  (§ 7 ; `EVENT_TYPES` et `OUTCOMES` dans `src/progress/store.js` refusent
+  toute valeur hors vocabulaire)
+- [x] Écrire et relire le journal depuis `localStorage`.
+  (clé unique `synthesia.progress.v1`, écriture groupée, plafond de 4 000
+  évènements)
+- [x] Brancher la Lecture de notes comme première productrice d'évènements.
+  (une tentative = un évènement, plus les bornes de séance ; § 13)
+- [x] Gérer un stockage indisponible ou plein sans casser l'exercice en
   cours.
+  (stockage refusé, journal illisible, version inconnue et quota dépassé sont
+  tous couverts et vérifiés — § 12)
 
 ### Étape B — Vues de base
 
@@ -211,19 +310,24 @@ testables sans navigateur — même principe que le moteur d'exercice de
 
 ## 11. Critères d'acceptation
 
-- [ ] Les résultats d'une séance survivent à un rechargement de la page.
+- [x] Les résultats d'une séance survivent à un rechargement de la page.
 - [ ] Les notes confondues sont visibles et exactes après plusieurs sessions.
+  (la donnée est enregistrée — `given` porte la note jouée à la place — mais
+  aucune vue ne l'affiche encore)
 - [ ] Un exercice n'est « maîtrisé » qu'après plusieurs réussites sur des
   séances distinctes.
 - [ ] Le tempo maximal propre est conservé par exercice et par passage.
 - [ ] La progression est consultable séparément pour chaque main.
 - [ ] Le Programme d'entraînement (04) calcule ses séances dues à partir du
   journal de F3, sans tenir un second historique.
-- [ ] Une session de révision propose en priorité les éléments ratés
+- [x] Une session de révision propose en priorité les éléments ratés
   précédemment.
+  (les notes ratées sortent plus souvent ; le critère « le moins vu récemment »
+  reste à l'étape D)
 - [ ] L'utilisateur peut effacer ses données, et l'application le lui
   indique clairement.
-- [ ] Un `localStorage` indisponible n'empêche pas de pratiquer.
+  (`clear()` existe dans le journal, mais aucun écran ne l'appelle — étape E)
+- [x] Un `localStorage` indisponible n'empêche pas de pratiquer.
 
 ## 12. Validation prévue
 
@@ -234,6 +338,64 @@ testables sans navigateur — même principe que le moteur d'exercice de
 - test d'un stockage plein ou refusé (navigation privée) ;
 - test de l'export puis du réimport si le réimport est retenu ;
 - vérification que 04 lit bien le journal de F3 et pas un doublon.
+
+### Validation effectuée de l'étape A (25 juillet 2026)
+
+**Journal et révisions, hors navigateur** — 74 vérifications sur 74, dans Node,
+stockage et horloge injectés :
+
+- forme exacte des trois évènements (`session-start`, `answer`, `session-end`),
+  `sessionId` égal à l'horodatage d'ouverture, et plus rien d'accepté après la
+  fermeture d'une séance ;
+- vocabulaire fermé : un `type` ou un `outcome` hors tableau du § 7 est refusé
+  au lieu d'être écrit, et les deux ensembles contiennent exactement les valeurs
+  du plan — ni plus, ni moins ;
+- plafond : les plus anciens évènements partent d'abord ;
+- relecture au démarrage suivant ; un journal illisible ou écrit dans une
+  version inconnue repart de zéro sans exception ;
+- stockage absent, puis stockage qui refuse toute écriture : la séance se
+  déroule entièrement en mémoire et se signale comme non persistée ;
+- quota dépassé en cours de séance : la moitié la plus ancienne est abandonnée,
+  l'écriture réussit à la seconde tentative, et la séance continue ;
+- écriture groupée : une rafale de tentatives ne provoque aucune réécriture
+  supplémentaire, l'intervalle passé en provoque une, et `flush()` force
+  l'écriture sans jamais réécrire deux fois la même chose ;
+- révisions : comptage des tentatives récentes par cible, fenêtre glissante,
+  poids de 1 (jamais ratée) à 3 (toujours ratée), et une même hauteur lue dans
+  deux clés reste deux cibles distinctes ;
+- moteur : les poids hérités sont bien repris au tirage — sur 4 000 sessions,
+  une note toujours ratée sort dans 3/7 des cas, sans que les autres cessent de
+  sortir.
+
+**Chaîne complète, dans Chrome sans interface** — 50 vérifications sur 50, trois
+exécutions consécutives identiques, en quatre phases séparées par de **vrais
+rechargements de page** :
+
+- une session de dix notes en Débutant / Les deux, avec une erreur volontaire
+  par question de la main gauche, produit exactement 17 évènements : 1
+  `session-start` portant les réglages, 15 tentatives (10 justes, 5 fausses,
+  chacune avec la note jouée à la place), 1 `session-end` en `done` ;
+- toutes les tentatives portent une cible complète, une clé cohérente avec la
+  main, le même `sessionId` et des horodatages croissants ;
+- après rechargement, le journal est intact et les réglages de la dernière
+  séance sont repris ;
+- quitter l'exercice en route enregistre un `session-end` en `abandoned`,
+  avec le nombre de questions réellement faites, et conserve les réponses déjà
+  données ;
+- révisions : avec un historique où Fa4 a été systématiquement raté, cette note
+  est tirée 15 à 19 fois sur 40 démarrages de session (contre 8 attendues sans
+  pondération), les quatre autres continuant toutes de sortir ;
+- stockage neutralisé avant le chargement des modules : la session va jusqu'à
+  son bilan et l'utilisateur est prévenu que rien n'est enregistré ;
+- non-régression : mode Morceau toujours fonctionnel, contrôles masqués après
+  arrêt, aucune erreur de page.
+
+**Non-régression des campagnes précédentes** — les harnais de la Lecture de
+notes ont été rejoués tels quels : 154/154 sur le moteur dans Node, 200/200
+dans Chrome et 110/110 de mise en page. S'y ajoutent 44/44 sur la mise en page
+du nouveau bilan par main, à 360×640, 390×844, 844×390 et 1280×800 : deux
+lignes de 27 px, sans débordement ni chevauchement, le bilan tenant dans la
+scène sans défilement.
 
 ## 13. Décisions ouvertes
 
@@ -259,12 +421,16 @@ testables sans navigateur — même principe que le moteur d'exercice de
   [04](04-programme-entrainement.md#3-hors-périmètre-pour-cette-première-version),
   et elle suppose ces vues d'abord.
 
-## 15. Première priorité
+## 15. Première priorité — faite
 
-Ne pas construire les vues d'abord. La priorité est **l'étape A** : figer le
+Ne pas construire les vues d'abord. La priorité était **l'étape A** : figer le
 format d'évènement et le brancher sur la Lecture de notes dès que celle-ci
-fonctionne, pour qu'un historique réel commence à s'accumuler. Une seule vue
-suffit pour valider la chaîne complète : **pratiquer deux sessions de Lecture
-de notes → recharger la page → voir les deux ou trois notes les plus
-confondues.** Les autres vues ne sont ensuite que du calcul sur des données
-déjà là.
+fonctionne, pour qu'un historique réel commence à s'accumuler. C'est fait
+(25/07/2026) : le journal se remplit à chaque tentative, survit au
+rechargement, et les notes ratées reviennent plus souvent à la session
+suivante.
+
+Reste la promesse de vue de cette section — **voir** les notes les plus
+confondues plutôt que seulement les faire revenir. La donnée est là (`given`
+porte la note jouée à la place depuis le premier jour) : c'est l'objet de
+l'étape B, et ce n'est plus que du calcul sur des données déjà accumulées.

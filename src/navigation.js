@@ -9,6 +9,8 @@
 //  arrêtée avant que la suivante ne démarre.
 // ============================================================================
 
+import { createMidiPanel } from "./midi-controls.js";
+
 const HOME_TITLE = "Accueil";
 const STATUS_LABELS = {
   available: "Disponible",
@@ -20,6 +22,12 @@ let currentFeature = null;
 let stage = null;
 let homeButton = null;
 let titleLabel = null;
+
+// Panneau MIDI de l'accueil (fondation F2). L'accueil est reconstruit à chaque
+// retour : le panneau doit être libéré, sinon chaque visite laisserait un abonné
+// derrière elle.
+let midiPanel = null;
+let homeListeners = null;
 
 export function initNavigation(features) {
   registry = features;
@@ -50,6 +58,7 @@ export function switchTo(featureId) {
     currentFeature.stop();
     currentFeature = null;
   }
+  disposeHome();
   stage.replaceChildren();
 
   // 2. Démarrage de la suivante, ou retour à l'accueil.
@@ -81,7 +90,20 @@ function showHome() {
   }
 
   home.append(heading, grid);
+
+  // Le clavier physique se branche ici, avant de choisir un exercice.
+  homeListeners = new AbortController();
+  midiPanel = createMidiPanel({ signal: homeListeners.signal });
+  home.appendChild(midiPanel.element);
+
   stage.appendChild(home);
+}
+
+function disposeHome() {
+  midiPanel?.dispose();
+  midiPanel = null;
+  homeListeners?.abort();
+  homeListeners = null;
 }
 
 function renderCard(feature) {

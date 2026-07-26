@@ -1,10 +1,12 @@
 # Feature 02 — Lecture de notes
 
-> Statut : boucle verticale en place en **Débutant**, pour les trois choix de
-> main (**Main droite**, **Main gauche**, **Les deux**) — réglages → note sur la
-> portée → clic sur une touche → retour → dix questions → bilan, vérifié dans un
-> navigateur (§ 9). Restent les niveaux Intermédiaire et Difficile (étape 6 de
-> l'ordre de réalisation).
+> Statut : boucle verticale en place pour les **neuf combinaisons** de niveau
+> (**Débutant**, **Intermédiaire**, **Difficile**) et de main (**Main droite**,
+> **Main gauche**, **Les deux**) — réglages → note sur la portée → clic sur une
+> touche → retour → dix questions → bilan, vérifié dans un navigateur (§ 9).
+> L'étape D est faite pour tout ce qui relève de la progression : les résultats
+> sont enregistrés, le bilan est séparé par main et les notes ratées reviennent
+> plus souvent. Restent les altérations, puis ce qui appartient à 08.
 
 [Retour à la checklist générale](README.md)
 
@@ -15,12 +17,13 @@
 - [x] Définir le MVP et ses critères d'acceptation.
 - [x] Ajouter la navigation vers le mode Lecture de notes.
 - [x] Implémenter le moteur d'exercice.
-  (tirage, validation, pondération des erreurs, équilibrage des mains et bilan ;
-  il ne manque que les groupes de notes des niveaux Intermédiaire et Difficile)
+  (tirage, validation, pondération des erreurs, équilibrage des mains, groupes
+  de notes des trois niveaux et bilan)
 - [x] Implémenter l'interface.
-- [ ] Valider les neuf combinaisons de niveau et de main.
-  (trois existent — Débutant × Main droite / Main gauche / Les deux —, toutes
-  vérifiées)
+- [x] Valider les neuf combinaisons de niveau et de main.
+  (vérifiées dans le navigateur le 25/07/2026 — § 9)
+- [x] Enregistrer les résultats et reprendre les notes difficiles.
+  (via [F3](F3-suivi-progression.md) étape A, 25/07/2026 — § 9)
 
 ## 1. Vision
 
@@ -140,6 +143,48 @@ altérations et précision sur les touches noires.
 Le premier écran doit présenter ces choix comme de gros boutons simples, pas
 comme un formulaire de configuration.
 
+### Groupes de notes retenus
+
+Les six groupes construits le 25/07/2026, tous en touches blanches :
+
+| Niveau | Main droite (clé de sol) | Main gauche (clé de fa) | Notes |
+| --- | --- | --- | --- |
+| **Débutant** | Do4 → Sol4 | Do3 → Sol3 | 5 |
+| **Intermédiaire** | Do4 → Fa5 | Sol2 → Do4 | 11 |
+| **Difficile** | La3 → La5 | Mi2 → Mi4 | 15 |
+
+- **Débutant** : les mêmes cinq degrés dans les deux mains, une octave d'écart.
+- **Intermédiaire** : toute la portée, plus le **Do central** — sous la portée
+  en clé de sol, au-dessus en clé de fa, à chaque fois sur sa ligne
+  supplémentaire. C'est le repère qui relie les deux clés, et la seule note
+  commune aux deux groupes.
+- **Difficile** : deux octaves, la portée débordée de deux lignes
+  supplémentaires du côté du Do central et d'une seule de l'autre côté.
+
+Les deux groupes d'un même niveau occupent, dès l'Intermédiaire, exactement les
+mêmes positions sur leur portée : ce qui est appris d'une main se relit de
+l'autre au même endroit.
+
+### Clavier des grandes étendues
+
+Le clavier ne peut plus se contenter d'une octave dès l'Intermédiaire. Trois
+règles, décidées le 25/07/2026 :
+
+1. **Groupe plus étroit qu'une octave** (Débutant) : on affiche l'octave
+   Do → Do qui le contient. Les touches inutilisées servent de leurres.
+2. **Groupe plus large** (Intermédiaire, Difficile) : on affiche exactement
+   l'étendue du groupe — 11 puis 15 blanches. L'arrondir aux Do ajouterait
+   quatre à sept touches et les amincirait pour rien ; le groupe compte déjà
+   plus de dix candidats, il n'a pas besoin de leurres.
+3. **Jamais de touche sous 30 px** : en dessous de 36 px par blanche, le
+   clavier **défile latéralement** au lieu de rétrécir. Il démarre au milieu de
+   son étendue, la même position à chaque question — elle ne renseigne donc sur
+   rien —, et l'indice ramène la touche désignée dans le cadre.
+
+En paysage, la seule orientation réellement utilisée sur la tablette, rien ne
+défile : les deux octaves du niveau Difficile tiennent entières (§ 9). Le
+défilement ne sert que sur un petit écran en portrait.
+
 ### Écran d'exercice
 
 Afficher :
@@ -216,6 +261,8 @@ src/
   song-mode.js              # mode Morceau                                     [fait]
   note-reading-mode.js      # rendu et interactions de cet exercice            [fait]
   note-reading-engine.js    # choix des notes, validation, bilan (sans DOM)    [fait]
+  progress/store.js         # journal de progression, partagé (F3)             [fait]
+  progress/review.js        # notes à revoir en priorité, partagé (F3)         [fait]
   piano.js                  # clavier partagé                        [pas nécessaire]
 ```
 
@@ -295,10 +342,8 @@ distinctes, y compris pour la pondération.
 
 ### Étape B — Moteur d'exercice
 
-- [ ] Définir un groupe de notes par niveau et par main.
-  (Débutant est complet : Do4 → Sol4 à droite, Do3 → Sol3 à gauche — les mêmes
-  degrés une octave plus bas, tous à l'intérieur de la clé de fa. Intermédiaire
-  et Difficile restent à définir.)
+- [x] Définir un groupe de notes par niveau et par main.
+  (les six groupes sont dans `NOTE_POOLS` — voir le tableau du § 4)
 - [x] Construire le groupe actif à partir des deux réglages.
 - [x] Équilibrer les deux mains sur une session en mode Les deux.
 - [x] Générer une question sans répétition immédiate inutile.
@@ -309,17 +354,17 @@ distinctes, y compris pour la pondération.
 
 ### Étape C — Interface du MVP
 
-- [ ] Ajouter le choix Débutant / Intermédiaire / Difficile.
-  (les trois boutons existent ; Intermédiaire et Difficile sont affichés
-  « Bientôt » et désactivés tant que leur groupe de notes n'existe pas)
+- [x] Ajouter le choix Débutant / Intermédiaire / Difficile.
+  (les trois niveaux sont sélectionnables, plus aucune mention « Bientôt »)
 - [x] Ajouter le choix Main droite / Main gauche / Les deux.
 - [x] Dessiner une grande portée et une note unique.
 - [x] Afficher la bonne clé et, si nécessaire, la main courante.
   (clé de sol ou clé de fa selon la question ; en mode Les deux, la main
   travaillée est annoncée à côté de la progression et change avec elle)
 - [x] Afficher un clavier centré sur la zone travaillée sans révéler la réponse.
-  (une octave alignée sur les Do ; en mode Les deux, le clavier suit la main de
-  la question — Do3 → Do4 à gauche, Do4 → Do5 à droite)
+  (une octave alignée sur les Do en Débutant, l'étendue exacte du groupe
+  au-delà, avec défilement latéral plutôt que des touches sous 30 px — § 4 ; en
+  mode Les deux, le clavier suit la main de la question)
 - [x] Ajouter les retours visuels correct / incorrect.
 - [x] Ajouter l'indice, la progression et la sortie.
 - [x] Ajouter l'écran de fin de session.
@@ -329,11 +374,18 @@ distinctes, y compris pour la pondération.
 
 ### Étape D — Progression
 
-- [ ] Enregistrer localement les résultats et le dernier niveau (via
+- [x] Enregistrer localement les résultats et le dernier niveau (via
   [F3 — Suivi de progression](F3-suivi-progression.md)).
-- [ ] Afficher un bilan séparé par main lorsque Les deux est sélectionné.
-- [ ] Reprendre une session avec les notes qui posent le plus de difficultés
+  (chaque tentative est journalisée, les réglages de la dernière séance sont
+  repris à l'ouverture du mode, et quitter en route s'enregistre comme un
+  abandon)
+- [x] Afficher un bilan séparé par main lorsque Les deux est sélectionné.
+  (« du premier coup » et précision par main ; une main sans réponse
+  n'affiche rien plutôt qu'un zéro trompeur)
+- [x] Reprendre une session avec les notes qui posent le plus de difficultés
   (vue « révisions adaptées » de [F3](F3-suivi-progression.md)).
+  (poids de 1 à 3 selon les tentatives récentes ; les notes jamais vues gardent
+  le poids par défaut et ne sont donc pas défavorisées)
 - [ ] Introduire les dièses et les bémols.
 - [ ] Proposer plus tard une vraie double portée avec deux notes simultanées.
 - [ ] Ajouter ensuite le mode chronométré avec notes défilantes.
@@ -351,10 +403,10 @@ reprend le même moteur avec un stimulus sonore au lieu d'une note écrite.
 Le MVP est terminé lorsque :
 
 - [x] l'utilisateur peut ouvrir le mode Lecture sans charger de morceau ;
-- [ ] l'utilisateur peut sélectionner l'un des trois niveaux ;
+- [x] l'utilisateur peut sélectionner l'un des trois niveaux ;
 - [x] l'utilisateur peut sélectionner Main droite, Main gauche ou Les deux ;
-- [ ] chaque combinaison de niveau et de main produit le bon groupe de notes ;
-      (vrai pour les trois combinaisons existantes)
+- [x] chaque combinaison de niveau et de main produit le bon groupe de notes ;
+      (les neuf vérifiées dans le navigateur — § 9)
 - [x] Main droite affiche la clé de sol et Main gauche la clé de fa ;
 - [x] le mode Les deux présente les deux clés au cours de la session avec une
       répartition équilibrée et non prévisible ;
@@ -458,14 +510,16 @@ Restent à vérifier à la main : le toucher réel sur téléphone et le rendu s
   de leur part attendue ;
 - session de longueur impaire : 5/4 ou 4/5, jamais plus déséquilibré.
 
-**Interface, dans Chrome sans interface** — 82 vérifications sur 82, trois
+**Interface, dans Chrome sans interface** — 84 vérifications sur 84, trois
 exécutions consécutives identiques (tirages différents à chaque fois) :
 
 - réglages : Main gauche et Les deux sont désormais sélectionnables et sans
   mention « Bientôt » ; Intermédiaire et Difficile restent désactivés ;
-- clé de fa réellement dessinée : elle dépasse de 0,86 interligne au-dessus de
-  la ligne de Fa et descend de 3,06 en dessous, soit exactement la portée —
-  proportions conformes au glyphe de référence (0,89 / 3,06) ;
+- clé de fa : ses **deux points encadrent la ligne de Fa** — milieu mesuré à
+  77,9 px pour une ligne à 78, points écartés de 16,0 px pour un interligne de
+  16, et dessin contenu dans la hauteur de la portée (57 → 104 px). La clé de
+  sol est vérifiée de la même façon : l'œil de sa spirale tombe à 0,3 px de la
+  ligne de Sol ;
 - Main gauche : portée de cinq lignes en clé de fa, clavier Do3 → Do4 (8
   blanches, 5 noires, repère « Do » aux deux extrémités), aucune note ne sort de
   la portée, dix questions enchaînées puis bilan 9/10 après une erreur
@@ -485,12 +539,124 @@ exécutions consécutives identiques (tirages différents à chaque fois) :
   contrôles masqués après arrêt ;
 - audio : le contexte Tone passe à `running` au premier clic.
 
+Les clés sont des glyphes Unicode rendus par une police système : leur taille et
+leur position ne se déduisent pas de `getBBox()`, qui renvoie la boîte em de la
+police et non le dessin. Un premier réglage fait à partir de cette boîte plaçait
+la clé de fa 0,7 interligne trop bas. Les valeurs actuelles viennent d'une mesure
+au pixel du glyphe dans un canvas : écart des deux points = 0,216 em, milieu des
+points = 0,447 em au-dessus de la ligne de base. La taille de la clé de fa en
+découle — celle qui écarte ses points d'exactement un interligne.
+
 **Mise en page** — 52 vérifications sur 52, en Main gauche et en Les deux, à
 360×640, 390×844, 844×390 et 1280×800 : aucun débordement horizontal, barre de
 statut (progression + main + série + indice) tenant sur une ligne de largeur,
 clavier entièrement visible et touches blanches de 40 à 68 px.
 
-## 10. Première priorité — faite en Débutant, pour les trois mains
+### Validation des niveaux Intermédiaire et Difficile (25 juillet 2026)
+
+**Moteur, hors navigateur** — 154 vérifications sur 154, dans Node :
+
+- les six groupes sont exactement ceux du tableau du § 4, et les neuf
+  combinaisons de niveau et de main sont désormais proposées ;
+- propriétés vérifiées groupe par groupe : que des touches blanches, aucune
+  altération, degrés diatoniques consécutifs, au plus deux lignes
+  supplémentaires, étendue croissante avec le niveau, et — dès l'Intermédiaire
+  — mêmes positions sur la portée dans les deux mains, en miroir ;
+- règle de l'indice : immédiat en Débutant, après une erreur en Intermédiaire,
+  après deux en Difficile, compteur remis à zéro à chaque nouvelle question ;
+- une session complète pour **chacune des neuf combinaisons** : clé, main et
+  groupe cohérents aux dix questions, jamais deux fois la même note d'affilée,
+  bilan 10/10 et 100 % de précision ;
+- le Do central appartient aux deux mains dès l'Intermédiaire : ses deux poids
+  sont bien distincts, une erreur en clé de fa ne touche pas la même hauteur
+  lue en clé de sol ;
+- sur 400 sessions par niveau (4 000 tirages) : 5/5 à chaque session, jamais
+  trois questions de suite sur la même main, jamais deux fois la même note
+  d'affilée, les 22 puis 30 notes des deux mains toutes posées à ±30 % de leur
+  part attendue.
+
+**Interface, dans Chrome sans interface** — 200 vérifications sur 200, trois
+exécutions consécutives identiques (tirages différents à chaque fois) :
+
+- réglages : plus aucun bouton désactivé ni mention « Bientôt », et aucun
+  niveau ne se referme selon la main choisie ;
+- **les neuf combinaisons** parcourues une à une : clé attendue, étendue du
+  clavier, nombre de touches blanches et noires (recalculés dans le harnais,
+  pas lus dans l'application), note tirée du bon groupe, main annoncée
+  seulement en mode Les deux, touches ≥ 30 px, et la session avance ;
+- Intermédiaire / Main droite : clavier Do4 → Fa5, 11 blanches de 49 px et 7
+  noires alignées entre leurs voisines, l'indice **refusé avant la première
+  erreur** puis proposé après, la seule ligne supplémentaire possible étant
+  celle du Do central ;
+- Difficile / Main gauche : clavier Mi2 → Mi4, 15 blanches de 35 px et 10
+  noires, indice refusé après une erreur et proposé après deux, lignes
+  supplémentaires conformes à la position dessinée ;
+- correspondance portée → clavier revérifiée **à partir du dessin** (position
+  de la tête de note relue dans le SVG, hauteur recalculée hors du code de
+  l'application) : sur les trois exécutions, les **15 notes de la clé de fa**
+  et leurs 15 positions — des deux lignes supplémentaires du bas à celles du
+  haut — ont été dessinées puis retrouvées au clavier, ainsi que 13 des 15
+  notes de la clé de sol, dont La3 (deux lignes sous la portée) et La5 (une
+  au-dessus) ;
+- Difficile / Les deux : clavier changeant réellement d'étendue avec la main
+  (Mi2 → Mi4 / La3 → La5), 5 questions par main, jamais trois de suite sur la
+  même main, touches ≥ 30 px sur les deux étendues ;
+- non-régression : Débutant inchangé (clavier Do4 → Do5 et Do3 → Do4, 8
+  blanches de 68 px, indice disponible d'emblée), sortie en pleine session par
+  l'accueil sans rien qui se restaure, audio démarré au premier clic, mode
+  Morceau toujours fonctionnel et ses contrôles masqués après arrêt ;
+- aucune erreur de page sur les trois exécutions.
+
+**Mise en page** — 110 vérifications sur 110, pour Intermédiaire / Les deux,
+Difficile / Main gauche et Difficile / Les deux, à 360×640, 390×844, 844×390 et
+1280×800 :
+
+- **en paysage (844×390) et sur ordinateur, rien ne défile** : les 15 blanches
+  du niveau Difficile tiennent entières, à 35,5 px ; les 11 de l'Intermédiaire
+  à 49 px ;
+- en portrait (360 et 390 px de large), le clavier défile au lieu de rétrécir :
+  touches à 34 px, démarrage au milieu de l'étendue, et l'indice ramène la
+  touche désignée dans le cadre **sans faire défiler la page** ;
+- le défilement n'apparaît que lorsqu'il est nécessaire, jamais autrement ;
+- dans les douze cas : aucun débordement horizontal de la page ni de la scène,
+  barre de statut sur une ligne, clavier entier dans la vue et portée lisible
+  au-dessus.
+
+Restent à vérifier à la main : le toucher réel sur téléphone et sur la
+tablette, et le rendu sonore à l'oreille.
+
+### Validation de l'étape D — progression (25 juillet 2026)
+
+Le détail complet est dans
+[F3 § 12](F3-suivi-progression.md#validation-effectuée-de-létape-a-25-juillet-2026).
+Ce qui concerne directement cette fonctionnalité :
+
+- une session de dix notes en Débutant / Les deux, avec une erreur volontaire
+  par question de la main gauche, produit **exactement 15 tentatives
+  journalisées** — 10 justes, 5 fausses, chacune conservant la note jouée à la
+  place — encadrées par les bornes de séance ;
+- **bilan par main** : main droite 5/5 du premier coup à 100 %, main gauche 0/5
+  à 50 %, et les notes à revoir toutes préfixées « Main gauche » ;
+- le bilan par main tient sur les quatre tailles d'écran (44 vérifications) :
+  deux lignes de 27 px, sans débordement ni chevauchement du libellé et des
+  chiffres, l'ensemble du bilan tenant dans la scène sans défilement ;
+- **réglages repris** après un vrai rechargement de page : le niveau et la main
+  de la dernière séance sont ceux proposés à l'ouverture suivante ;
+- **abandon** : quitter par l'accueil en pleine session enregistre la séance
+  comme abandonnée, avec le nombre de questions réellement faites, sans perdre
+  les réponses déjà données ;
+- **notes difficiles reprises** : avec un historique où Fa4 a été
+  systématiquement raté, cette note est tirée 15 à 19 fois sur 40 démarrages de
+  session, contre 8 attendues sans pondération — les quatre autres notes du
+  groupe continuant toutes de sortir ;
+- **stockage refusé** (navigation privée simulée en neutralisant `localStorage`
+  avant le chargement des modules) : la session va jusqu'à son bilan et
+  l'utilisateur y est prévenu que rien n'a été enregistré ;
+- non-régression : les harnais des campagnes précédentes rejoués tels quels
+  donnent 154/154 sur le moteur, 200/200 dans le navigateur et 110/110 de mise
+  en page.
+
+## 10. Première priorité — faite, pour les neuf combinaisons
 
 Construire une petite boucle verticale complète :
 
@@ -498,18 +664,15 @@ Construire une petite boucle verticale complète :
 → cliquer une touche → recevoir le retour → terminer dix questions → voir le
 bilan.**
 
-Cette boucle existe et fonctionne en Débutant pour les trois choix de main :
-cinq notes en clé de sol, cinq en clé de fa, et le mélange équilibré des deux.
-Le MVP n'est pas terminé pour autant : il le sera lorsque les trois niveaux
-fonctionneront (étape 6 de
-l'[ordre de réalisation](README.md#ordre-de-réalisation-recommandé)).
-Le défilement vient ensuite.
+Cette boucle existe et fonctionne pour les trois niveaux et les trois choix de
+main. Le MVP du § 8 est atteint : tous ses critères sont remplis (§ 9).
 
-Ce qu'il reste à faire tient dans peu de code : ajouter à `NOTE_POOLS` la ligne
-`right` et la ligne `left` des niveaux Intermédiaire et Difficile. Le reste du
-moteur, de l'interface et du bilan est déjà indépendant du niveau et de la
-main — l'étendue du clavier, la clé affichée et l'annonce de la main se
-déduisent du groupe de notes.
+L'**étape D** est faite pour tout son volet progression (25/07/2026) : les
+résultats sont enregistrés via [F3](F3-suivi-progression.md), le bilan est
+séparé par main et les notes les plus ratées reviennent plus souvent. La suite
+propre à cette fonctionnalité est l'introduction des **altérations**. Le
+défilement des notes et la vraie double portée appartiennent à
+[08 — Lecture de partitions](08-lecture-partitions.md).
 
 ## 11. Hors périmètre pour le moment
 

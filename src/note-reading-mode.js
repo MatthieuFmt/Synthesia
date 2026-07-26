@@ -30,16 +30,34 @@ import {
   createSession,
   hintAvailable,
   isCombinationAvailable,
+  questionKey,
   QUESTIONS_PER_SESSION,
   summary,
 } from "./note-reading-engine.js";
+import { createProgressStore } from "./progress/store.js";
+import { lastSessionContext, priorWeights } from "./progress/review.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
+
+// Proportions du glyphe Unicode de clé de fa tel que le dessinent les polices
+// système, mesurées au pixel dans le navigateur (cf. plan/02 § 9) : les deux
+// points sont écartés de 0,216 em et leur milieu se trouve 0,447 em au-dessus de
+// la ligne de base. Ce sont ces deux points qui doivent encadrer la ligne de Fa
+// (4e ligne) : les caler dessus est le seul placement juste, la boîte du glyphe
+// n'ayant aucune raison de coïncider avec la portée.
+const BASS_DOT_GAP_EM = 0.2162;
+const BASS_F_LINE_EM = 0.4469;
 
 // Délai avant la question suivante : assez long pour voir le retour vert,
 // assez court pour ne pas casser le rythme.
 const NEXT_QUESTION_MS = 700;
 const WRONG_FLASH_MS = 450;
+
+// Largeur minimale d'une touche blanche, gap compris : en dessous, la cible
+// devient trop petite pour le doigt (≥ 30 px, cf. CLAUDE.md). Les étendues
+// larges des niveaux Intermédiaire et Difficile font défiler le clavier plutôt
+// que d'amincir ses touches.
+const MIN_KEY_WIDTH = 36;
 
 const DIFFICULTY_CHOICES = [
   { id: "beginner", label: "Débutant" },
@@ -92,6 +110,8 @@ function createModeState() {
     stopped: false,
     audio: createAudio(),
     settings: { difficulty: "beginner", hand: "right" },
+    progress: createProgressStore(), // journal partagé (plan/F3 § 7)
+    practice: null,    // séance ouverte dans le journal
     session: null,     // session d'exercice (note-reading-engine)
     locked: false,     // vrai pendant la transition vers la question suivante
     hintShown: false,
@@ -207,7 +227,23 @@ function renderChoiceGroup(legendText, choices, settingKey) {
 //  Écran d'exercice
 // ----------------------------------------------------------------------------
 function beginSession() {
-  state.session = createSession(state.settings);
+  closePractice("abandoned"); // filet : une séance non terminée ne reste jamais ouverte
+
+  // Les notes ratées lors des séances précédentes reviennent plus souvent : le
+  // journal est relu à chaque départ, jamais mis en cache (plan/02 étape D).
+  const journal = state.progress.log();
+  state.session = createSession({
+    ...state.settings,
+    priorWeights: priorWeights(journal, {
+      featureId: noteReadingFeature.id,
+      keyOf: (target) => questionKey(target),
+    }),
+  });
+  state.practice = state.progress.openSession(noteReadingFeature.id, {
+    difficulty: state.settings.difficulty,
+    handMode: state.settings.hand,
+    questionCount: state.session.questionCount,
+  });
   state.locked = false;
   state.hintShown = false;
   state.keyboardRange = null;
@@ -217,6 +253,31 @@ function beginSession() {
   state.audio.ensureReady().catch(() => {});
 
   renderExercise();
+}
+
+// Ferme la séance ouverte dans le journal : `done` si le bilan a été atteint,
+// `abandoned` si l'exercice a été quitté en route. C'est cette distinction que
+// lira le Programme d'entraînement (plan/04 § 6).
+function closePractice(outcome) {
+  const practice = state?.practice;
+  if (!practice || practice.closed) return;
+  practice.close(outcome, {
+    answeredQuestions: state.session?.answeredQuestions ?? 0,
+  });
+}
+
+// Une tentative = un évènement (plan/F3 § 7). C'est le seul niveau qui conserve
+// la note jouée *à la place* de la bonne, dont vivra la vue « notes souvent
+// confondues ».
+function recordAttempt(result, played) {
+  if (result.status !== "correct" && result.status !== "wrong") return;
+  const { midi, clef, hand } = result.question;
+  state.practice?.record({
+    type: "answer",
+    target: { midi, clef, hand },
+    outcome: result.status,
+    ...(result.status === "wrong" ? { given: { midi: played } } : {}),
+  });
 }
 
 function renderExercise() {
@@ -246,12 +307,21 @@ function renderExercise() {
   feedback.setAttribute("role", "status");
   feedback.setAttribute("aria-live", "polite");
 
-  const keyboard = renderKeyboard();
+  const { keyboard, inner } = renderKeyboard();
 
   root.append(status, staff.svg, feedback, keyboard);
   container.replaceChildren(root);
 
-  state.ui = { progress, streak, hand, hintBtn, staff, feedback, keyboard };
+  state.ui = {
+    progress,
+    streak,
+    hand,
+    hintBtn,
+    staff,
+    feedback,
+    keyboard,
+    keyboardInner: inner,
+  };
   refreshExercise();
 }
 
@@ -262,6 +332,7 @@ function renderStaff() {
   const staffH = LG * 4;
   const topLineY = 62;
   const bottomLineY = topLineY + staffH;
+  const fLineY = topLineY + LG;        // 4e ligne : la ligne de Fa
   const staffLeft = 18;
   const staffRight = 302;
   const headX = 210;
@@ -310,16 +381,19 @@ function renderStaff() {
     const step = staffStep(midi, clefId);
     const headY = bottomLineY - step * (LG / 2);
 
-    // Chaque glyphe a ses propres proportions : la clé de sol s'enroule autour
-    // de la 2e ligne, la clé de fa pose ses deux points de part et d'autre de
-    // la 4e (mesuré dans le navigateur, cf. plan/02 § 9).
+    // Chaque glyphe a son propre point d'ancrage sur la portée : la spirale de
+    // la clé de sol enroule la 2e ligne (l'œil de la spirale tombe à moins d'un
+    // pixel de la ligne de Sol avec ces valeurs), la clé de fa encadre la 4e
+    // ligne de ses deux points.
     clef.textContent = CLEF_GLYPH[clefId];
     if (clefId === "treble") {
       clef.setAttribute("font-size", Math.round(staffH * 1.7));
       clef.setAttribute("y", bottomLineY + LG * 0.6);
     } else {
-      clef.setAttribute("font-size", Math.round(staffH * 0.89));
-      clef.setAttribute("y", bottomLineY - LG * 0.7);
+      // Points écartés d'exactement un interligne, milieu sur la ligne de Fa.
+      const size = Math.round(LG / BASS_DOT_GAP_EM);
+      clef.setAttribute("font-size", size);
+      clef.setAttribute("y", Math.round(fLineY + size * BASS_F_LINE_EM));
     }
 
     // Lignes supplémentaires au-dessus / en dessous de la portée.
@@ -375,16 +449,21 @@ function renderStaff() {
   return { svg, update };
 }
 
-// Clavier réduit à la zone travaillée : au moins une octave complète, alignée
-// sur les Do, pour que les touches restent assez larges au doigt sans révéler
-// la réponse (plan/02-lecture-notes.md § 4).
+// Clavier réduit à la zone travaillée (plan/02-lecture-notes.md § 4).
+//
+//  - groupe plus étroit qu'une octave (Débutant) : on affiche l'octave Do → Do
+//    qui le contient, ses touches inutilisées servant de leurres ;
+//  - groupe plus large (Intermédiaire, Difficile) : l'étendue exacte du groupe
+//    suffit — il compte déjà plus de dix candidats, et l'arrondir aux Do
+//    ajouterait quatre à sept touches, donc des touches trop fines.
 function keyboardRange(pool) {
   const lowest = Math.min(...pool);
   const highest = Math.max(...pool);
-  const start = lowest - pitchClass(lowest);
-  let end = highest + ((12 - pitchClass(highest)) % 12);
-  if (end - start < 12) end = start + 12;
-  return { start, end };
+  if (highest - lowest < 12) {
+    const start = lowest - pitchClass(lowest);
+    return { start, end: start + 12 };
+  }
+  return { start: lowest, end: highest };
 }
 
 // Le clavier est vide au départ : ses touches sont (re)dessinées par
@@ -392,6 +471,8 @@ function keyboardRange(pool) {
 // touches, y compris celles qui n'existent pas encore.
 function renderKeyboard() {
   const keyboard = el("div", "nr-keyboard");
+  const inner = el("div", "nr-keyboard-inner");
+  keyboard.appendChild(inner);
   keyboard.addEventListener(
     "click",
     (event) => {
@@ -400,7 +481,7 @@ function renderKeyboard() {
     },
     { signal: listeners.signal }
   );
-  return keyboard;
+  return { keyboard, inner };
 }
 
 // En mode Les deux, la zone utile change de main en main : on ne redessine que
@@ -423,6 +504,11 @@ function updateKeyboard(hand) {
   const blackRow = el("div", "nr-blacks");
   state.keys.clear();
 
+  // Largeur minimale du clavier : au-delà, il défile horizontalement plutôt que
+  // de rétrécir ses touches sous la taille du doigt. Sur la tablette en paysage
+  // les deux octaves du niveau Difficile tiennent sans défilement.
+  state.ui.keyboardInner.style.minWidth = `${whites.length * MIN_KEY_WIDTH}px`;
+
   for (const midi of whites) {
     const key = makeKey(midi, "nr-key nr-key--white");
     // Repère d'octave : le Do reste le point d'ancrage du parcours.
@@ -442,7 +528,13 @@ function updateKeyboard(hand) {
     blackRow.appendChild(key);
   }
 
-  state.ui.keyboard.replaceChildren(whiteRow, blackRow);
+  state.ui.keyboardInner.replaceChildren(whiteRow, blackRow);
+
+  // Quand le clavier défile, on part du milieu de l'étendue : les deux
+  // extrémités sont alors à la même distance. La position ne bouge plus ensuite
+  // (elle est la même à chaque question), donc elle ne renseigne sur rien.
+  const keyboard = state.ui.keyboard;
+  keyboard.scrollLeft = (keyboard.scrollWidth - keyboard.clientWidth) / 2;
 }
 
 function makeKey(midi, className) {
@@ -482,7 +574,11 @@ function showHint() {
   if (!session?.currentQuestion || !hintAvailable(session)) return;
   state.hintShown = true;
   state.ui.hintBtn.disabled = true;
-  state.keys.get(session.currentQuestion.midi)?.classList.add("is-hinted");
+  const key = state.keys.get(session.currentQuestion.midi);
+  key?.classList.add("is-hinted");
+  // Sur un clavier qui défile, la touche désignée peut être hors du cadre :
+  // l'indice ne sert à rien s'il faut le chercher.
+  key?.scrollIntoView({ block: "nearest", inline: "nearest" });
 }
 
 function pressKey(midi) {
@@ -496,6 +592,7 @@ function pressKey(midi) {
 
   const key = state.keys.get(midi);
   const result = answer(state.session, midi);
+  recordAttempt(result, midi);
 
   if (result.status === "wrong") {
     key?.classList.add("is-wrong");
@@ -532,6 +629,8 @@ function pressKey(midi) {
 //  Bilan de fin de session
 // ----------------------------------------------------------------------------
 function renderSummary() {
+  closePractice("done");
+
   const report = summary(state.session);
   const root = el("div", "nr nr--summary");
 
@@ -544,6 +643,30 @@ function renderSummary() {
     statItem(String(report.bestStreak), "meilleure série")
   );
   root.appendChild(stats);
+
+  // Un bilan global masquerait la main en retard : en mode Les deux, chaque
+  // main a le sien (plan/02-lecture-notes.md étape D).
+  if (state.session.handMode === "both") {
+    const list = el("ul", "nr-hands");
+    for (const hand of ["right", "left"]) {
+      const counts = report.byHand[hand];
+      // Aucune précision affichée pour une main qui n'a rien répondu.
+      if (!counts || counts.answered === 0) continue;
+      const item = el("li", "nr-hand-stat");
+      item.append(
+        el("span", "nr-hand-stat-label", HAND_LABEL[hand]),
+        el(
+          "span",
+          "nr-hand-stat-value",
+          `${counts.firstTryCorrect} / ${counts.answered} du premier coup · ${Math.round(counts.accuracy * 100)} %`
+        )
+      );
+      list.appendChild(item);
+    }
+    if (list.childElementCount > 0) {
+      root.append(el("h2", "nr-subheading", "Par main"), list);
+    }
+  }
 
   if (report.toReview.length > 0) {
     root.appendChild(el("h2", "nr-subheading", "À revoir"));
@@ -565,6 +688,18 @@ function renderSummary() {
   } else {
     root.appendChild(
       el("p", "nr-lede", "Aucune note à revoir : toutes reconnues du premier coup.")
+    );
+  }
+
+  // Le seul cas où l'utilisateur doit être prévenu : rien ne sera retrouvé à la
+  // prochaine ouverture (navigation privée, stockage refusé ou plein).
+  if (!state.progress.persistent) {
+    root.appendChild(
+      el(
+        "p",
+        "nr-note",
+        "Résultats non enregistrés : le stockage de ce navigateur est indisponible."
+      )
     );
   }
 
@@ -597,7 +732,37 @@ function start(host) {
   container = host;
   state = createModeState();
   listeners = new AbortController();
+
+  restoreSettings();
+
+  // Une page masquée peut ne jamais être réactivée : c'est la dernière occasion
+  // d'écrire ce qui n'a pas encore été enregistré.
+  window.addEventListener("pagehide", flushProgress, { signal: listeners.signal });
+  document.addEventListener("visibilitychange", onVisibilityChange, {
+    signal: listeners.signal,
+  });
+
   renderSetup();
+}
+
+// Reprend le niveau et la main de la dernière séance (plan/02 étape D). Un
+// réglage devenu invalide est ignoré : les réglages par défaut restent bons.
+function restoreSettings() {
+  const last = lastSessionContext(state.progress.log(), noteReadingFeature.id);
+  if (!last) return;
+  const difficulty = last.difficulty ?? state.settings.difficulty;
+  const hand = last.handMode ?? state.settings.hand;
+  if (isCombinationAvailable(difficulty, hand)) {
+    state.settings = { difficulty, hand };
+  }
+}
+
+function flushProgress() {
+  state?.progress.flush();
+}
+
+function onVisibilityChange() {
+  if (document.visibilityState === "hidden") flushProgress();
 }
 
 function stop() {
@@ -609,14 +774,19 @@ function stop() {
   for (const timer of state.timers) clearTimeout(timer);
   state.timers.clear();
 
-  // 2. Couper le son et libérer la chaîne audio.
+  // 2. Clore la séance de progression : quitter en route s'enregistre comme un
+  //    abandon, pas comme une séance terminée. `close()` écrit le journal.
+  closePractice("abandoned");
+  state.progress.flush();
+
+  // 3. Couper le son et libérer la chaîne audio.
   state.audio.dispose();
 
-  // 3. Retirer les écouteurs (boutons de réglage, touches du clavier).
+  // 4. Retirer les écouteurs (boutons de réglage, touches du clavier).
   listeners.abort();
   listeners = null;
 
-  // 4. Rendre la scène.
+  // 5. Rendre la scène.
   container?.replaceChildren();
   container = null;
   state = null;

@@ -24,12 +24,29 @@ export const HAND_BY_CLEF = {
 };
 
 // Étendue des notes par niveau puis par main (plan/02-lecture-notes.md § 4).
-// Les niveaux Intermédiaire et Difficile arrivent à l'étape 6 de l'ordre de
-// réalisation ; il suffira d'ajouter une ligne par main.
+// Le niveau ne joue que sur cette étendue : aucune limite de temps, aucune
+// altération. Le Do central appartient aux deux mains dès l'Intermédiaire : il
+// est le repère commun des deux clés, sous la portée en clé de sol et au-dessus
+// en clé de fa. Les deux groupes d'un même niveau occupent alors les mêmes
+// positions sur leur portée respective, en miroir.
 const NOTE_POOLS = {
   beginner: {
     right: [60, 62, 64, 65, 67], // Do4 → Sol4, autour du Do central
     left: [48, 50, 52, 53, 55],  // Do3 → Sol3, mêmes degrés une octave plus bas
+  },
+  intermediate: {
+    // Toute la portée, du Do central — en dessous, sur sa ligne supplémentaire
+    // — au Fa de la 5e ligne.
+    right: [60, 62, 64, 65, 67, 69, 71, 72, 74, 76, 77], // Do4 → Fa5
+    // Même chose en clé de fa, où le Do central se retrouve au-dessus de la
+    // portée, sur sa ligne supplémentaire.
+    left: [43, 45, 47, 48, 50, 52, 53, 55, 57, 59, 60], // Sol2 → Do4
+  },
+  advanced: {
+    // Étendue élargie de deux octaves : la portée débordée de deux lignes
+    // supplémentaires du côté du Do central, une seule de l'autre côté.
+    right: [57, 59, 60, 62, 64, 65, 67, 69, 71, 72, 74, 76, 77, 79, 81], // La3 → La5
+    left: [40, 41, 43, 45, 47, 48, 50, 52, 53, 55, 57, 59, 60, 62, 64], // Mi2 → Mi4
   },
 };
 
@@ -76,6 +93,11 @@ export function createSession({
   hand = "right",
   questionCount = QUESTIONS_PER_SESSION,
   random = Math.random,
+  // Poids hérités des séances précédentes, par `clé:hauteur` : ce qui a été
+  // raté auparavant revient plus souvent (plan/02-lecture-notes.md étape D).
+  // Les notes absentes gardent le poids par défaut, elles ne sont donc jamais
+  // défavorisées.
+  priorWeights = null,
 } = {}) {
   if (!isCombinationAvailable(difficulty, hand)) {
     throw new Error(`Aucun groupe de notes pour ${difficulty} / ${hand}.`);
@@ -89,7 +111,8 @@ export function createSession({
     // Le poids suit la clé de lecture, pas seulement la hauteur : la même
     // touche peut être posée dans deux contextes différents.
     for (const midi of pools[h]) {
-      weights.set(questionKey({ clef: CLEF_BY_HAND[h], midi }), 1);
+      const key = questionKey({ clef: CLEF_BY_HAND[h], midi });
+      weights.set(key, priorWeights?.get(key) ?? 1);
     }
   }
 
@@ -110,6 +133,9 @@ export function createSession({
     streak: 0,
     bestStreak: 0,
     mistakesByQuestion: new Map(),
+    // Mêmes compteurs, tenus main par main : en mode Les deux, une précision
+    // globale masquerait la main en retard (plan/F3 § 6, « Évolution par main »).
+    byHand: new Map(hands.map((h) => [h, { answered: 0, firstTryCorrect: 0, attempts: 0 }])),
     finished: false,
   };
 
@@ -231,6 +257,8 @@ export function answer(session, midi) {
 
   session.attemptsForCurrentNote++;
   session.totalAttempts++;
+  const hand = session.byHand.get(question.hand);
+  hand.attempts++;
 
   if (midi !== question.midi) {
     const key = questionKey(question);
@@ -245,7 +273,11 @@ export function answer(session, midi) {
     };
   }
 
-  if (session.attemptsForCurrentNote === 1) session.firstTryCorrect++;
+  if (session.attemptsForCurrentNote === 1) {
+    session.firstTryCorrect++;
+    hand.firstTryCorrect++;
+  }
+  hand.answered++;
   session.answeredQuestions++;
   session.streak++;
   session.bestStreak = Math.max(session.bestStreak, session.streak);
@@ -270,6 +302,18 @@ export function summary(session) {
       return { clef, hand: HAND_BY_CLEF[clef], midi: Number(midi), mistakes };
     });
 
+  // Même bilan main par main. Une main sans aucune réponse garde des compteurs
+  // à zéro : c'est à l'affichage de ne rien en dire plutôt que d'inventer une
+  // précision (plan/03 § 9, repris par plan/F3 § 6).
+  const byHand = {};
+  for (const [hand, counts] of session.byHand) {
+    byHand[hand] = {
+      answered: counts.answered,
+      firstTryCorrect: counts.firstTryCorrect,
+      accuracy: counts.attempts > 0 ? counts.answered / counts.attempts : 0,
+    };
+  }
+
   return {
     questionCount: session.questionCount,
     answeredQuestions: session.answeredQuestions,
@@ -281,5 +325,6 @@ export function summary(session) {
         : 0,
     bestStreak: session.bestStreak,
     toReview,
+    byHand,
   };
 }

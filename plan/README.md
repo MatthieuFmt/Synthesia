@@ -23,18 +23,18 @@ pour avancer, pas avant.
 | Nº | Fondation | État actuel | Plan détaillé |
 | --- | --- | --- | --- |
 | F1 | Navigation entre les fonctionnalités | Première boucle en place | [F1-navigation.md](F1-navigation.md) |
-| F2 | Entrée clavier MIDI (reconnaissance des touches jouées) | Planifiée | [F2-entree-midi.md](F2-entree-midi.md) |
-| F3 | Suivi de progression | Planifiée | [F3-suivi-progression.md](F3-suivi-progression.md) |
+| F2 | Entrée clavier MIDI (reconnaissance des touches jouées) | En place, pas encore consommée | [F2-entree-midi.md](F2-entree-midi.md) |
+| F3 | Suivi de progression | Journal en place, vues à construire | [F3-suivi-progression.md](F3-suivi-progression.md) |
 
 ## Fonctionnalités
 
 | Nº | Fonctionnalité | État actuel | Plan détaillé |
 | --- | --- | --- | --- |
 | 01 | Apprentissage d'un morceau | Version de lecture déjà en place | [01-apprentissage-morceau.md](01-apprentissage-morceau.md) |
-| 02 | Lecture de notes | Boucle complète en Débutant, pour les trois mains | [02-lecture-notes.md](02-lecture-notes.md) |
-| 03 | Exercices techniques et agilité des doigts | Planifiée | [03-technique-doigts.md](03-technique-doigts.md) |
+| 02 | Lecture de notes | MVP complet + progression enregistrée | [02-lecture-notes.md](02-lecture-notes.md) |
+| 03 | Exercices techniques et agilité des doigts | MVP en pratique libre | [03-technique-doigts.md](03-technique-doigts.md) |
 | 04 | Programme d'entraînement | Planifiée | [04-programme-entrainement.md](04-programme-entrainement.md) |
-| 05 | Entraînement rythmique | Planifiée | [05-entrainement-rythmique.md](05-entrainement-rythmique.md) |
+| 05 | Entraînement rythmique | MVP des trois familles | [05-entrainement-rythmique.md](05-entrainement-rythmique.md) |
 | 06 | Travail intelligent d'un morceau | Planifiée — suite de 01 | [06-travail-intelligent-morceau.md](06-travail-intelligent-morceau.md) |
 | 07 | Entraînement de l'oreille | Planifiée | [07-entrainement-oreille.md](07-entrainement-oreille.md) |
 | 08 | Lecture de partitions | Planifiée — suite de 02 | [08-lecture-partitions.md](08-lecture-partitions.md) |
@@ -81,10 +81,17 @@ Voir [le plan détaillé de la Navigation](F1-navigation.md).
 
 - [x] Définir le principe de la détection et de la connexion d'un clavier.
 - [x] Définir le format normalisé d'un évènement de note.
-- [ ] Détecter le support du Web MIDI API et la connexion d'un appareil.
-- [ ] Implémenter la réception et la normalisation des notes jouées.
-- [ ] Ajouter l'indicateur de connexion et le choix de l'appareil.
-- [ ] Vérifier qu'aucune fonctionnalité ne devient dépendante du MIDI.
+- [x] Détecter le support du Web MIDI API et la connexion d'un appareil.
+  (`midi-input.js`, sans DOM ; branchement et débranchement à chaud gérés)
+- [x] Implémenter la réception et la normalisation des notes jouées.
+  (note on/off, vélocité 0..1, horodatage du message, rebonds filtrés)
+- [x] Ajouter l'indicateur de connexion et le choix de l'appareil.
+  (panneau sur l'accueil, avec les dernières notes reçues)
+- [x] Vérifier qu'aucune fonctionnalité ne devient dépendante du MIDI.
+  (les quatre modes vérifiés sans support et après un refus de permission)
+- [ ] Tester avec un vrai clavier branché.
+  (les vérifications passent par une doublure du Web MIDI — voir
+  [F2 § 15](F2-entree-midi.md#15-validation-effectuée-26-juillet-2026))
 
 Voir [le plan détaillé de l'Entrée MIDI](F2-entree-midi.md).
 
@@ -93,10 +100,16 @@ Voir [le plan détaillé de l'Entrée MIDI](F2-entree-midi.md).
 - [x] Définir le principe journal d'évènements + vues calculées.
 - [x] Définir qui produit et qui consomme les données.
 - [x] Trancher le chevauchement avec l'historique du Programme d'entraînement.
-- [ ] Définir et figer le format d'un évènement (à faire tôt).
-- [ ] Implémenter la persistance locale.
+- [x] Définir et figer le format d'un évènement (à faire tôt).
+  (figé le 25/07/2026 : une tentative = un évènement, journal unique où la
+  séance est une paire d'évènements — cf. [F3 § 7](F3-suivi-progression.md#7-modèle-de-données--figé-le-25072026))
+- [x] Implémenter la persistance locale.
+  (`localStorage`, écriture groupée, plafond de 4 000 évènements, stockage
+  refusé ou plein sans conséquence sur l'exercice)
 - [ ] Implémenter les vues de progression.
-- [ ] Implémenter les révisions adaptées aux erreurs précédentes.
+- [x] Implémenter les révisions adaptées aux erreurs précédentes.
+  (les notes ratées reviennent plus souvent ; « les moins vues récemment »
+  attend l'étape D de F3)
 
 Voir [le plan détaillé du Suivi de progression](F3-suivi-progression.md).
 
@@ -119,17 +132,20 @@ Voir [le plan détaillé du mode Morceau](01-apprentissage-morceau.md).
 - [x] Définir les choix Main droite, Main gauche et Les deux.
 - [x] Définir la session de dix notes et son bilan.
 - [x] Ajouter l'accès au mode Lecture de notes.
-- [ ] Implémenter les réglages de départ.
-  (écran en place ; les trois choix de main sont sélectionnables en Débutant,
-  les niveaux Intermédiaire et Difficile restent affichés « Bientôt » et
-  désactivés)
+- [x] Implémenter les réglages de départ.
+  (les trois niveaux et les trois choix de main sont sélectionnables ; plus
+  aucune combinaison désactivée)
 - [x] Implémenter la génération des questions.
 - [x] Implémenter la validation des touches.
 - [x] Implémenter les indices et les retours correct / incorrect.
 - [x] Implémenter le bilan de session.
-- [ ] Tester les neuf combinaisons de niveau et de main.
-  (trois existent — Débutant × Main droite / Main gauche / Les deux —, toutes
-  vérifiées le 25/07/2026)
+- [x] Tester les neuf combinaisons de niveau et de main.
+  (vérifiées dans le navigateur le 25/07/2026 —
+  [02 § 9](02-lecture-notes.md#validation-des-niveaux-intermédiaire-et-difficile-25-juillet-2026))
+- [x] Enregistrer les résultats, séparer le bilan par main et faire revenir les
+  notes ratées. (25/07/2026 —
+  [02 § 9](02-lecture-notes.md#validation-de-létape-d--progression-25-juillet-2026))
+- [ ] Introduire les dièses et les bémols.
 
 Voir [le plan détaillé de la Lecture de notes](02-lecture-notes.md).
 
@@ -138,13 +154,21 @@ Voir [le plan détaillé de la Lecture de notes](02-lecture-notes.md).
 - [x] Définir les premières familles d'exercices.
 - [x] Définir une présentation proche des morceaux actuels.
 - [x] Distinguer la pratique libre de la validation par clavier MIDI.
-- [ ] Ajouter l'accès au mode Exercices.
-- [ ] Créer le catalogue d'exercices.
-- [ ] Générer les notes, les doigtés et les répétitions.
+- [x] Ajouter l'accès au mode Exercices.
+- [x] Créer le catalogue d'exercices.
+  (trois exercices décrits en degrés de gamme, pas en fichiers MIDI)
+- [x] Générer les notes, les doigtés et les répétitions.
+  (notes de la même forme que celles du mode Morceau, plus le doigté)
 - [ ] Ajouter les choix de difficulté, de main et de tempo.
-- [ ] Ajouter le décompte, le métronome et la boucle.
-- [ ] Implémenter les exercices de déliement, d'accords et d'arpèges du MVP.
-- [ ] Ajouter le bilan adapté au type d'entrée utilisé.
+  (main, tempo et répétitions faits ; la difficulté attend un premier exercice
+  Intermédiaire — un sélecteur à une seule valeur serait un faux choix)
+- [x] Ajouter le décompte, le métronome et la boucle.
+  (`metronome.js` : grille de pulsation pure + lecture à ordonnanceur injecté,
+  réutilisable par [05](05-entrainement-rythmique.md))
+- [x] Implémenter les exercices de déliement, d'accords et d'arpèges du MVP.
+- [x] Ajouter le bilan adapté au type d'entrée utilisé.
+  (pratique libre : répétitions, tempo, durée — et aucun pourcentage, puisque
+  rien n'est mesuré)
 
 Voir [le plan détaillé des Exercices techniques](03-technique-doigts.md).
 
@@ -165,11 +189,18 @@ Voir [le plan détaillé du Programme d'entraînement](04-programme-entrainement
 - [x] Définir le principe et les trois familles d'exercices.
 - [x] Définir la mesure de précision temporelle (à l'heure / avance / retard).
 - [x] Définir un MVP qui ne dépend pas du clavier MIDI physique.
-- [ ] Ajouter l'accès au mode Entraînement rythmique.
-- [ ] Implémenter le mode Métronome.
-- [ ] Implémenter la reconnaissance des durées et des silences.
-- [ ] Implémenter la reproduction (tap et piano à l'écran).
+- [x] Ajouter l'accès au mode Entraînement rythmique.
+- [x] Implémenter le mode Métronome.
+  (tempo modifiable en marche, pulsation audible et visible, arrêt automatique
+  au bout de la durée choisie ; aucun score — c'est un outil)
+- [x] Implémenter la reconnaissance des durées et des silences.
+  (motif dessiné et joué, une figure encadrée à nommer parmi quatre)
+- [x] Implémenter la reproduction (tap et piano à l'écran).
+  (écoute puis reproduction sans couper la pulsation ; jugement par frappe et
+  tendance avance/retard/irrégulier au bilan)
 - [ ] Brancher l'entrée MIDI (F2) pour la reproduction au piano physique.
+- [ ] Ajouter les triolets du niveau Difficile.
+  (hors MVP : seule figure qui ne divise pas le temps par deux)
 
 Voir [le plan détaillé de l'Entraînement rythmique](05-entrainement-rythmique.md).
 
@@ -243,21 +274,55 @@ Voir [le plan détaillé des Exercices de pédale](09-pedale.md).
    Do3 → Sol3 en clé de fa, main tirée par question et équilibrée sur la
    session en mode Les deux — voir
    [02 § 9](02-lecture-notes.md#validation-de-la-main-gauche-et-du-mode-les-deux-25-juillet-2026).
-6. Ajouter les niveaux Intermédiaire et Difficile.
-7. Ajouter le bilan, l'adaptation aux erreurs et la validation complète de la
-   Lecture de notes.
-8. Figer le format d'évènement du Suivi de progression
+6. ~~Ajouter les niveaux Intermédiaire et Difficile.~~ **Fait** (25/07/2026) :
+   toute la portée plus le Do central en Intermédiaire, deux octaves avec
+   lignes supplémentaires en Difficile, et un clavier qui défile plutôt que de
+   descendre sous 30 px par touche — voir
+   [02 § 4](02-lecture-notes.md#groupes-de-notes-retenus) et
+   [02 § 9](02-lecture-notes.md#validation-des-niveaux-intermédiaire-et-difficile-25-juillet-2026).
+7. ~~Ajouter le bilan, l'adaptation aux erreurs et la validation complète de la
+   Lecture de notes.~~ **Fait** (25/07/2026) : bilan séparé par main en mode
+   Les deux, notes ratées qui reviennent plus souvent à la session suivante —
+   voir [02 § 9](02-lecture-notes.md#validation-de-létape-d--progression-25-juillet-2026).
+   Restent à vérifier à la main le toucher sur l'appareil et le rendu sonore.
+8. ~~Figer le format d'évènement du Suivi de progression
    ([F3](F3-suivi-progression.md), étape A **seulement**) et brancher la
-   Lecture de notes comme première productrice de données.
-9. Construire le catalogue et le générateur d'exercices techniques (pratique
+   Lecture de notes comme première productrice de données.~~ **Fait**
+   (25/07/2026) : une tentative = un évènement, journal unique dans
+   `localStorage` où une séance est une paire d'évènements — voir
+   [F3 § 7](F3-suivi-progression.md#7-modèle-de-données--figé-le-25072026).
+9. ~~Construire le catalogue et le générateur d'exercices techniques (pratique
    libre, sans MIDI), avec un premier `metronome.js` partagé pour le
-   décompte et les répétitions.
-10. Construire l'Entraînement rythmique
+   décompte et les répétitions.~~ **Fait** (26/07/2026) : trois exercices
+   (déliement, accords, arpèges) décrits en degrés de gamme, un générateur qui
+   produit des notes de la forme de celles du mode Morceau, et une grille de
+   pulsation partagée dont l'Entraînement rythmique réutilisera l'écart
+   avance/retard. La boucle complète est en place, du décompte au bilan — voir
+   [03 § 17](03-technique-doigts.md#17-validation-effectuée-26-juillet-2026).
+   Le rouleau **n'a pas** été mutualisé avec le mode Morceau : les deux modes
+   gardent le leur, et la raison est écrite en
+   [03 § 12](03-technique-doigts.md#le-rouleau-na-pas-été-mutualisé-avec-le-mode-morceau).
+10. ~~Construire l'Entraînement rythmique
     ([05](05-entrainement-rythmique.md)) : Métronome, Reconnaissance et
     Reproduction en tapant ou au piano à l'écran — toujours sans MIDI, en
-    étendant le `metronome.js` de l'étape 9.
-11. Construire la fondation Entrée MIDI ([F2](F2-entree-midi.md)) :
-    détection, connexion et réception normalisée des notes jouées.
+    étendant le `metronome.js` de l'étape 9.~~ **Fait** (26/07/2026) : les trois
+    familles fonctionnent de bout en bout, avec un jugement par frappe et une
+    tendance avance/retard/irrégulier — voir
+    [05 § 18](05-entrainement-rythmique.md#18-validation-effectuée-26-juillet-2026).
+    `metronome.js` n'a eu besoin d'**aucune extension** : écrit à l'étape 9 en
+    pensant à 05, il prenait déjà le nombre de temps par mesure et son
+    ordonnanceur en paramètres. Une nuance honnête tout de même en
+    [05 § 11](05-entrainement-rythmique.md#metronomejs-na-eu-besoin-daucune-extension) :
+    `nearestBeat()`, écrite d'avance *pour* 05, n'est pas ce dont 05 a eu besoin —
+    une frappe se compare aux attaques du motif, pas aux temps du métronome.
+11. ~~Construire la fondation Entrée MIDI ([F2](F2-entree-midi.md)) :
+    détection, connexion et réception normalisée des notes jouées.~~ **Fait**
+    (26/07/2026) : détection, permission, choix de l'appareil, branchement à
+    chaud et notes normalisées, avec un panneau de connexion sur l'accueil —
+    voir [F2 § 15](F2-entree-midi.md#15-validation-effectuée-26-juillet-2026).
+    Une seule instance partagée, dont l'état **survit aux changements de mode**.
+    Reste la vérification qu'aucune doublure ne remplace : un vrai clavier
+    branché.
 12. Brancher F2 dans la validation MIDI des exercices techniques (03), dans
     la reproduction au piano physique de l'Entraînement rythmique (05), puis
     dans les décisions MIDI encore ouvertes du mode Morceau (01).
