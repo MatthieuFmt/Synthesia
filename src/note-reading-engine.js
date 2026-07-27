@@ -1,15 +1,33 @@
 // ============================================================================
 //  Moteur de la Lecture de notes — Feature 02
 //
-//  Choix de la note à poser, validation d'une réponse, pondération des notes
-//  mal reconnues et bilan de session. Aucun DOM, aucun Canvas, aucun son : ce
-//  module est volontairement pur pour être testable sans navigateur
-//  (plan/02-lecture-notes.md § 6).
+//  Ce qui reste ici est ce qui n'appartient qu'à la lecture d'une note écrite :
+//  les groupes de notes par niveau et par main, la clé associée à chaque main,
+//  le calendrier des mains d'une session en mode « Les deux », et le tirage
+//  d'une note dans le groupe de la main du moment.
 //
-//  Le hasard est injectable (`random`) afin de rendre les tests déterministes.
+//  Le déroulé lui-même — tentatives, série, erreurs mémorisées, pondération des
+//  cibles ratées, bilan — vit dans `session-engine.js` depuis le 27/07/2026,
+//  quand l'Entraînement de l'oreille (07) en a eu besoin de la même version
+//  (plan/07-entrainement-oreille.md § 3). La surface publique de ce fichier n'a
+//  pas bougé pour autant : c'est toujours lui qu'appelle `note-reading-mode.js`.
+//
+//  Aucun DOM, aucun Canvas, aucun son : ce module est testable sans navigateur
+//  (plan/02-lecture-notes.md § 6). Le hasard est injectable (`random`).
 // ============================================================================
 
-export const QUESTIONS_PER_SESSION = 10;
+import {
+  createSession as createEngineSession,
+  DEFAULT_QUESTION_COUNT,
+  pickByWeight,
+  pickWeighted,
+  randomIndex,
+  summary as engineSummary,
+} from "./session-engine.js";
+
+export { answer, hintAvailable, mistakesForCurrentQuestion } from "./session-engine.js";
+
+export const QUESTIONS_PER_SESSION = DEFAULT_QUESTION_COUNT;
 
 // Clé de portée associée à chaque main dans ce parcours de lecture
 // (plan/02-lecture-notes.md § 5).
@@ -67,10 +85,6 @@ const HINT_AFTER_ERRORS = {
   advanced: 2,
 };
 
-// Poids ajouté à une note à chaque erreur : elle revient plus souvent dans la
-// suite de la session sans pour autant écraser les autres.
-const MISTAKE_WEIGHT = 2;
-
 export function notePool(difficulty, hand) {
   return NOTE_POOLS[difficulty]?.[hand] ?? null;
 }
@@ -105,41 +119,37 @@ export function createSession({
 
   const hands = handsForMode(hand);
   const pools = {};
-  const weights = new Map();
+  const keys = [];
   for (const h of hands) {
     pools[h] = [...notePool(difficulty, h)];
     // Le poids suit la clé de lecture, pas seulement la hauteur : la même
     // touche peut être posée dans deux contextes différents.
     for (const midi of pools[h]) {
-      const key = questionKey({ clef: CLEF_BY_HAND[h], midi });
-      weights.set(key, priorWeights?.get(key) ?? 1);
+      keys.push(questionKey({ clef: CLEF_BY_HAND[h], midi }));
     }
   }
 
-  const session = {
-    difficulty,
-    handMode: hand,
-    hands,
+  // Le calendrier des mains est tiré avant la première question : il consomme
+  // le hasard avant elle, comme lorsque tout vivait dans ce fichier.
+  const handSchedule = buildHandSchedule(hands, questionCount, random);
+
+  const session = createEngineSession({
     questionCount,
     random,
-    pools,
-    handSchedule: buildHandSchedule(hands, questionCount, random),
-    weights,
-    currentQuestion: null,
-    answeredQuestions: 0,
-    attemptsForCurrentNote: 0,
-    totalAttempts: 0,
-    firstTryCorrect: 0,
-    streak: 0,
-    bestStreak: 0,
-    mistakesByQuestion: new Map(),
+    keys,
+    priorWeights,
+    keyOf: questionKey,
+    nextQuestion: pickQuestion,
     // Mêmes compteurs, tenus main par main : en mode Les deux, une précision
     // globale masquerait la main en retard (plan/F3 § 6, « Évolution par main »).
-    byHand: new Map(hands.map((h) => [h, { answered: 0, firstTryCorrect: 0, attempts: 0 }])),
-    finished: false,
-  };
+    groupOf: (question) => question.hand,
+    groups: hands,
+    hintAfterErrors: HINT_AFTER_ERRORS[difficulty] ?? 0,
+    extra: { difficulty, handMode: hand, hands, pools, handSchedule },
+  });
 
-  session.currentQuestion = pickQuestion(session, null);
+  // Le bilan de cette fonctionnalité parle de mains, pas de groupes.
+  session.byHand = session.byGroup;
   return session;
 }
 
@@ -202,10 +212,6 @@ function staysFeasible(hands, remaining, hand, run) {
   return opposite <= (same + 1) * MAX_SAME_HAND_RUN;
 }
 
-function randomIndex(random, length) {
-  return Math.min(Math.floor(random() * length), length - 1);
-}
-
 // Tire la question suivante : jamais la même que la précédente sur la même
 // main (sauf s'il n'y a qu'une note), et d'autant plus souvent que la note a
 // été mal reconnue. La main vient du calendrier de la session.
@@ -217,114 +223,23 @@ function pickQuestion(session, previous) {
     hand === previous?.hand ? pool.filter((midi) => midi !== previous.midi) : pool;
   const choices = others.length > 0 ? others : pool;
 
-  const midi = pickWeighted(
-    session.random,
-    choices,
-    (candidate) => session.weights.get(questionKey({ clef, midi: candidate })) ?? 1
+  const midi = pickByWeight(session, choices, (candidate) =>
+    questionKey({ clef, midi: candidate })
   );
   return { midi, hand, clef };
 }
 
-function pickWeighted(random, choices, weightOf) {
-  let total = 0;
-  for (const choice of choices) total += weightOf(choice);
-
-  let ticket = random() * total;
-  for (const choice of choices) {
-    ticket -= weightOf(choice);
-    if (ticket < 0) return choice;
-  }
-  return choices[choices.length - 1]; // filet de sécurité (arrondis flottants)
-}
-
-// L'indice suit la règle du niveau : immédiat en Débutant, après une ou deux
-// erreurs ensuite.
-export function hintAvailable(session) {
-  if (session.finished) return false;
-  return session.attemptsForCurrentNote >= (HINT_AFTER_ERRORS[session.difficulty] ?? 0);
-}
-
-export function mistakesForCurrentQuestion(session) {
-  if (!session.currentQuestion) return 0;
-  return session.mistakesByQuestion.get(questionKey(session.currentQuestion)) ?? 0;
-}
-
-// Valide la touche jouée. Une erreur ne change jamais la question en cours
-// (plan/02-lecture-notes.md § 5) : elle est seulement mémorisée.
-export function answer(session, midi) {
-  const question = session.currentQuestion;
-  if (session.finished || !question) return { status: "ignored" };
-
-  session.attemptsForCurrentNote++;
-  session.totalAttempts++;
-  const hand = session.byHand.get(question.hand);
-  hand.attempts++;
-
-  if (midi !== question.midi) {
-    const key = questionKey(question);
-    session.mistakesByQuestion.set(key, (session.mistakesByQuestion.get(key) ?? 0) + 1);
-    session.weights.set(key, (session.weights.get(key) ?? 1) + MISTAKE_WEIGHT);
-    session.streak = 0;
-    return {
-      status: "wrong",
-      question,
-      played: midi,
-      attempts: session.attemptsForCurrentNote,
-    };
-  }
-
-  if (session.attemptsForCurrentNote === 1) {
-    session.firstTryCorrect++;
-    hand.firstTryCorrect++;
-  }
-  hand.answered++;
-  session.answeredQuestions++;
-  session.streak++;
-  session.bestStreak = Math.max(session.bestStreak, session.streak);
-  session.attemptsForCurrentNote = 0;
-
-  if (session.answeredQuestions >= session.questionCount) {
-    session.finished = true;
-    session.currentQuestion = null;
-  } else {
-    session.currentQuestion = pickQuestion(session, question);
-  }
-
-  return { status: "correct", question, finished: session.finished };
-}
-
+// Bilan de la session, avec les notes à revoir traduites depuis les clés
+// `clé:hauteur` du moteur, et les compteurs rendus main par main.
 export function summary(session) {
-  const toReview = [...session.mistakesByQuestion.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 3)
-    .map(([key, mistakes]) => {
-      const [clef, midi] = key.split(":");
-      return { clef, hand: HAND_BY_CLEF[clef], midi: Number(midi), mistakes };
-    });
-
-  // Même bilan main par main. Une main sans aucune réponse garde des compteurs
-  // à zéro : c'est à l'affichage de ne rien en dire plutôt que d'inventer une
-  // précision (plan/03 § 9, repris par plan/F3 § 6).
-  const byHand = {};
-  for (const [hand, counts] of session.byHand) {
-    byHand[hand] = {
-      answered: counts.answered,
-      firstTryCorrect: counts.firstTryCorrect,
-      accuracy: counts.attempts > 0 ? counts.answered / counts.attempts : 0,
-    };
-  }
+  const { byGroup, toReview, ...rest } = engineSummary(session);
 
   return {
-    questionCount: session.questionCount,
-    answeredQuestions: session.answeredQuestions,
-    firstTryCorrect: session.firstTryCorrect,
-    // Précision = une réponse juste par question, sans tentative superflue.
-    accuracy:
-      session.totalAttempts > 0
-        ? session.answeredQuestions / session.totalAttempts
-        : 0,
-    bestStreak: session.bestStreak,
-    toReview,
-    byHand,
+    ...rest,
+    toReview: toReview.map(({ key, mistakes }) => {
+      const [clef, midi] = key.split(":");
+      return { clef, hand: HAND_BY_CLEF[clef], midi: Number(midi), mistakes };
+    }),
+    byHand: byGroup,
   };
 }

@@ -18,13 +18,13 @@
 import { createAudio } from "./audio.js";
 import {
   CLEF_GLYPH,
-  isWhite,
   noteDegreeName,
   octaveOf,
   pitchClass,
   SHARP_PCS,
   staffStep,
 } from "./music.js";
+import { createPianoKeyboard } from "./piano-dom.js";
 import {
   answer,
   createSession,
@@ -52,12 +52,6 @@ const BASS_F_LINE_EM = 0.4469;
 // assez court pour ne pas casser le rythme.
 const NEXT_QUESTION_MS = 700;
 const WRONG_FLASH_MS = 450;
-
-// Largeur minimale d'une touche blanche, gap compris : en dessous, la cible
-// devient trop petite pour le doigt (≥ 30 px, cf. CLAUDE.md). Les étendues
-// larges des niveaux Intermédiaire et Difficile font défiler le clavier plutôt
-// que d'amincir ses touches.
-const MIN_KEY_WIDTH = 36;
 
 const DIFFICULTY_CHOICES = [
   { id: "beginner", label: "Débutant" },
@@ -116,8 +110,7 @@ function createModeState() {
     locked: false,     // vrai pendant la transition vers la question suivante
     hintShown: false,
     timers: new Set(),
-    keys: new Map(),   // midi -> bouton du clavier
-    keyboardRange: null, // étendue actuellement dessinée (suit la main jouée)
+    piano: null,       // clavier partagé (piano-dom.js), recréé à chaque écran
     ui: null,          // références du DOM de l'écran d'exercice
   };
 }
@@ -246,7 +239,7 @@ function beginSession() {
   });
   state.locked = false;
   state.hintShown = false;
-  state.keyboardRange = null;
+  state.piano = null;
 
   // Le clic sur « Commencer » est un vrai geste utilisateur : on en profite
   // pour lancer le téléchargement des échantillons avant la première réponse.
@@ -307,21 +300,18 @@ function renderExercise() {
   feedback.setAttribute("role", "status");
   feedback.setAttribute("aria-live", "polite");
 
-  const { keyboard, inner } = renderKeyboard();
+  // Le clavier vient de `piano-dom.js` : c'est exactement celui dont
+  // l'Entraînement de l'oreille avait besoin (plan/07 § 7).
+  state.piano = createPianoKeyboard({
+    prefix: "nr",
+    signal: listeners.signal,
+    onPress: pressKey,
+  });
 
-  root.append(status, staff.svg, feedback, keyboard);
+  root.append(status, staff.svg, feedback, state.piano.element);
   container.replaceChildren(root);
 
-  state.ui = {
-    progress,
-    streak,
-    hand,
-    hintBtn,
-    staff,
-    feedback,
-    keyboard,
-    keyboardInner: inner,
-  };
+  state.ui = { progress, streak, hand, hintBtn, staff, feedback };
   refreshExercise();
 }
 
@@ -449,103 +439,6 @@ function renderStaff() {
   return { svg, update };
 }
 
-// Clavier réduit à la zone travaillée (plan/02-lecture-notes.md § 4).
-//
-//  - groupe plus étroit qu'une octave (Débutant) : on affiche l'octave Do → Do
-//    qui le contient, ses touches inutilisées servant de leurres ;
-//  - groupe plus large (Intermédiaire, Difficile) : l'étendue exacte du groupe
-//    suffit — il compte déjà plus de dix candidats, et l'arrondir aux Do
-//    ajouterait quatre à sept touches, donc des touches trop fines.
-function keyboardRange(pool) {
-  const lowest = Math.min(...pool);
-  const highest = Math.max(...pool);
-  if (highest - lowest < 12) {
-    const start = lowest - pitchClass(lowest);
-    return { start, end: start + 12 };
-  }
-  return { start: lowest, end: highest };
-}
-
-// Le clavier est vide au départ : ses touches sont (re)dessinées par
-// `updateKeyboard()` à chaque question. Un seul écouteur suffit pour toutes les
-// touches, y compris celles qui n'existent pas encore.
-function renderKeyboard() {
-  const keyboard = el("div", "nr-keyboard");
-  const inner = el("div", "nr-keyboard-inner");
-  keyboard.appendChild(inner);
-  keyboard.addEventListener(
-    "click",
-    (event) => {
-      const key = event.target.closest?.(".nr-key");
-      if (key) pressKey(Number(key.dataset.midi));
-    },
-    { signal: listeners.signal }
-  );
-  return { keyboard, inner };
-}
-
-// En mode Les deux, la zone utile change de main en main : on ne redessine que
-// lorsque l'étendue change réellement, jamais entre deux questions d'une même
-// main.
-function updateKeyboard(hand) {
-  const { start, end } = keyboardRange(state.session.pools[hand]);
-  const current = state.keyboardRange;
-  if (current && current.start === start && current.end === end) return;
-
-  state.keyboardRange = { start, end };
-  const whites = [];
-  for (let midi = start; midi <= end; midi++) {
-    if (isWhite(midi)) whites.push(midi);
-  }
-  const whiteWidth = 100 / whites.length;
-  const blackWidth = whiteWidth * 0.62;
-
-  const whiteRow = el("div", "nr-whites");
-  const blackRow = el("div", "nr-blacks");
-  state.keys.clear();
-
-  // Largeur minimale du clavier : au-delà, il défile horizontalement plutôt que
-  // de rétrécir ses touches sous la taille du doigt. Sur la tablette en paysage
-  // les deux octaves du niveau Difficile tiennent sans défilement.
-  state.ui.keyboardInner.style.minWidth = `${whites.length * MIN_KEY_WIDTH}px`;
-
-  for (const midi of whites) {
-    const key = makeKey(midi, "nr-key nr-key--white");
-    // Repère d'octave : le Do reste le point d'ancrage du parcours.
-    if (pitchClass(midi) === 0) {
-      key.appendChild(el("span", "nr-key-label", "Do"));
-    }
-    whiteRow.appendChild(key);
-  }
-
-  for (let midi = start; midi <= end; midi++) {
-    if (isWhite(midi)) continue;
-    const leftWhiteIndex = whites.indexOf(midi - 1);
-    if (leftWhiteIndex < 0) continue;
-    const key = makeKey(midi, "nr-key nr-key--black");
-    key.style.left = `${(leftWhiteIndex + 1) * whiteWidth - blackWidth / 2}%`;
-    key.style.width = `${blackWidth}%`;
-    blackRow.appendChild(key);
-  }
-
-  state.ui.keyboardInner.replaceChildren(whiteRow, blackRow);
-
-  // Quand le clavier défile, on part du milieu de l'étendue : les deux
-  // extrémités sont alors à la même distance. La position ne bouge plus ensuite
-  // (elle est la même à chaque question), donc elle ne renseigne sur rien.
-  const keyboard = state.ui.keyboard;
-  keyboard.scrollLeft = (keyboard.scrollWidth - keyboard.clientWidth) / 2;
-}
-
-function makeKey(midi, className) {
-  const key = el("button", className);
-  key.type = "button";
-  key.dataset.midi = String(midi);
-  key.setAttribute("aria-label", `${noteDegreeName(midi)}${octaveOf(midi)}`);
-  state.keys.set(midi, key);
-  return key;
-}
-
 // ----------------------------------------------------------------------------
 //  Boucle de l'exercice
 // ----------------------------------------------------------------------------
@@ -559,14 +452,10 @@ function refreshExercise() {
   ui.streak.textContent = `Série : ${session.streak}`;
   ui.hintBtn.disabled = !hintAvailable(session) || state.hintShown;
   if (ui.hand) ui.hand.textContent = HAND_LABEL[question.hand];
-  updateKeyboard(question.hand);
+  // En mode Les deux, la zone utile change de main en main ; le clavier ne se
+  // redessine que lorsque l'étendue change réellement.
+  state.piano.setPool(session.pools[question.hand]);
   ui.staff.update(question);
-}
-
-function clearKeyStates() {
-  for (const key of state.keys.values()) {
-    key.classList.remove("is-correct", "is-wrong", "is-hinted");
-  }
 }
 
 function showHint() {
@@ -574,11 +463,7 @@ function showHint() {
   if (!session?.currentQuestion || !hintAvailable(session)) return;
   state.hintShown = true;
   state.ui.hintBtn.disabled = true;
-  const key = state.keys.get(session.currentQuestion.midi);
-  key?.classList.add("is-hinted");
-  // Sur un clavier qui défile, la touche désignée peut être hors du cadre :
-  // l'indice ne sert à rien s'il faut le chercher.
-  key?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  state.piano.highlight(session.currentQuestion.midi);
 }
 
 function pressKey(midi) {
@@ -590,7 +475,7 @@ function pressKey(midi) {
     console.error("Impossible de jouer la note.", error);
   });
 
-  const key = state.keys.get(midi);
+  const key = state.piano.key(midi);
   const result = answer(state.session, midi);
   recordAttempt(result, midi);
 
@@ -615,7 +500,7 @@ function pressKey(midi) {
   state.ui.hintBtn.disabled = true;
 
   later(() => {
-    clearKeyStates();
+    state.piano.clearStates();
     state.locked = false;
     state.hintShown = false;
     state.ui.feedback.textContent = "";
@@ -717,6 +602,7 @@ function renderSummary() {
 
   container.replaceChildren(root);
   state.ui = null;
+  state.piano = null;
 }
 
 function statItem(value, label) {

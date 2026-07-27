@@ -92,6 +92,25 @@
             />
             <span id="speedValue" class="speed-value">1×</span>
           </label>
+
+          <!-- Entrée du sous-mode Travail (feature 06). Le mode Morceau reste
+               un lecteur tant que ce bouton n'est pas activé. -->
+          <button
+            id="practiceToggle"
+            class="btn practice-toggle"
+            type="button"
+            aria-pressed="false"
+            aria-label="Travailler un passage"
+            title="Travailler un passage"
+          >
+            <svg class="toolbar-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M17 2l4 4-4 4" />
+              <path d="M3 11v-1a4 4 0 0 1 4-4h14" />
+              <path d="M7 22l-4-4 4-4" />
+              <path d="M21 13v1a4 4 0 0 1-4 4H3" />
+            </svg>
+            <span class="practice-toggle-label">Travail</span>
+          </button>
         </div>
 
         <!-- Barre de transport : lecture / curseur de position -->
@@ -109,6 +128,75 @@
             step="0.01"
             value="0"
           />
+        </div>
+
+        <!-- =================================================================
+             Sous-mode Travail : passages, main travaillée, boucle, attente et
+             tempo de travail (plan/06 § 10). Cette ligne n'apparaît que
+             lorsque le bouton Travail est enfoncé : l'écran de lecture simple
+             ne doit pas en être surchargé.
+             ============================================================== -->
+        <div id="practiceBar" class="practice-bar" hidden>
+          <div class="practice-group">
+            <select
+              id="practiceSection"
+              class="song-select practice-select"
+              aria-label="Passage travaillé"
+            >
+              <option value="">Morceau entier</option>
+            </select>
+            <button id="practiceAdd" class="btn icon-btn" type="button"
+              aria-label="Nouveau passage" title="Nouveau passage à la position actuelle">+</button>
+            <button id="practiceRename" class="btn icon-btn" type="button"
+              aria-label="Renommer le passage" title="Renommer le passage">✎</button>
+            <button id="practiceDelete" class="btn icon-btn" type="button"
+              aria-label="Supprimer le passage" title="Supprimer le passage">✕</button>
+          </div>
+
+          <div class="practice-group">
+            <!-- En petite largeur, seule la flèche reste : deux libellés de
+                 plus feraient une ligne de plus, prise sur le rouleau. -->
+            <button id="practiceMarkStart" class="btn practice-btn" type="button"
+              aria-label="Placer le début du passage à la position actuelle"
+              title="Placer le début du passage à la position actuelle"
+            ><span aria-hidden="true">⇤</span><span class="practice-btn-label">Début ici</span></button>
+            <button id="practiceMarkEnd" class="btn practice-btn" type="button"
+              aria-label="Placer la fin du passage à la position actuelle"
+              title="Placer la fin du passage à la position actuelle"
+            ><span aria-hidden="true">⇥</span><span class="practice-btn-label">Fin ici</span></button>
+          </div>
+
+          <div class="practice-group" role="group" aria-label="Main travaillée">
+            <button class="btn practice-btn practice-hand" data-hand="left" type="button"
+              aria-pressed="false" title="Travailler la main gauche">MG</button>
+            <button class="btn practice-btn practice-hand" data-hand="both" type="button"
+              aria-pressed="true" title="Travailler les deux mains">2 mains</button>
+            <button class="btn practice-btn practice-hand" data-hand="right" type="button"
+              aria-pressed="false" title="Travailler la main droite">MD</button>
+          </div>
+
+          <div class="practice-group">
+            <button id="practiceAccompany" class="btn practice-btn practice-switch" type="button"
+              aria-pressed="true" title="Jouer l'autre main en accompagnement">Accomp.</button>
+            <button id="practiceLoop" class="btn practice-btn practice-switch" type="button"
+              aria-pressed="true" title="Répéter le passage en boucle">Boucle</button>
+            <button id="practiceWait" class="btn practice-btn practice-switch" type="button"
+              aria-pressed="false" title="Attendre la bonne note avant de continuer">Attente</button>
+          </div>
+
+          <div class="practice-group practice-tempo">
+            <button id="practiceTempoDown" class="btn icon-btn" type="button"
+              aria-label="Tempo de travail : moins 5 %">−</button>
+            <span id="practiceTempoValue" class="practice-tempo-value">100 %</span>
+            <button id="practiceTempoUp" class="btn icon-btn" type="button"
+              aria-label="Tempo de travail : plus 5 %">+</button>
+          </div>
+
+          <div class="practice-status">
+            <span id="practiceStatusText" class="practice-status-text" role="status"></span>
+            <button id="practiceApplyTempo" class="btn practice-btn practice-suggest"
+              type="button" hidden></button>
+          </div>
         </div>
       </div>
     </header>

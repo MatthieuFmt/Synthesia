@@ -23,20 +23,20 @@ pour avancer, pas avant.
 | Nº | Fondation | État actuel | Plan détaillé |
 | --- | --- | --- | --- |
 | F1 | Navigation entre les fonctionnalités | Première boucle en place | [F1-navigation.md](F1-navigation.md) |
-| F2 | Entrée clavier MIDI (reconnaissance des touches jouées) | En place, pas encore consommée | [F2-entree-midi.md](F2-entree-midi.md) |
+| F2 | Entrée clavier MIDI (reconnaissance des touches jouées) | En place, consommée par 01, 03 et 05 | [F2-entree-midi.md](F2-entree-midi.md) |
 | F3 | Suivi de progression | Journal en place, vues à construire | [F3-suivi-progression.md](F3-suivi-progression.md) |
 
 ## Fonctionnalités
 
 | Nº | Fonctionnalité | État actuel | Plan détaillé |
 | --- | --- | --- | --- |
-| 01 | Apprentissage d'un morceau | Version de lecture déjà en place | [01-apprentissage-morceau.md](01-apprentissage-morceau.md) |
+| 01 | Apprentissage d'un morceau | Lecteur + clavier MIDI ; travail guidé via 06 | [01-apprentissage-morceau.md](01-apprentissage-morceau.md) |
 | 02 | Lecture de notes | MVP complet + progression enregistrée | [02-lecture-notes.md](02-lecture-notes.md) |
-| 03 | Exercices techniques et agilité des doigts | MVP en pratique libre | [03-technique-doigts.md](03-technique-doigts.md) |
-| 04 | Programme d'entraînement | Planifiée | [04-programme-entrainement.md](04-programme-entrainement.md) |
-| 05 | Entraînement rythmique | MVP des trois familles | [05-entrainement-rythmique.md](05-entrainement-rythmique.md) |
-| 06 | Travail intelligent d'un morceau | Planifiée — suite de 01 | [06-travail-intelligent-morceau.md](06-travail-intelligent-morceau.md) |
-| 07 | Entraînement de l'oreille | Planifiée | [07-entrainement-oreille.md](07-entrainement-oreille.md) |
+| 03 | Exercices techniques et agilité des doigts | MVP complet, avec validation MIDI | [03-technique-doigts.md](03-technique-doigts.md) |
+| 04 | Programme d'entraînement | Boucle complète — lit le journal de F3 | [04-programme-entrainement.md](04-programme-entrainement.md) |
+| 05 | Entraînement rythmique | Trois familles, trois entrées | [05-entrainement-rythmique.md](05-entrainement-rythmique.md) |
+| 06 | Travail intelligent d'un morceau | Cinq outils en place — sous-mode de 01 | [06-travail-intelligent-morceau.md](06-travail-intelligent-morceau.md) |
+| 07 | Entraînement de l'oreille | Trois familles sur quatre ; mélodie hors MVP | [07-entrainement-oreille.md](07-entrainement-oreille.md) |
 | 08 | Lecture de partitions | Planifiée — suite de 02 | [08-lecture-partitions.md](08-lecture-partitions.md) |
 | 09 | Exercices de pédale | Planifiée | [09-pedale.md](09-pedale.md) |
 
@@ -68,10 +68,12 @@ fonctionnalité d'origine au lieu de le dupliquer.
 - [x] Définir le contrat commun de démarrage/arrêt d'une fonctionnalité.
 - [x] Ajouter un écran ou un sélecteur de fonctionnalité.
 - [x] Séparer le mode Morceau du démarrage général de l'application.
-- [ ] Partager proprement les fonctions musicales, le son et le piano.
+- [x] Partager proprement les fonctions musicales, le son et le piano.
   (`music.js`, `audio.js` et `perf.js` extraits le 25/07/2026, quand la
-  Lecture de notes en a eu besoin ; le piano reste propre à chaque mode, les
-  deux claviers n'ayant encore rien en commun — cf. [F1 § 6](F1-navigation.md))
+  Lecture de notes en a eu besoin — cf. [F1 § 6](F1-navigation.md). Le piano
+  DOM a suivi le 27/07/2026 : `piano-dom.js`, le jour où l'Entraînement de
+  l'oreille a eu besoin **du même** clavier que 02. Les trois autres claviers
+  de l'application restent propres à leur mode, n'ayant toujours rien en commun)
 - [x] Arrêter proprement une fonctionnalité lors d'un changement de mode.
 - [x] Conserver une navigation claire sur ordinateur et mobile.
 
@@ -107,6 +109,10 @@ Voir [le plan détaillé de l'Entrée MIDI](F2-entree-midi.md).
   (`localStorage`, écriture groupée, plafond de 4 000 évènements, stockage
   refusé ou plein sans conséquence sur l'exercice)
 - [ ] Implémenter les vues de progression.
+  (une seule des six existe — l'historique des séances, `progress/views.js`,
+  écrite le 27/07/2026 parce que le Programme d'entraînement en avait
+  réellement besoin. Les cinq autres attendent une fonctionnalité qui les
+  demande)
 - [x] Implémenter les révisions adaptées aux erreurs précédentes.
   (les notes ratées reviennent plus souvent ; « les moins vues récemment »
   attend l'étape D de F3)
@@ -119,9 +125,18 @@ Voir [le plan détaillé du Suivi de progression](F3-suivi-progression.md).
 - [x] Écouter le morceau avec un piano synthétisé.
 - [x] Se déplacer librement dans le morceau.
 - [x] Cliquer les touches du piano affiché.
-- [ ] Transformer la lecture en véritable exercice guidé.
-- [ ] Définir comment une note jouée par l'utilisateur est validée.
-- [ ] Définir quand un morceau ou un passage est considéré comme appris.
+- [x] Jouer sur un clavier MIDI branché : les touches s'allument et sonnent.
+  (26/07/2026 ; aucun jugement en lecture simple — le travail guidé est le
+  sous-mode Travail de [06](06-travail-intelligent-morceau.md))
+- [x] Transformer la lecture en véritable exercice guidé.
+  (26/07/2026 : bouton « Travail » → passages, mains, boucle, attente, tempo)
+- [x] Définir comment une note jouée par l'utilisateur est validée.
+  (bonne hauteur **dans la fenêtre** de tolérance de
+  [05 § 5](05-entrainement-rythmique.md#5-mesure--trop-tôt--trop-tard-), avec le
+  même juge que la validation MIDI de 03 — le timing n'entre pas dans le verdict)
+- [x] Définir quand un morceau ou un passage est considéré comme appris.
+  (deux exécutions propres au tempo cible sur deux jours distincts ; morceau
+  appris = tous les passages maîtrisés plus le morceau entier joué proprement)
 
 Voir [le plan détaillé du mode Morceau](01-apprentissage-morceau.md).
 
@@ -168,7 +183,8 @@ Voir [le plan détaillé de la Lecture de notes](02-lecture-notes.md).
 - [x] Implémenter les exercices de déliement, d'accords et d'arpèges du MVP.
 - [x] Ajouter le bilan adapté au type d'entrée utilisé.
   (pratique libre : répétitions, tempo, durée — et aucun pourcentage, puisque
-  rien n'est mesuré)
+  rien n'est mesuré. Avec un clavier MIDI : notes justes, séries sans faute,
+  par main, pas à retravailler et régularité rythmique)
 
 Voir [le plan détaillé des Exercices techniques](03-technique-doigts.md).
 
@@ -176,11 +192,19 @@ Voir [le plan détaillé des Exercices techniques](03-technique-doigts.md).
 
 - [x] Définir le principe du programme (fonctionnalités, fréquence, durée).
 - [x] Définir le calcul des séances dues du jour.
-- [ ] Ajouter l'accès au Programme d'entraînement depuis la navigation.
-- [ ] Implémenter la configuration du programme.
-- [ ] Implémenter l'écran Aujourd'hui et le démarrage d'une séance planifiée.
-- [ ] Enregistrer une séance comme terminée à la fin naturelle de la fonctionnalité.
-- [ ] Tester les trois types de fréquence et le passage de semaine/mois.
+- [x] Ajouter l'accès au Programme d'entraînement depuis la navigation.
+  (première carte de l'accueil : c'est lui qui dit par quoi commencer)
+- [x] Implémenter la configuration du programme.
+  (inclusion, fréquence, nombre de séances par période, durée ; valeurs par
+  défaut proposées plutôt qu'un formulaire vide)
+- [x] Implémenter l'écran Aujourd'hui et le démarrage d'une séance planifiée.
+  (états À faire / Fait / Quota atteint, et « Refaire » quand tout est fait)
+- [x] Enregistrer une séance comme terminée à la fin naturelle de la fonctionnalité.
+  (rien n'a été ajouté : c'est le `session-end` en `done` que les
+  fonctionnalités écrivaient déjà dans le journal de F3)
+- [x] Tester les trois types de fréquence et le passage de semaine/mois.
+  (avec une horloge injectée — voir
+  [04 § 16](04-programme-entrainement.md#16-validation-effectuée-27-juillet-2026))
 
 Voir [le plan détaillé du Programme d'entraînement](04-programme-entrainement.md).
 
@@ -198,7 +222,8 @@ Voir [le plan détaillé du Programme d'entraînement](04-programme-entrainement
 - [x] Implémenter la reproduction (tap et piano à l'écran).
   (écoute puis reproduction sans couper la pulsation ; jugement par frappe et
   tendance avance/retard/irrégulier au bilan)
-- [ ] Brancher l'entrée MIDI (F2) pour la reproduction au piano physique.
+- [x] Brancher l'entrée MIDI (F2) pour la reproduction au piano physique.
+  (troisième entrée, visible mais désactivée sans clavier connecté)
 - [ ] Ajouter les triolets du niveau Difficile.
   (hors MVP : seule figure qui ne divise pas le temps par deux)
 
@@ -209,11 +234,19 @@ Voir [le plan détaillé de l'Entraînement rythmique](05-entrainement-rythmique
 - [x] Définir les cinq outils de travail (passages, mains, boucle, attente, tempo).
 - [x] Définir la règle de progression du tempo.
 - [x] Définir ce qu'est un passage « maîtrisé ».
-- [ ] Implémenter le découpage en passages.
-- [ ] Implémenter le travail d'une main séparément.
-- [ ] Implémenter la boucle d'un passage.
-- [ ] Implémenter le mode « attendre la bonne note ».
-- [ ] Implémenter la montée progressive du tempo.
+- [x] Implémenter le découpage en passages.
+  (création à la position de lecture, renommage, suppression, bornes déplacées
+  au bouton ou au glissement sur le rouleau, retrouvées à la séance suivante)
+- [x] Implémenter le travail d'une main séparément.
+  (la main non travaillée est effacée et jouée en accompagnement, ou masquée)
+- [x] Implémenter la boucle d'un passage.
+  (bornes de boucle confiées au Transport de Tone, pas à la boucle d'animation)
+- [x] Implémenter le mode « attendre la bonne note ».
+  (accord complet dans n'importe quel ordre, note fausse signalée sans reculer,
+  aide sur la touche après deux échecs, au clavier physique comme à l'écran)
+- [x] Implémenter la montée progressive du tempo.
+  (+5 % proposés après une exécution propre, jamais appliqués d'office ;
+  meilleur tempo propre conservé par passage)
 
 Voir [le plan détaillé du Travail intelligent d'un morceau](06-travail-intelligent-morceau.md).
 
@@ -222,11 +255,18 @@ Voir [le plan détaillé du Travail intelligent d'un morceau](06-travail-intelli
 - [x] Définir les quatre familles d'exercices.
 - [x] Définir la réutilisation du moteur de session de la Lecture de notes.
 - [x] Définir la frontière avec la future théorie musicale.
-- [ ] Ajouter l'accès au mode Entraînement de l'oreille.
-- [ ] Implémenter la reconnaissance d'une note entendue.
-- [ ] Implémenter la reconnaissance des intervalles.
-- [ ] Implémenter la distinction majeur / mineur.
+- [x] Ajouter l'accès au mode Entraînement de l'oreille.
+  (carte « Oreille » de l'accueil, 27/07/2026)
+- [x] Implémenter la reconnaissance d'une note entendue.
+  (trois étendues, repère Do rejouable à volonté, réponse au piano ou en MIDI)
+- [x] Implémenter la reconnaissance des intervalles.
+  (le degré seul en Débutant et Intermédiaire, les douze écarts qualifiés en
+  Difficile ; successif puis simultané)
+- [x] Implémenter la distinction majeur / mineur.
+  (position serrée, autres degrés, puis premiers renversements)
 - [ ] Implémenter la reproduction d'une courte mélodie.
+  (hors MVP, cf. [07 § 4](07-entrainement-oreille.md) — seule famille dont la
+  validation se fait note à note)
 
 Voir [le plan détaillé de l'Entraînement de l'oreille](07-entrainement-oreille.md).
 
@@ -323,18 +363,94 @@ Voir [le plan détaillé des Exercices de pédale](09-pedale.md).
     Une seule instance partagée, dont l'état **survit aux changements de mode**.
     Reste la vérification qu'aucune doublure ne remplace : un vrai clavier
     branché.
-12. Brancher F2 dans la validation MIDI des exercices techniques (03), dans
+12. ~~Brancher F2 dans la validation MIDI des exercices techniques (03), dans
     la reproduction au piano physique de l'Entraînement rythmique (05), puis
-    dans les décisions MIDI encore ouvertes du mode Morceau (01).
-13. Construire le Travail intelligent d'un morceau
+    dans les décisions MIDI encore ouvertes du mode Morceau (01).~~ **Fait**
+    (26/07/2026), les trois :
+    - **03** valide les notes jouées et son bilan dit lesquelles sont passées,
+      par main, avec les pas à retravailler. Une série jugée devient un `run`
+      en `clean`/`flawed` là où la pratique libre écrit un `repetition` en
+      `none` — sans toucher au format de F3 (
+      [03 étape D](03-technique-doigts.md#étape-d--validation-midi--faite-le-26072026)) ;
+    - **05** en fait sa troisième entrée de reproduction, en corrigeant
+      l'instant avec l'horodatage du message MIDI — le seul endroit où cela
+      change une mesure (
+      [05 étape E](05-entrainement-rythmique.md#étape-e--entrée-midi-physique--faite-le-26072026)) ;
+    - **01** allume et fait sonner ses touches, sans juger quoi que ce soit :
+      la décision « piano à l'écran, physique, ou les deux ? » était déjà
+      tranchée par 06 (les deux), le reste du travail guidé lui appartient (
+      [01](01-apprentissage-morceau.md#le-clavier-physique-dès-maintenant-26072026)).
+
+    Au passage, `rhythm/timing.js` a été **généralisé** plutôt que dupliqué :
+    son appariement accepte un critère supplémentaire, ce qui lui permet de
+    servir aux notes de 03 (hauteur **et** temps) comme aux frappes de 05
+    (temps seul). Les seuils du § 5 de 05 sont donc les mêmes partout, comme ce
+    plan le prévoyait.
+13. ~~Construire le Travail intelligent d'un morceau
     ([06](06-travail-intelligent-morceau.md)) : passages, mains séparées,
-    boucle, attente de la bonne note et montée progressive du tempo.
-14. Construire le Programme d'entraînement
+    boucle, attente de la bonne note et montée progressive du tempo.~~ **Fait**
+    (26/07/2026) : les cinq outils sont combinables et le cas d'usage central du
+    plan fonctionne — boucler un passage, main gauche seule, en attente, à 60 %
+    du tempo, et le retrouver à la séance suivante. Voir
+    [06 § 15](06-travail-intelligent-morceau.md#15-validation-effectuée-26-juillet-2026).
+
+    Le travail est un **sous-mode** du mode Morceau, pas un mode de plus : sans
+    le bouton « Travail », l'écran reste le lecteur d'avant. Ce qui se calcule
+    sans écran vit dans `song-practice.js` ; le reste est branché sur le rouleau
+    et le clavier déjà en place. Trois choses n'ont **pas** été réécrites : le
+    jugement d'une exécution (`exercises/validate-run.js`, qui juge un passage
+    exactement comme une série), les seuils de timing
+    (`rhythm/timing.js`) et les « notes à revoir » (`stepsToRework`). Un piège
+    en revanche est apparu, et il vaut pour la suite : **le Transport de Tone
+    est partagé par tous les modes**, donc une boucle activée pour un passage
+    doit être relâchée par `stop()`, sinon le mode suivant en hérite.
+14. ~~Construire le Programme d'entraînement
     ([04](04-programme-entrainement.md)), qui lit l'historique des séances de
-    F3 au lieu d'en tenir un second.
-15. Construire l'Entraînement de l'oreille
+    F3 au lieu d'en tenir un second.~~ **Fait** (27/07/2026) : configurer,
+    voir ce qu'il reste à faire aujourd'hui, démarrer une séance et la
+    retrouver cochée — les trois fréquences comprises. Voir
+    [04 § 16](04-programme-entrainement.md#16-validation-effectuée-27-juillet-2026).
+
+    Le pari de l'étape 8 est tenu : **brancher 04 n'a modifié aucune
+    fonctionnalité existante.** Une séance terminée était déjà un `session-end`
+    en `done` dans le journal figé le 25/07/2026, si bien qu'aucun champ,
+    aucune migration et aucune ligne dans 02, 03, 05 ou 06 n'ont été
+    nécessaires. Seule la première des six vues de F3 a été écrite —
+    l'historique des séances, `progress/views.js` —, celle dont 04 avait
+    réellement besoin.
+
+    Deux choses ont été **corrigées** dans le plan en l'implémentant : le
+    `training-log.js` qu'il prévoyait n'existe pas (c'était le second
+    historique que F3 § 5 écartait), et un `featureId` du registre n'est pas
+    toujours celui du journal — `song` est satisfait par `song-practice`,
+    parce qu'écouter un morceau n'est pas une séance de travail.
+15. ~~Construire l'Entraînement de l'oreille
     ([07](07-entrainement-oreille.md)), en extrayant au passage le moteur de
-    session de la Lecture de notes en module réutilisable.
+    session de la Lecture de notes en module réutilisable.~~ **Fait**
+    (27/07/2026) pour les **trois premières familles** × trois niveaux :
+    entendre une note et la retrouver au piano, nommer un intervalle, dire si un
+    accord est majeur ou mineur. La **Mélodie** reste hors MVP, comme le prévoit
+    [07 § 4](07-entrainement-oreille.md). Voir
+    [07 § 18](07-entrainement-oreille.md#18-validation-effectuée-27-juillet-2026).
+
+    Le pari de [07 § 3](07-entrainement-oreille.md) est tenu : **une fois la
+    première famille en place, les deux autres n'ont demandé aucun travail de
+    session.** `session-engine.js` a bien été extrait de 02, et sa surface
+    publique n'a pas bougé — `note-reading-engine.js` garde ses mêmes exports,
+    si bien que les trois campagnes de 02 se rejouent telles quelles.
+
+    Une **seconde extraction, non prévue** : `piano-dom.js`. Le § 7 de 07
+    renvoyait explicitement au clavier de 02, c'était donc un second
+    consommateur de la *même* version. Il a été extrait avec un préfixe de
+    classes CSS en paramètre, ce qui laisse le DOM de 02 inchangé — et c'est
+    précisément ce qui a permis à ses harnais de servir de vraie mesure de
+    non-régression plutôt que d'être réécrits pour l'occasion.
+
+    Deux choses ont été **corrigées** dans le plan en l'implémentant : les
+    quatre décisions ouvertes du § 15 sont tranchées (Do fixe, intervalles
+    nommés, ascendants seulement, pas de « chanter puis vérifier »), et une
+    cinquième est apparue — la qualité d'un intervalle n'est demandée qu'au
+    niveau Difficile, où « tous les intervalles jusqu'à l'octave » l'impose.
 16. Construire la Lecture de partitions ([08](08-lecture-partitions.md)) :
     petites mesures, valeurs et silences, altérations, notes simultanées puis
     double portée.

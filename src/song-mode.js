@@ -31,6 +31,25 @@ import { isForcedLandscape, VIEWPORT_CHANGE_EVENT } from "./viewport.js";
 import { PERFORMANCE_PROFILE } from "./perf.js";
 import { createAudio, midiToNote } from "./audio.js";
 import { midiInput } from "./midi-input.js";
+import { createProgressStore } from "./progress/store.js";
+import {
+  clampBounds,
+  clampTempoPercent,
+  createSectionStore,
+  DEFAULT_SECTION_SECONDS,
+  evaluateRun,
+  expectedNotes,
+  groupChords,
+  HELP_AFTER_FAILS,
+  isMastered,
+  isWorkedHand,
+  nextGroupIndex,
+  notesToRework,
+  songIdFromTitle,
+  suggestTempo,
+  TEMPO_STEP_PERCENT,
+  WHOLE_SONG_ID,
+} from "./song-practice.js";
 import {
   CLEF_GLYPH,
   isWhite,
@@ -48,6 +67,13 @@ import {
 const PIXELS_PER_SECOND = 140;  // échelle temporelle verticale
 const SPLIT_NOTE = 60;          // Do central : seuil graves/aigus pour le fallback
 const KEY_PRESS_MS = 220;       // durée de l'assombrissement après un clic sur une touche
+const WRONG_FLASH_MS = 260;     // signalement d'une note fausse en mode Attente
+// Le travail d'un passage est une pratique à part entière, distincte de
+// l'écoute d'un morceau : le journal de progression (F3) les sépare, et le
+// Programme d'entraînement (04) pourra programmer l'un sans l'autre.
+const PRACTICE_FEATURE_ID = "song-practice";
+const BOUND_GRAB_PX = 14;       // zone de saisie d'une borne de passage (au doigt)
+const ACCOMPANY_ALPHA = 0.28;   // opacité de la main non travaillée
 
 const COLORS = {
   background: "#0d1117",
@@ -63,6 +89,11 @@ const COLORS = {
   active: "#ffffff",
   cursor: "#ffae57",
   pedal: "#d2a8ff",
+  bound: "#ffd166",          // bornes du passage travaillé
+  outside: "rgba(3, 5, 8, .62)", // hors du passage : assombri, jamais masqué
+  expected: "#ffffff",       // note attendue en mode Attente
+  wrongKey: "#f87171",       // note fausse : signalée, sans rien changer d'autre
+  hintKey: "#7ee2a8",        // aide après plusieurs échecs sur le même accord
   label: "#6e7681",
   cardBg: "#f6f1e3", // fond « papier » des mini-portées
   ink: "#1b1b1b",    // encre des portées / notes
@@ -123,8 +154,49 @@ function createSession() {
     // Désabonnement du clavier physique (F2). L'entrée, elle, est partagée et
     // survit au changement de mode.
     stopMidi: null,
+
+    // Sous-mode Travail (feature 06). Tant que `enabled` est faux, le mode se
+    // comporte exactement comme le lecteur d'avant.
+    practice: createPracticeState(),
+    progress: createProgressStore(),
+    practiceLog: null,   // séance F3 ouverte pendant le travail
   };
 }
+
+// L'état du travail est recréé à chaque morceau : les compteurs d'une séance
+// n'ont aucun sens reportés sur un autre morceau. Les réglages, eux, sont
+// réappliqués par `loadInitialSong` depuis les préférences enregistrées.
+function createPracticeState() {
+  return {
+    enabled: false,
+    hand: "both",        // main travaillée
+    accompany: true,     // l'autre main est jouée par l'application, ou masquée
+    loop: true,
+    wait: false,
+    songId: null,
+    sectionId: null,     // null = morceau entier
+    sections: [],
+
+    repetitions: 0,      // tours effectués depuis l'entrée dans le passage
+    cleanRuns: 0,
+    flawedStreak: 0,
+    played: [],          // notes jouées pendant le tour en cours (horloge morceau)
+    lastReport: null,    // jugement du dernier tour, ou null si rien n'a été mesuré
+    reports: [],         // tours jugés, pour les notes à revoir (les 20 derniers)
+    suggestion: null,    // proposition de tempo, jamais appliquée d'office
+
+    groups: [],          // accords attendus, pour le mode Attente
+    nextGroup: -1,
+    waiting: null,       // { index, remaining: Set, fails }
+    hintKeys: new Set(), // touches montrées après plusieurs échecs
+    wrongKeys: new Set(),
+    lastTransportTime: 0,
+  };
+}
+
+// Le journal des passages survit à la session : il est relu au démarrage du
+// mode et réécrit à chaque modification (plan/06 § 5).
+const sectionStore = createSectionStore();
 
 // Vrai tant que la session en cours peut dessiner. Les rappels différés
 // (requestAnimationFrame, setTimeout, promesses) passent par ici pour ne
@@ -150,12 +222,23 @@ function saveSettings() {
   // vide correspond à l'option d'invite du <select> : rien à restaurer.
   const idx = parseInt(document.getElementById("songSelect").value, 10);
   const fromLibrary = !isNaN(idx) && songLibrary[idx];
+  const practice = state.practice;
   const data = {
     speed: state.speed,
     showNotation: state.showNotation,
     currentTime: state.currentTime,
     songIndex: fromLibrary ? idx : null,
     songTitle: fromLibrary ? songLibrary[idx].title : null,
+    // Réglages du sous-mode Travail. Le passage actif est retenu avec eux :
+    // reprendre le travail là où on l'a laissé fait partie du § 18 de plan/06.
+    practice: {
+      enabled: practice.enabled,
+      hand: practice.hand,
+      accompany: practice.accompany,
+      loop: practice.loop,
+      wait: practice.wait,
+      sectionId: practice.sectionId,
+    },
   };
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
@@ -564,6 +647,7 @@ function draw() {
       drawNotationCards(firstVisibleNote, afterLastVisibleNote);
     }
     drawPedalCues(w);
+    drawPracticeSection(w, h);
     ctx.restore();
   }
 
@@ -643,10 +727,15 @@ function drawMeasureLines(w, h) {
   }
 }
 
-// Notes : rectangles arrondis colorés par main, surbrillance si en cours
+// Notes : rectangles arrondis colorés par main, surbrillance si en cours.
+// En sous-mode Travail, la main non travaillée s'efface (accompagnement) ou
+// disparaît (plan/06 § 6), et la note attendue est cerclée de blanc.
 function drawNotes(first, afterLast) {
   const h = layout.height;
   const now = state.currentTime;
+  const practice = state.practice;
+  const separateHands = practice.enabled && practice.hand !== "both";
+  const waiting = practice.enabled && practice.waiting;
 
   for (let index = first; index < afterLast; index++) {
     const n = state.song.notes[index];
@@ -654,11 +743,19 @@ function drawNotes(first, afterLast) {
     const yTop = timeToScreenY(n.endTime);
     if (yBottom < -50 || yTop > h + 50) continue;
 
+    const worked = !separateHands || n.hand === practice.hand;
+    if (!worked && !practice.accompany) continue;
+
     const g = noteGeometry(n.midi);
     const isRight = n.hand === "right";
     const isActive = now >= n.time && now <= n.endTime;
     const isBlackKey = !g.white; // dièse/bémol -> teinte plus foncée
+    const isExpected =
+      waiting &&
+      practice.waiting.remaining.has(n.midi) &&
+      Math.abs(n.time - now) < 0.05;
 
+    if (!worked) ctx.globalAlpha = ACCOMPANY_ALPHA;
     ctx.fillStyle = isRight
       ? isBlackKey
         ? COLORS.rightHandDark
@@ -676,12 +773,50 @@ function drawNotes(first, afterLast) {
     );
     ctx.fill();
 
-    if (isActive) {
+    if (isExpected) {
+      ctx.strokeStyle = COLORS.expected;
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+    } else if (isActive) {
       ctx.strokeStyle = COLORS.active;
       ctx.lineWidth = 1.25;
       ctx.stroke();
     }
+    if (!worked) ctx.globalAlpha = 1;
   }
+}
+
+// Bornes du passage travaillé : ce qui est hors du passage est assombri (et
+// non masqué — on doit voir ce qui précède et ce qui suit), les deux bornes
+// portent une poignée saisissable au doigt.
+function drawPracticeSection(w, h) {
+  const section = activeSection();
+  if (!section) return;
+
+  const yEnd = timeToScreenY(section.endSeconds);
+  const yStart = timeToScreenY(section.startSeconds);
+
+  ctx.fillStyle = COLORS.outside;
+  if (yEnd > 0) ctx.fillRect(0, 0, w, Math.min(h, yEnd));
+  if (yStart < h) ctx.fillRect(0, Math.max(0, yStart), w, h - Math.max(0, yStart));
+
+  ctx.strokeStyle = COLORS.bound;
+  ctx.lineWidth = 2;
+  line(0, crisp(yStart), w, crisp(yStart));
+  line(0, crisp(yEnd), w, crisp(yEnd));
+
+  drawBoundHandle(4, yStart, "début");
+  drawBoundHandle(4, yEnd, section.title);
+}
+
+function drawBoundHandle(x, y, label) {
+  ctx.font = "11px system-ui, sans-serif";
+  const width = Math.min(layout.width - 8, ctx.measureText(label).width + 14);
+  ctx.fillStyle = COLORS.bound;
+  roundRect(x, y - 8, width, 16, 4);
+  ctx.fill();
+  ctx.fillStyle = "#1b1b1b";
+  ctx.fillText(label, x + 7, y + 4);
 }
 
 // Repères de pédale : une ligne violette matérialise la durée de l'appui.
@@ -923,12 +1058,20 @@ function computeActiveKeys() {
     noteStart
   );
   const afterLast = upperBound(state.song.notes, now, noteStart);
+  const practice = state.practice;
+  const separateHands = practice.enabled && practice.hand !== "both";
   for (let index = first; index < afterLast; index++) {
     const note = state.song.notes[index];
-    if (now <= note.endTime) {
-      active[note.midi] =
-        note.hand === "right" ? ACTIVE_RIGHT : ACTIVE_LEFT;
+    if (now > note.endTime) continue;
+    // Main masquée : sa touche ne s'allume pas non plus.
+    if (separateHands && note.hand !== practice.hand && !practice.accompany) {
+      continue;
     }
+    // En mode Attente, la touche cherchée ne s'allume pas d'elle-même : ce
+    // serait donner la réponse, et l'aide du § 7 n'aurait plus lieu d'être.
+    // Elle s'allume dès qu'elle est jouée, ce qui vaut retour immédiat.
+    if (practice.waiting?.remaining.has(note.midi)) continue;
+    active[note.midi] = note.hand === "right" ? ACTIVE_RIGHT : ACTIVE_LEFT;
   }
   return active;
 }
@@ -972,6 +1115,32 @@ function drawKeyboard(w, h) {
       drawBlackKey(g.x, top + 3, g.width, bkH, m, active);
     }
   }
+
+  drawPracticeKeyCues();
+}
+
+// Aide et fausses notes du mode Attente. L'aide n'apparaît qu'après plusieurs
+// échecs sur le même accord (plan/06 § 7) ; la note fausse est signalée
+// brièvement, sans faire reculer le morceau ni passer la note.
+function drawPracticeKeyCues() {
+  const practice = state.practice;
+  if (!practice.enabled) return;
+  for (const midi of practice.hintKeys) paintKey(midi, COLORS.hintKey, 0.75);
+  for (const midi of practice.wrongKeys) paintKey(midi, COLORS.wrongKey, 0.8);
+}
+
+function paintKey(midi, color, alpha) {
+  if (midi < MIDI_LOW || midi > MIDI_HIGH) return;
+  const top = keyboardTop();
+  const kbH = layout.height - top;
+  const g = noteGeometry(midi);
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = color;
+  if (g.white) roundRectBottom(g.x + 0.5, top + 3, g.width - 1, kbH - 3, 4);
+  else roundRectBottom(g.x, top + 3, g.width, (kbH - 3) * 0.62, 3);
+  ctx.fill();
+  ctx.restore();
 }
 
 function drawWhiteKey(x, top, w, kbH, midi, active) {
@@ -1039,6 +1208,7 @@ function keyAtPosition(x, y) {
 // Joue la note cliquée et l'assombrit le temps d'une pression.
 async function pressKey(midi) {
   const session = state;
+  notePlayed(midi);
   session.pressedKeys.add(midi);
   scheduleDraw();
   const timer = setTimeout(() => {
@@ -1204,6 +1374,9 @@ function disposePart() {
 // elle garantit qu'aucune note ne continue après un changement de mode.
 function disposeAudio() {
   disposePart(); // annule aussi les évènements planifiés sur le Transport
+  // Le Transport est partagé par tous les modes : une boucle laissée active
+  // ferait rejouer sans fin le premier exercice du mode suivant.
+  Tone.Transport.loop = false;
   Tone.Transport.stop();
   state.audio.dispose();
 }
@@ -1215,12 +1388,16 @@ function buildPart() {
 
   // Les évènements sont planifiés sur l'échelle de temps (dilatée) du Transport :
   // un morceau plus lent étire chaque note sur davantage de secondes réelles.
-  const events = session.song.notes.map((n) => ({
-    time: n.time / session.speed,
-    note: midiToNote(n.midi),
-    duration: n.duration / session.speed,
-    velocity: n.velocity,
-  }));
+  const events = session.song.notes
+    .filter((n) => isAudibleNote(n, session))
+    .map((n) => ({
+      time: n.time / session.speed,
+      note: midiToNote(n.midi),
+      duration: n.duration / session.speed,
+      velocity: n.velocity,
+    }));
+
+  if (events.length === 0) return;
 
   session.part = new Tone.Part((time, value) => {
     session.audio.sampler?.triggerAttackRelease(
@@ -1246,7 +1423,20 @@ async function play() {
     // Reprise depuis le début si on est à la fin
     if (state.currentTime >= songDuration() - 1e-3) setTime(0);
 
+    // En sous-mode Travail, la lecture est limitée au passage actif : jouer
+    // depuis une position hors bornes ramène au début du passage.
+    const bounds = sectionBounds();
+    if (
+      state.practice.enabled &&
+      (state.currentTime < bounds.startSeconds ||
+        state.currentTime >= bounds.endSeconds - 1e-3)
+    ) {
+      setTime(bounds.startSeconds);
+    }
+    beginPracticeRun();
+
     Tone.Transport.seconds = state.currentTime / state.speed;
+    applyLoopPoints();
     Tone.Transport.start();
     state.isPlaying = true;
     state.lastVisualFrame = -Infinity;
@@ -1263,12 +1453,15 @@ async function play() {
 }
 
 function pause({ refresh = true } = {}) {
-  if (state.isPlaying) {
+  // Une attente en cours a déjà figé la position exacte : relire le Transport
+  // la décalerait de la fraction de frame écoulée avant le gel.
+  if (state.isPlaying && !state.practice.waiting) {
     state.currentTime = Math.max(
       0,
       Math.min(songDuration(), Tone.Transport.seconds * state.speed)
     );
   }
+  leaveWait({ resume: false });
   Tone.Transport.pause();
   state.isPlaying = false;
   if (state.animationFrame !== null) {
@@ -1296,6 +1489,10 @@ function setSpeed(speed) {
     buildPart();
     Tone.Transport.seconds = state.currentTime / state.speed;
   }
+  // Les bornes de boucle sont exprimées en secondes de Transport : elles
+  // suivent le tempo de travail.
+  applyLoopPoints();
+  updatePracticeTempoLabel();
 }
 
 function updateSpeedLabel(speed) {
@@ -1311,12 +1508,35 @@ function updatePlayButton() {
 function tick(frameTime) {
   if (!isRunning()) return;
   state.animationFrame = null;
-  if (!state.isPlaying) return;
+  if (!state.isPlaying || state.practice.waiting) return;
 
   const transportTime = Math.max(
     0,
     Math.min(songDuration(), Tone.Transport.seconds * state.speed)
   );
+  const practice = state.practice;
+  const bounds = sectionBounds();
+
+  // --- Sous-mode Travail : bouclage, fin de passage, attente ----------------
+  if (practice.enabled) {
+    // Le Transport reboucle lui-même (loopStart/loopEnd) : on ne fait que
+    // constater le retour en arrière pour compter le tour et le juger.
+    if (transportTime < practice.lastTransportTime - 0.05) {
+      completeRun();
+      beginPracticeRun(bounds.startSeconds);
+      state.lastVisualFrame = -Infinity;
+    } else if (!practice.loop && transportTime >= bounds.endSeconds - 1e-3) {
+      setTime(bounds.endSeconds, { fromTransport: true });
+      completeRun();
+      pause({ refresh: false });
+      syncTransportUI(true);
+      return;
+    }
+    practice.lastTransportTime = transportTime;
+
+    if (practice.wait && enterWaitIfDue(transportTime)) return;
+  }
+
   const reachedEnd = transportTime >= songDuration() - 1e-3;
 
   if (
@@ -1331,11 +1551,694 @@ function tick(frameTime) {
   }
 
   if (reachedEnd) {
+    if (practice.enabled) completeRun();
     pause({ refresh: false });
     syncTransportUI(true);
     return;
   }
   state.animationFrame = requestAnimationFrame(tick);
+}
+
+// ============================================================================
+//  Sous-mode Travail — Feature 06
+//
+//  Cinq outils combinables (plan/06 § 4) posés sur le lecteur existant :
+//  passages, main travaillée, boucle, attente de la bonne note et tempo de
+//  travail. Ce qui se calcule sans écran vit dans `song-practice.js` ; ce qui
+//  suit relie ces règles au Transport, au rouleau et à la barre de commandes.
+// ============================================================================
+
+function activeSection() {
+  const practice = state.practice;
+  if (!practice.enabled || !practice.sectionId) return null;
+  return practice.sections.find((s) => s.id === practice.sectionId) ?? null;
+}
+
+// Bornes réellement travaillées : celles du passage actif, ou le morceau entier.
+function sectionBounds() {
+  const section = activeSection();
+  const duration = songDuration();
+  if (!section) return { startSeconds: 0, endSeconds: duration };
+  return {
+    startSeconds: Math.min(section.startSeconds, duration),
+    endSeconds: Math.min(section.endSeconds, duration),
+  };
+}
+
+// Le tempo de travail et le curseur de vitesse sont la même chose vue de deux
+// façons (plan/06 § 8) : 70 % = 0,7×.
+function tempoPercent() {
+  return Math.round(state.speed * 100);
+}
+
+function targetTempoPercent() {
+  return activeSection()?.targetTempoPercent ?? 100;
+}
+
+// Durée d'un temps, sur l'horloge du morceau (non dilatée par le tempo de
+// travail) : la fenêtre de tolérance reste une fraction de temps, donc la même
+// exigence musicale à 60 % qu'à 100 %.
+function secondsPerBeat() {
+  const bpm = state.song?.meta.bpm || 120;
+  return 60 / bpm;
+}
+
+// Une note est jouée par l'application si elle n'est pas à la charge de
+// l'utilisateur : la main d'accompagnement toujours, la main travaillée
+// seulement hors mode Attente.
+function isAudibleNote(note, session) {
+  const practice = session.practice;
+  if (!practice.enabled) return true;
+  if (!isWorkedHand(note, practice.hand)) return practice.accompany;
+  return !practice.wait;
+}
+
+function applyLoopPoints() {
+  const practice = state.practice;
+  const section = activeSection();
+  if (!practice.enabled || !practice.loop || !section) {
+    Tone.Transport.loop = false;
+    return;
+  }
+  const bounds = sectionBounds();
+  if (bounds.endSeconds <= bounds.startSeconds) {
+    Tone.Transport.loop = false;
+    return;
+  }
+  // Le bouclage est confié au Transport plutôt qu'à la boucle d'animation :
+  // c'est lui qui tient l'horloge audio, et une boucle recalée image par image
+  // dériverait de quelques millisecondes à chaque tour (plan/06 § 14).
+  Tone.Transport.setLoopPoints(
+    bounds.startSeconds / state.speed,
+    bounds.endSeconds / state.speed
+  );
+  Tone.Transport.loop = true;
+}
+
+// ----------------------------------------------------------------------------
+//  Un tour de passage
+// ----------------------------------------------------------------------------
+function beginPracticeRun(from = state.currentTime) {
+  const practice = state.practice;
+  practice.played = [];
+  practice.lastTransportTime = from;
+  practice.nextGroup = practice.wait ? firstGateFrom(from) : -1;
+}
+
+// Accords attendus du passage, pour la main travaillée uniquement : « les notes
+// de la main d'accompagnement ne bloquent jamais le défilement » (plan/06 § 6).
+function rebuildGates() {
+  const practice = state.practice;
+  if (!state.song || !practice.enabled || !practice.wait) {
+    practice.groups = [];
+    practice.nextGroup = -1;
+    return;
+  }
+  practice.groups = groupChords(
+    expectedNotes(state.song.notes, sectionBounds(), practice.hand)
+  );
+  practice.nextGroup = firstGateFrom(state.currentTime);
+}
+
+// L'accord exactement à `time` compte encore comme à venir : on s'arrête
+// dessus au lieu de le sauter.
+function firstGateFrom(time) {
+  return nextGroupIndex(state.practice.groups, time, -1e-3);
+}
+
+function enterWaitIfDue(transportTime) {
+  const practice = state.practice;
+  const index = practice.nextGroup;
+  if (index < 0 || index >= practice.groups.length) return false;
+  const group = practice.groups[index];
+  if (transportTime < group.time) return false;
+
+  // Le gel est exact : on ramène le Transport sur l'attaque de l'accord plutôt
+  // que de rester à la fraction d'image de dépassement.
+  state.currentTime = group.time;
+  Tone.Transport.pause();
+  Tone.Transport.seconds = group.time / state.speed;
+  practice.waiting = { index, remaining: new Set(group.midis), fails: 0 };
+  practice.hintKeys.clear();
+  if (state.animationFrame !== null) {
+    cancelAnimationFrame(state.animationFrame);
+    state.animationFrame = null;
+  }
+  syncTransportUI(true);
+  renderPracticeStatus();
+  drawImmediately();
+  return true;
+}
+
+// Reprend le défilement là où il s'était arrêté. `resume: false` sert à
+// l'annulation (pause, changement de réglage) : l'attente disparaît sans
+// relancer quoi que ce soit.
+function leaveWait({ resume = true } = {}) {
+  const practice = state.practice;
+  if (!practice.waiting) return;
+  practice.nextGroup = practice.waiting.index + 1;
+  practice.waiting = null;
+  practice.hintKeys.clear();
+  renderPracticeStatus();
+  if (!resume || !state.isPlaying) return;
+
+  Tone.Transport.seconds = state.currentTime / state.speed;
+  Tone.Transport.start();
+  state.lastVisualFrame = -Infinity;
+  practice.lastTransportTime = state.currentTime;
+  if (state.animationFrame !== null) cancelAnimationFrame(state.animationFrame);
+  state.animationFrame = requestAnimationFrame(tick);
+}
+
+// ----------------------------------------------------------------------------
+//  Une note jouée par l'utilisateur (piano à l'écran ou clavier physique)
+//
+//  `lateness` est le retard, en secondes réelles, entre l'instant du message et
+//  celui où il est traité — nul pour un clic. Converti en temps morceau, il
+//  vaut ce retard multiplié par le tempo de travail.
+// ----------------------------------------------------------------------------
+function notePlayed(midi, lateness = 0) {
+  const practice = state.practice;
+  if (!practice.enabled) return;
+
+  if (state.isPlaying && !practice.waiting) {
+    practice.played.push({
+      midi,
+      time: Math.max(0, (Tone.Transport.seconds - lateness) * state.speed),
+    });
+  }
+
+  if (!practice.waiting) return;
+
+  // Mode Attente : la bonne note ouvre la porte, une fausse est signalée sans
+  // faire reculer le morceau ni passer la note (plan/06 § 7).
+  if (practice.waiting.remaining.delete(midi)) {
+    if (practice.waiting.remaining.size === 0) leaveWait();
+    else scheduleDraw();
+    return;
+  }
+
+  practice.waiting.fails++;
+  if (practice.waiting.fails >= HELP_AFTER_FAILS) {
+    for (const expected of practice.waiting.remaining) {
+      practice.hintKeys.add(expected);
+    }
+  }
+  flashWrongKey(midi);
+}
+
+function flashWrongKey(midi) {
+  const session = state;
+  session.practice.wrongKeys.add(midi);
+  scheduleDraw();
+  const timer = setTimeout(() => {
+    session.keyPressTimers.delete(timer);
+    if (session.stopped) return;
+    session.practice.wrongKeys.delete(midi);
+    scheduleDraw();
+  }, WRONG_FLASH_MS);
+  session.keyPressTimers.add(timer);
+}
+
+// ----------------------------------------------------------------------------
+//  Fin d'un tour : ce qui a été joué, et à quel tempo repartir
+// ----------------------------------------------------------------------------
+function completeRun() {
+  const practice = state.practice;
+  if (!practice.enabled || !state.song) return;
+  practice.repetitions++;
+
+  const expected = expectedNotes(
+    state.song.notes,
+    sectionBounds(),
+    practice.hand
+  );
+
+  // Sans note reçue, rien n'a été mesuré : le tour est une répétition, pas une
+  // exécution jugée — et aucune précision ne sera affichée (plan/06 § 9).
+  // En mode Attente non plus : on ne peut pas s'y tromper, la porte attend.
+  const measured =
+    !practice.wait && expected.length > 0 && practice.played.length > 0;
+
+  let report = null;
+  if (measured) {
+    report = evaluateRun(expected, practice.played, secondsPerBeat());
+    practice.lastReport = report;
+    // Les notes à revoir se lisent sur plusieurs tours : une note ratée une
+    // fois n'est pas une difficulté, ratée cinq fois si. On garde une fenêtre
+    // glissante plutôt que toute la séance — sur la tablette, une boucle peut
+    // tourner longtemps.
+    practice.reports.push(report);
+    if (practice.reports.length > 20) practice.reports.shift();
+    if (report.outcome === "clean") {
+      practice.cleanRuns++;
+      practice.flawedStreak = 0;
+    } else {
+      practice.flawedStreak++;
+    }
+    practice.suggestion = suggestTempo({
+      tempoPercent: tempoPercent(),
+      outcome: report.outcome,
+      targetPercent: targetTempoPercent(),
+      flawedStreak: practice.flawedStreak,
+    });
+    sectionStore.recordRun(practice.songId, practice.sectionId ?? WHOLE_SONG_ID, {
+      outcome: report.outcome,
+      tempoPercent: tempoPercent(),
+      whole: { endSeconds: songDuration(), targetTempoPercent: 100 },
+    });
+    practice.sections = sectionStore.list(practice.songId);
+  }
+
+  recordRunEvent(report);
+  renderPracticeStatus();
+}
+
+// Journal de progression (F3). Une exécution jugée est un `run` en
+// `clean`/`flawed` ; un tour dont rien n'a été mesuré reste une `repetition`
+// en `none`. C'est exactement la distinction déjà faite par les exercices
+// techniques (plan/03 étape D), avec le même vocabulaire.
+function recordRunEvent(report) {
+  const practice = state.practice;
+  const target = {
+    songId: practice.songId,
+    sectionId: practice.sectionId ?? WHOLE_SONG_ID,
+    hand: practice.hand,
+    tempoPercent: tempoPercent(),
+    repetition: practice.repetitions,
+  };
+
+  if (!report) {
+    state.practiceLog?.record({ type: "repetition", target, outcome: "none" });
+    return;
+  }
+
+  state.practiceLog?.record({
+    type: "run",
+    target,
+    outcome: report.outcome,
+    given: {
+      correct: report.correct,
+      total: report.total,
+      extras: report.extras.length,
+      // L'écart moyen brut, en fraction de temps : les seuils restent à la vue
+      // (plan/F3 § 7).
+      meanFraction:
+        report.timing.meanFraction === null
+          ? null
+          : Math.round(report.timing.meanFraction * 1000) / 1000,
+    },
+  });
+}
+
+function openPracticeLog() {
+  if (state.practiceLog && !state.practiceLog.closed) return;
+  const practice = state.practice;
+  state.practiceLog = state.progress.openSession(PRACTICE_FEATURE_ID, {
+    songId: practice.songId,
+    sectionId: practice.sectionId ?? WHOLE_SONG_ID,
+    hand: practice.hand,
+    tempoPercent: tempoPercent(),
+    loop: practice.loop,
+    wait: practice.wait,
+  });
+}
+
+function flushProgress() {
+  state?.progress.flush();
+}
+
+function onVisibilityChange() {
+  if (document.visibilityState === "hidden") flushProgress();
+}
+
+function closePracticeLog() {
+  const log = state?.practiceLog;
+  if (!log || log.closed) return;
+  const practice = state.practice;
+  // « Terminée » quand au moins un tour a été fait : sans cela, entrer dans le
+  // sous-mode puis en ressortir laisserait une séance fantôme au Programme
+  // d'entraînement (04).
+  log.close(practice.repetitions > 0 ? "done" : "abandoned", {
+    repetitions: practice.repetitions,
+    cleanRuns: practice.cleanRuns,
+    tempoPercent: tempoPercent(),
+  });
+  state.practiceLog = null;
+}
+
+// ----------------------------------------------------------------------------
+//  Barre de commandes du sous-mode (plan/06 § 10)
+//
+//  Elle n'apparaît qu'une fois le bouton Travail enfoncé : l'écran de lecture
+//  simple ne doit pas porter ces réglages.
+// ----------------------------------------------------------------------------
+function byId(id) {
+  return document.getElementById(id);
+}
+
+function setPracticeEnabled(enabled) {
+  const practice = state.practice;
+  if (practice.enabled === enabled) return;
+  practice.enabled = enabled;
+
+  if (enabled) {
+    practice.repetitions = 0;
+    practice.cleanRuns = 0;
+    practice.flawedStreak = 0;
+    practice.lastReport = null;
+    practice.reports = [];
+    practice.suggestion = null;
+    openPracticeLog();
+  } else {
+    closePracticeLog();
+    leaveWait({ resume: false });
+    practice.hintKeys.clear();
+    practice.wrongKeys.clear();
+  }
+
+  applyLoopPoints();
+  rebuildGates();
+  beginPracticeRun();
+  if (state.audio.ready) buildPart(); // la main muette change avec le sous-mode
+  renderPracticeBar(); // remesure le canvas : la barre change la hauteur utile
+  drawImmediately();
+}
+
+// Rejoue le morceau à partir des réglages : appelée après tout changement qui
+// modifie ce que l'application joue ou attend.
+function refreshPracticeAudio({ rebuildGate = true } = {}) {
+  if (rebuildGate) rebuildGates();
+  if (state.audio.ready) {
+    buildPart();
+    if (state.isPlaying) Tone.Transport.seconds = state.currentTime / state.speed;
+  }
+  applyLoopPoints();
+  beginPracticeRun();
+}
+
+function setPracticeHand(hand) {
+  const practice = state.practice;
+  if (practice.hand === hand) return;
+  practice.hand = hand;
+  leaveWait({ resume: false });
+  refreshPracticeAudio();
+  renderPracticeBar();
+  scheduleDraw();
+}
+
+function setPracticeAccompany(accompany) {
+  state.practice.accompany = accompany;
+  refreshPracticeAudio({ rebuildGate: false });
+  renderPracticeBar();
+  scheduleDraw();
+}
+
+function setPracticeLoop(loop) {
+  state.practice.loop = loop;
+  applyLoopPoints();
+  renderPracticeBar();
+}
+
+function setPracticeWait(wait) {
+  state.practice.wait = wait;
+  leaveWait({ resume: false });
+  refreshPracticeAudio();
+  renderPracticeBar();
+  scheduleDraw();
+}
+
+function setActiveSection(sectionId) {
+  const practice = state.practice;
+  practice.sectionId = sectionId || null;
+  practice.repetitions = 0;
+  practice.cleanRuns = 0;
+  practice.flawedStreak = 0;
+  practice.lastReport = null;
+  practice.reports = [];
+  practice.suggestion = null;
+  leaveWait({ resume: false });
+
+  const bounds = sectionBounds();
+  if (state.currentTime < bounds.startSeconds || state.currentTime > bounds.endSeconds) {
+    setTime(bounds.startSeconds);
+  }
+  refreshPracticeAudio();
+  renderPracticeBar();
+  drawImmediately();
+}
+
+// Nouveau passage à la position courante. Sa longueur par défaut est fixe : le
+// découpage par mesures ou par phrases (plan/06 § 5) reste à évaluer.
+function createSectionHere() {
+  const practice = state.practice;
+  if (!state.song || !practice.songId) return;
+  const bounds = clampBounds(
+    state.currentTime,
+    state.currentTime + DEFAULT_SECTION_SECONDS,
+    songDuration()
+  );
+  const section = sectionStore.create(practice.songId, bounds);
+  practice.sections = sectionStore.list(practice.songId);
+  setActiveSection(section.id);
+}
+
+function renameActiveSection() {
+  const section = activeSection();
+  if (!section) return;
+  // `prompt` est laid, mais c'est la seule saisie de texte de l'application :
+  // un champ dédié encombrerait la barre pour un usage rare.
+  const title = window.prompt("Nom du passage", section.title);
+  if (!title) return;
+  sectionStore.update(state.practice.songId, section.id, { title: title.trim() });
+  state.practice.sections = sectionStore.list(state.practice.songId);
+  renderPracticeBar();
+  scheduleDraw();
+}
+
+function deleteActiveSection() {
+  const section = activeSection();
+  if (!section) return;
+  sectionStore.remove(state.practice.songId, section.id);
+  state.practice.sections = sectionStore.list(state.practice.songId);
+  setActiveSection(null);
+}
+
+// Déplace une borne du passage actif, en secondes du morceau. Pendant un
+// glissement, on ne persiste qu'au relâchement.
+function moveSectionBound(which, time, { persist = true } = {}) {
+  const section = activeSection();
+  if (!section) return;
+  const bounds = clampBounds(
+    which === "start" ? time : section.startSeconds,
+    which === "end" ? time : section.endSeconds,
+    songDuration()
+  );
+  sectionStore.update(state.practice.songId, section.id, bounds, { persist });
+  state.practice.sections = sectionStore.list(state.practice.songId);
+  applyLoopPoints();
+  rebuildGates();
+}
+
+// Borne saisissable sous le pointeur, ou null. Testée avant le défilement du
+// rouleau : à moins de 14 px d'une borne, le geste la déplace.
+function boundAtY(y) {
+  const section = activeSection();
+  if (!section) return null;
+  const distanceToStart = Math.abs(y - timeToScreenY(section.startSeconds));
+  const distanceToEnd = Math.abs(y - timeToScreenY(section.endSeconds));
+  if (distanceToStart <= BOUND_GRAB_PX && distanceToStart <= distanceToEnd) {
+    return "start";
+  }
+  if (distanceToEnd <= BOUND_GRAB_PX) return "end";
+  return null;
+}
+
+function setTempoPercent(percent) {
+  const speed = clampTempoPercent(percent) / 100;
+  const range = byId("speedRange");
+  if (range) range.value = String(speed);
+  setSpeed(speed);
+}
+
+function updatePracticeTempoLabel() {
+  const label = byId("practiceTempoValue");
+  if (label) label.textContent = `${tempoPercent()} %`;
+}
+
+function renderPracticeBar() {
+  const practice = state.practice;
+  const toggle = byId("practiceToggle");
+  const bar = byId("practiceBar");
+  if (!toggle || !bar) return;
+
+  toggle.setAttribute("aria-pressed", String(practice.enabled));
+  bar.hidden = !practice.enabled;
+  // L'en-tête doit pouvoir se replier tant que la barre est là (cf. style.css).
+  document
+    .querySelector(".topbar")
+    ?.classList.toggle("practice-open", practice.enabled);
+  if (!practice.enabled) {
+    syncCanvasSize();
+    return;
+  }
+
+  const select = byId("practiceSection");
+  if (select) {
+    select.length = 1; // on garde « Morceau entier »
+    for (const section of practice.sections) {
+      const label = isMastered(section) ? `${section.title} ✓` : section.title;
+      select.appendChild(new Option(label, section.id));
+    }
+    select.value = practice.sectionId ?? "";
+  }
+
+  const hasSection = activeSection() !== null;
+  for (const button of document.querySelectorAll(".practice-hand")) {
+    button.setAttribute(
+      "aria-pressed",
+      String(button.dataset.hand === practice.hand)
+    );
+  }
+  setPressed("practiceAccompany", practice.accompany);
+  setPressed("practiceLoop", practice.loop);
+  setPressed("practiceWait", practice.wait);
+
+  // Sans main séparée, accompagner ou masquer ne veut rien dire.
+  const accompany = byId("practiceAccompany");
+  if (accompany) accompany.disabled = practice.hand === "both";
+  for (const id of ["practiceRename", "practiceDelete", "practiceMarkStart", "practiceMarkEnd"]) {
+    const button = byId(id);
+    if (button) button.disabled = !hasSection;
+  }
+
+  updatePracticeTempoLabel();
+  renderPracticeStatus();
+  syncCanvasSize();
+}
+
+function setPressed(id, pressed) {
+  byId(id)?.setAttribute("aria-pressed", String(pressed));
+}
+
+// Bilan compact du passage : uniquement ce qui a été mesuré (plan/06 § 9).
+function renderPracticeStatus() {
+  const text = byId("practiceStatusText");
+  const apply = byId("practiceApplyTempo");
+  if (!text) return;
+
+  const practice = state.practice;
+  const entry = sectionStore.get(
+    practice.songId,
+    practice.sectionId ?? WHOLE_SONG_ID
+  );
+  const parts = [];
+
+  parts.push(
+    practice.repetitions === 1 ? "1 tour" : `${practice.repetitions} tours`
+  );
+  if (practice.lastReport) {
+    parts.push(`${practice.cleanRuns} propre${practice.cleanRuns > 1 ? "s" : ""}`);
+    const report = practice.lastReport;
+    parts.push(`dernier : ${report.correct}/${report.total}`);
+    const rework = notesToRework(practice.reports, 1)[0];
+    if (rework) parts.push(`à revoir : ${rework.label}`);
+  } else if (practice.repetitions > 0) {
+    // Aucune note reçue : on ne montre aucun pourcentage inventé.
+    parts.push("aucune note reçue — pratique libre");
+  }
+  if (entry?.bestCleanTempoPercent) {
+    parts.push(`record ${entry.bestCleanTempoPercent} %`);
+  }
+  if (isMastered(entry)) parts.push("passage maîtrisé ✓");
+  if (sectionStore.learned(practice.songId)) parts.push("morceau appris ✓");
+  if (practice.waiting) parts.push("en attente de la note…");
+
+  text.textContent = parts.join(" · ");
+
+  if (apply) {
+    const suggestion = practice.suggestion;
+    apply.hidden = !suggestion;
+    if (suggestion) {
+      apply.textContent =
+        suggestion.direction === "up"
+          ? `Monter à ${suggestion.percent} %`
+          : `Redescendre à ${suggestion.percent} %`;
+    }
+  }
+
+  // Le bilan peut passer à la ligne en petite largeur : l'en-tête grandit, le
+  // canvas rétrécit.
+  syncCanvasSize();
+}
+
+// Recharge les passages enregistrés pour le morceau courant.
+function loadSectionsForSong(title) {
+  const practice = state.practice;
+  practice.songId = songIdFromTitle(title);
+  practice.sections = sectionStore.list(practice.songId);
+  practice.sectionId =
+    practice.sections.find((s) => s.id === practice.sectionId)?.id ?? null;
+  practice.repetitions = 0;
+  practice.cleanRuns = 0;
+  practice.flawedStreak = 0;
+  practice.lastReport = null;
+  practice.reports = [];
+  practice.suggestion = null;
+  practice.waiting = null;
+  rebuildGates();
+  beginPracticeRun(0);
+  renderPracticeBar();
+}
+
+function attachPracticeControls(signal) {
+  const on = (id, event, handler) =>
+    byId(id)?.addEventListener(event, handler, { signal });
+
+  on("practiceToggle", "click", () =>
+    setPracticeEnabled(!state.practice.enabled)
+  );
+  on("practiceSection", "change", (e) => setActiveSection(e.target.value));
+  on("practiceAdd", "click", createSectionHere);
+  on("practiceRename", "click", renameActiveSection);
+  on("practiceDelete", "click", deleteActiveSection);
+  on("practiceMarkStart", "click", () => {
+    moveSectionBound("start", state.currentTime);
+    renderPracticeBar();
+    drawImmediately();
+  });
+  on("practiceMarkEnd", "click", () => {
+    moveSectionBound("end", state.currentTime);
+    renderPracticeBar();
+    drawImmediately();
+  });
+
+  for (const button of document.querySelectorAll(".practice-hand")) {
+    button.addEventListener(
+      "click",
+      () => setPracticeHand(button.dataset.hand),
+      { signal }
+    );
+  }
+
+  on("practiceAccompany", "click", () =>
+    setPracticeAccompany(!state.practice.accompany)
+  );
+  on("practiceLoop", "click", () => setPracticeLoop(!state.practice.loop));
+  on("practiceWait", "click", () => setPracticeWait(!state.practice.wait));
+  on("practiceTempoDown", "click", () =>
+    setTempoPercent(tempoPercent() - TEMPO_STEP_PERCENT)
+  );
+  on("practiceTempoUp", "click", () =>
+    setTempoPercent(tempoPercent() + TEMPO_STEP_PERCENT)
+  );
+  on("practiceApplyTempo", "click", () => {
+    const suggestion = state.practice.suggestion;
+    if (!suggestion) return;
+    state.practice.suggestion = null;
+    setTempoPercent(suggestion.percent);
+    renderPracticeStatus();
+  });
 }
 
 // ----------------------------------------------------------------------------
@@ -1366,6 +2269,28 @@ function resizeCanvas() {
   drawImmediately();
 }
 
+// Afficher ou masquer la barre de travail change la hauteur de l'en-tête, donc
+// celle du canvas — sans qu'aucun `resize` de fenêtre ne soit émis. Sans cela,
+// le tampon du canvas resterait à l'ancienne taille : rouleau étiré, et surtout
+// touches dessinées ailleurs qu'où le doigt les touche.
+function syncCanvasSize() {
+  if (!isRunning()) return;
+  if (
+    canvas.clientWidth === layout.width &&
+    canvas.clientHeight === layout.height
+  ) {
+    return;
+  }
+  // Immédiat, et non différé : le dessin qui suit doit déjà être aux bonnes
+  // mesures. Ce chemin ne part que d'un geste de l'utilisateur, jamais de la
+  // boucle d'animation.
+  if (state.pendingResize !== null) {
+    cancelAnimationFrame(state.pendingResize);
+    state.pendingResize = null;
+  }
+  resizeCanvas();
+}
+
 function scheduleCanvasResize() {
   if (!isRunning() || state.pendingResize !== null) return;
   state.pendingResize = requestAnimationFrame(() => {
@@ -1384,6 +2309,12 @@ function resetForNewSong(label) {
   state.currentTime = 0;
   document.getElementById("seek").max = String(songDuration());
   updateSongInfo(label);
+  // Les passages appartiennent au morceau : changer de morceau change de
+  // découpage, et le travail en cours n'a plus lieu d'être reporté.
+  closePracticeLog();
+  loadSectionsForSong(label);
+  if (state.practice.enabled) openPracticeLog();
+  applyLoopPoints();
   syncTransportUI(true);
   drawImmediately();
 }
@@ -1548,12 +2479,21 @@ function attachInteractions(signal) {
   let moved = false;
   let lastY = 0;
   let downY = 0;
+  let draggingBound = null; // "start" | "end" en sous-mode Travail
   canvas.addEventListener("pointerdown", (e) => {
     const p = pointerPos(e.clientX, e.clientY);
     // Clic dans la zone clavier : on joue la touche, sans défiler.
     if (p.y >= keyboardTop()) {
       const midi = keyAtPosition(p.x, p.y);
       if (midi != null) pressKey(midi);
+      return;
+    }
+    // Bornes du passage : elles se saisissent avant le défilement, sinon on
+    // ne pourrait jamais les attraper.
+    draggingBound = boundAtY(p.y);
+    if (draggingBound) {
+      canvas.style.cursor = "ns-resize";
+      canvas.setPointerCapture(e.pointerId);
       return;
     }
     dragging = true;
@@ -1564,9 +2504,16 @@ function attachInteractions(signal) {
   }, { signal });
   canvas.addEventListener("pointermove", (e) => {
     const p = pointerPos(e.clientX, e.clientY);
+    if (draggingBound) {
+      moveSectionBound(draggingBound, screenYToTime(p.y), { persist: false });
+      drawImmediately();
+      return;
+    }
     if (!dragging) {
-      // Curseur « main » au survol du clavier, « grab » sur le rouleau.
-      canvas.style.cursor = p.y >= keyboardTop() ? "pointer" : "grab";
+      // Curseur « main » au survol du clavier, « grab » sur le rouleau, et
+      // « redimensionner » sur une borne de passage.
+      canvas.style.cursor =
+        p.y >= keyboardTop() ? "pointer" : boundAtY(p.y) ? "ns-resize" : "grab";
       return;
     }
     if (Math.abs(p.y - downY) > 3) moved = true;
@@ -1574,6 +2521,13 @@ function attachInteractions(signal) {
     lastY = p.y;
   }, { signal });
   const endDrag = (e) => {
+    if (draggingBound) {
+      draggingBound = null;
+      canvas.style.cursor = "grab";
+      sectionStore.flush();
+      renderPracticeBar();
+      return;
+    }
     if (!dragging) return;
     dragging = false;
     canvas.style.cursor = "grab";
@@ -1586,7 +2540,10 @@ function attachInteractions(signal) {
   canvas.addEventListener("pointerup", endDrag, { signal });
   canvas.addEventListener(
     "pointercancel",
-    () => (dragging = false),
+    () => {
+      dragging = false;
+      draggingBound = null;
+    },
     { signal }
   );
 
@@ -1675,8 +2632,17 @@ function start(host) {
   container.appendChild(canvas);
   ctx = canvas.getContext("2d", { alpha: false });
 
+  // Le journal de progression n'est réécrit que par intervalles : on force
+  // l'enregistrement au masquage de la page, comme les autres modes (plan/F3 § 8).
+  window.addEventListener("pagehide", flushProgress, { signal: listeners.signal });
+  document.addEventListener("visibilitychange", onVisibilityChange, {
+    signal: listeners.signal,
+  });
+
   attachInteractions(listeners.signal);
+  attachPracticeControls(listeners.signal);
   attachMidiKeyboard();
+  renderPracticeBar();
   resizeCanvas();
   loadInitialSong();
 }
@@ -1698,13 +2664,21 @@ function attachMidiKeyboard() {
   const session = state;
   session.stopMidi = midiInput.onNote((event) => {
     if (!isRunning() || session.stopped) return;
-    if (event.type === "noteon") holdKey(event.midi);
-    else releaseKey(event.midi);
+    if (event.type !== "noteon") {
+      releaseKey(event.midi);
+      return;
+    }
+    // L'horodatage du message est plus juste que l'instant où ce rappel
+    // s'exécute : c'est l'ordre de grandeur que mesure la fenêtre de tolérance
+    // du travail guidé (CLAUDE.md, entrée MIDI).
+    const lateness = Math.max(0, performance.now() - event.timestamp) / 1000;
+    holdKey(event.midi, lateness);
   });
 }
 
-function holdKey(midi) {
+function holdKey(midi, lateness = 0) {
   const session = state;
+  notePlayed(midi, lateness);
   if (session.pressedKeys.has(midi)) return;
   session.pressedKeys.add(midi);
   scheduleDraw();
@@ -1724,8 +2698,11 @@ function stop() {
   const session = state;
 
   // 1. Figer la position lue sur le Transport, puis la mémoriser : revenir
-  //    dans le mode reprend là où l'utilisateur s'était arrêté.
+  //    dans le mode reprend là où l'utilisateur s'était arrêté. La séance de
+  //    travail éventuellement ouverte est refermée ici, jamais laissée en l'air.
   pause({ refresh: false });
+  closePracticeLog();
+  session.progress.flush();
   saveSettings();
   stopAutoSave();
 
@@ -1746,9 +2723,12 @@ function stop() {
   listeners.abort();
   listeners = null;
 
-  // 5. Rendre la scène et masquer les contrôles du mode.
+  // 5. Rendre la scène et masquer les contrôles du mode, sous-mode compris.
   const controls = document.getElementById("songControls");
   if (controls) controls.hidden = true;
+  const practiceBar = document.getElementById("practiceBar");
+  if (practiceBar) practiceBar.hidden = true;
+  document.querySelector(".topbar")?.classList.remove("practice-open");
   container?.replaceChildren();
 
   container = null;
@@ -1813,5 +2793,25 @@ async function loadInitialSong() {
     setTime(saved.currentTime);
   }
 
+  // Le sous-mode Travail est restauré en dernier : ses passages n'existent
+  // qu'une fois le morceau chargé (resetForNewSong les a relus).
+  restorePracticeSettings(saved?.practice);
+
   startAutoSave();
+}
+
+function restorePracticeSettings(saved) {
+  if (!saved) return;
+  const practice = state.practice;
+  if (saved.hand === "left" || saved.hand === "right" || saved.hand === "both") {
+    practice.hand = saved.hand;
+  }
+  if (typeof saved.accompany === "boolean") practice.accompany = saved.accompany;
+  if (typeof saved.loop === "boolean") practice.loop = saved.loop;
+  if (typeof saved.wait === "boolean") practice.wait = saved.wait;
+  if (practice.sections.some((section) => section.id === saved.sectionId)) {
+    practice.sectionId = saved.sectionId;
+  }
+  if (saved.enabled) setPracticeEnabled(true);
+  else renderPracticeBar();
 }

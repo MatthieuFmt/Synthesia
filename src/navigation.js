@@ -42,6 +42,13 @@ export function initNavigation(features) {
   switchTo(null);
 }
 
+// Le registre, pour qui a besoin de la liste des fonctionnalités réellement
+// disponibles — le Programme d'entraînement (04) ne doit pas tenir la sienne
+// (plan/04 § 11). Une copie : le registre ne se modifie qu'au démarrage.
+export function availableFeatures() {
+  return registry.filter((feature) => feature.status === "available");
+}
+
 // Point de passage unique : `null` revient à l'écran d'accueil.
 export function switchTo(featureId) {
   const next =

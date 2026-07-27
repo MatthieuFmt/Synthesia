@@ -141,6 +141,30 @@ export function createAudio() {
       );
     },
 
+    // Joue plusieurs hauteurs, ensemble (accord) ou l'une après l'autre. Les
+    // attaques sont datées explicitement depuis `Tone.now()` : laisser le temps
+    // indéfini ferait partir les notes d'un accord au fil des appels, donc
+    // légèrement arpégées (plan/07-entrainement-oreille.md étape A).
+    //
+    // Rend la durée totale, dont l'appelant a besoin pour savoir quand le
+    // stimulus est fini.
+    async playNotes(midis, { playback = "sequential", duration = 0.9, gap = 0.6, velocity = 0.8 } = {}) {
+      await audio.ensureReady();
+      if (audio.disposed || !audio.ready) return 0;
+
+      const start = Tone.now();
+      const step = playback === "simultaneous" ? 0 : gap;
+      midis.forEach((midi, index) => {
+        audio.sampler.triggerAttackRelease(
+          midiToNote(midi),
+          duration,
+          start + index * step,
+          velocity
+        );
+      });
+      return midis.length === 0 ? 0 : (midis.length - 1) * step + duration;
+    },
+
     dispose() {
       audio.disposed = true;
       audio.sampler?.releaseAll?.();

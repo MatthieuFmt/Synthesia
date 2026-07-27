@@ -11,12 +11,23 @@
 
 import { initViewportControls } from "./viewport.js";
 import { initNavigation } from "./navigation.js";
+import { trainingFeature } from "./training-mode.js";
 import { songFeature } from "./song-mode.js";
 import { noteReadingFeature } from "./note-reading-mode.js";
 import { exerciseFeature } from "./exercise-mode.js";
 import { rhythmFeature } from "./rhythm-mode.js";
+import { earTrainingFeature } from "./ear-training-mode.js";
 
-const FEATURES = [songFeature, noteReadingFeature, exerciseFeature, rhythmFeature];
+// Le Programme d'entraînement ouvre la liste : c'est lui qui dit par quoi
+// commencer. Il ne se planifie pas lui-même (plan/04 § 3).
+const FEATURES = [
+  trainingFeature,
+  songFeature,
+  noteReadingFeature,
+  exerciseFeature,
+  rhythmFeature,
+  earTrainingFeature,
+];
 
 initViewportControls();
 initNavigation(FEATURES);

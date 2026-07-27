@@ -30,13 +30,26 @@ Chaque fonctionnalité (mode) est un objet avec cette signature :
 
 ```
 src/main.js                 # bootstrap : enregistre les features, init viewport + navigation
-src/navigation.js           # registre des features, switchTo(), rendu de l'écran d'accueil
-src/song-mode.js            # mode Morceau (~1770 lignes) : piano roll, clavier, notation
+src/navigation.js           # registre des features, switchTo(), availableFeatures(), accueil
+src/training-mode.js        # mode Programme (04) : écrans Aujourd'hui et configuration (DOM)
+src/training-program.js     # règles du Programme (sans DOM) : fréquences, séances dues,
+                            # persistance ; ne tient aucun historique, il lit celui de F3
+src/song-mode.js            # mode Morceau : piano roll, clavier, notation, sous-mode Travail
+src/song-practice.js        # règles du Travail (06), sans DOM : passages, accords
+                            # attendus, tempo, maîtrise, persistance des passages
 src/note-reading-mode.js    # mode Lecture de notes : portée SVG + clavier DOM (1 à 2 octaves)
-src/note-reading-engine.js  # moteur de l'exercice : tirage, validation, bilan (sans DOM)
+src/note-reading-engine.js  # ce qui n'appartient qu'à 02 : groupes de notes par niveau
+                            # et par main, clé de portée, calendrier des mains (sans DOM)
+src/ear-training-mode.js    # mode Oreille : écoute + clavier ou propositions (DOM)
+src/ear/questions.js        # stimuli de 07 par famille et niveau, et sa session (sans DOM)
+src/session-engine.js       # PARTAGÉ (02, 07) : déroulé d'une session — tentatives,
+                            # série, erreurs par cible, pondération, bilan (sans DOM)
+src/piano-dom.js            # PARTAGÉ (02, 07) : clavier de réponse en <button>,
+                            # étendue déduite d'un groupe de notes, préfixe CSS injecté
 src/exercise-mode.js        # mode Exercices : rouleau Canvas étroit + transport + bilan
 src/exercises/catalog.js    # définition des exercices (degrés de gamme, doigtés)
 src/exercises/generate-exercise.js  # motif → notes de la forme du mode Morceau (sans DOM)
+src/exercises/validate-run.js  # verdict d'une série jouée au clavier MIDI (sans DOM)
 src/rhythm-mode.js          # mode Rythme : métronome, reconnaissance, reproduction
 src/rhythm/patterns.js      # figures (durées/silences), motifs par niveau (sans DOM)
 src/rhythm/timing.js        # jugement à l'heure/avance/retard, appariement (sans DOM)
@@ -45,6 +58,8 @@ src/midi-input.js           # PARTAGÉ (F2) : Web MIDI, appareils, notes normali
 src/midi-controls.js        # PARTAGÉ (F2) : panneau de connexion, affiché sur l'accueil
 src/progress/store.js       # PARTAGÉ (F3) : journal d'évènements dans localStorage
 src/progress/review.js      # PARTAGÉ (F3) : ce qu'il faut faire revenir en priorité
+src/progress/views.js       # PARTAGÉ (F3) : vues calculées — 1 sur 6, l'historique
+                            # des séances, écrite quand 04 en a eu besoin
 src/music.js                # PARTAGÉ : noms latins, hauteurs MIDI, positions sur portée
 src/audio.js                # PARTAGÉ : createAudio() → ensureReady/playNote/dispose
 src/perf.js                 # PARTAGÉ : profil de l'appareil (canvas bridé, audio léger)
@@ -59,10 +74,21 @@ moment où une deuxième fonctionnalité en a eu besoin. Même règle pour la su
 pas d'extraction préventive. `src/progress/` fait exception au sens où rien n'en
 a été extrait : c'est une fondation (F3) écrite directement, mais au même
 moment — quand la première fonctionnalité a réellement eu des résultats à
-conserver. Son format d'évènement est figé et sert aussi aux modes à venir. `piano.js` n'existe donc pas — les quatre claviers de
-l'application (88 touches Canvas, une à deux octaves de `<button>`, étendue d'un
-exercice en Canvas, une octave de `<button>` où la hauteur est ignorée) n'ont
-rien en commun. **Le piano roll non plus n'est pas mutualisé** : le mode Morceau
+conserver. Son format d'évènement est figé et sert aussi aux modes à venir.
+
+`piano.js` — le clavier universel — n'existe toujours pas : les claviers de
+l'application (88 touches Canvas, étendue d'un exercice en Canvas, une octave de
+`<button>` où la hauteur est ignorée) n'ont rien en commun. En revanche
+`piano-dom.js` **a** été extrait le 27/07/2026, parce que 02 et 07 affichent
+littéralement *le même* clavier : une à deux octaves de `<button>` dont
+l'étendue se déduit d'un groupe de notes. Le préfixe de classes CSS y est un
+paramètre (`nr-`, `ear-`), donc chaque mode garde sa famille de styles et le DOM
+de 02 n'a pas bougé d'un octet — c'est ce qui a permis de rejouer ses harnais
+tels quels comme mesure de non-régression. Même histoire pour
+`session-engine.js`, extrait de `note-reading-engine.js` le même jour, sans que
+la surface publique de ce dernier change.
+
+**Le piano roll, lui, n'est toujours pas mutualisé** : le mode Morceau
 et le mode Exercices gardent chacun le leur, pour la raison écrite dans
 [plan/03 § 12](plan/03-technique-doigts.md#le-rouleau-na-pas-été-mutualisé-avec-le-mode-morceau) ;
 même chose pour les deux portées (cinq lignes en 02, une seule en 05), qui ne
@@ -74,6 +100,31 @@ consommateur en avait besoin de la **même** version, pas d'une variante :
 de `rhythm/patterns.js`, que reprendra la Lecture de partitions (08). Contre-exemple
 instructif : `nearestBeat()`, écrite d'avance *pour* 05, n'est pas ce dont 05 a eu
 besoin — cf. [plan/05 § 11](plan/05-entrainement-rythmique.md#metronomejs-na-eu-besoin-daucune-extension).
+
+Troisième cas, apparu avec le Travail d'un morceau (06) : **réutiliser sans
+déplacer**. `exercises/validate-run.js` juge un passage de morceau exactement
+comme une série d'exercice — les bonnes notes au bon moment, `clean` ou
+`flawed` —, et `song-practice.js` l'appelle tel quel, `stepsToRework` comprise,
+sans qu'il quitte `exercises/`. Un fichier ne déménage que le jour où sa place
+actuelle devient trompeuse, pas au premier emprunt.
+
+Quatrième cas, avec le Programme d'entraînement (04) : **écrire une vue quand
+quelqu'un la demande**. `progress/views.js` ne contient qu'**une** des six vues
+prévues par F3 — l'historique des séances —, parce que c'est la seule dont 04
+avait besoin. Les données des cinq autres dorment déjà dans le journal ; les
+calculer d'avance serait la même erreur que `nearestBeat()`. À retenir aussi :
+04 n'a modifié **aucune** fonctionnalité existante, le format d'évènement figé
+tôt suffisait — et un `featureId` du registre n'est pas toujours celui du
+journal (`song` est satisfait par `song-practice`, cf. `SESSION_FEATURE_IDS`).
+
+Cinquième cas, avec l'Entraînement de l'oreille (07) : **extraire sans changer
+la surface**. `session-engine.js` et `piano-dom.js` sont sortis de 02 le jour où
+07 en a eu besoin, mais `note-reading-engine.js` garde exactement ses exports
+d'avant et le DOM du clavier de 02 est inchangé. C'est ce qui permet de rejouer
+les harnais d'une fonctionnalité **tels quels** après l'avoir remaniée : si un
+harnais doit être réécrit pour passer, il ne mesure plus la non-régression.
+Quand un mode a besoin de sa propre variante d'un module partagé, on lui donne
+un paramètre (ici le préfixe de classes CSS) plutôt qu'une copie.
 
 ### Ajouter une fonctionnalité
 
@@ -88,15 +139,15 @@ Tous les plans sont dans `plan/`. Le backlog maître est `plan/README.md`.
 | # | Statut |
 |---|---|
 | F1 — Navigation | ✅ Implémenté |
-| F2 — Entrée MIDI clavier | ✅ Fondation ; aucune feature ne la consomme encore |
-| F3 — Suivi progression | ✅ Étape A (journal) ; vues → étapes B-E |
-| 01 — Apprentissage morceau | ✅ Lecteur ; guidé → 06 |
+| F2 — Entrée MIDI clavier | ✅ Fondation + branchée dans 01, 03 et 05 |
+| F3 — Suivi progression | ✅ Étape A (journal) + 1 vue sur 6 (séances) ; reste → B-E |
+| 01 — Apprentissage morceau | ✅ Lecteur + clavier MIDI ; travail guidé via 06 |
 | 02 — Lecture de notes | ✅ MVP + progression ; altérations → 08 |
-| 03 — Technique doigts | ✅ MVP pratique libre ; validation MIDI → F2 |
-| 04 — Programme entraînement | 📋 Planifié |
-| 05 — Rythme | ✅ MVP 3 familles ; MIDI physique → F2 |
-| 06 — Travail intelligent morceau | 📋 Planifié (suite 01) |
-| 07 — Oreille | 📋 Planifié |
+| 03 — Technique doigts | ✅ MVP + validation MIDI |
+| 04 — Programme entraînement | ✅ Aujourd'hui + configuration ; lit le journal F3 |
+| 05 — Rythme | ✅ 3 familles × 3 entrées (tap, piano, MIDI) |
+| 06 — Travail intelligent morceau | ✅ 5 outils : passages, mains, boucle, attente, tempo |
+| 07 — Oreille | ✅ 3 familles × 3 niveaux ; mélodie hors MVP |
 | 08 — Lecture partitions | 📋 Planifié (suite 02) |
 | 09 — Pédale | 📋 Planifié |
 
@@ -152,6 +203,7 @@ L'app tourne sur une **vieille tablette Android** avec un petit écran et peu de
 
 - **Tone.js doit être initialisé après un gesture utilisateur** (politique navigateur). Le premier clic sur ▶ déclenche `Tone.start()` + chargement des samples.
 - **`stop()` doit TOUJOURS disposer l'audio** : `dispose()` sur le Part, `stop()` sur Transport, `releaseAll()` ou `dispose()` sur le synth/sampler, `dispose()` sur la reverb.
+- **`Tone.Transport` est partagé par tous les modes** : ce qu'un mode y règle, le suivant en hérite. Le mode Morceau y active `loop` pour boucler un passage (06) ; il le remet donc à faux dans `stop()`. Même vigilance pour `bpm`, `loopStart`/`loopEnd` et `swing` si un mode s'en sert un jour.
 - **Pas de cache audio entre les visites d'un mode**. Chaque `start()` réinitialise, chaque `stop()` dispose tout.
 - **Un seul `AudioContext`** partagé via Tone.js.
 
@@ -162,6 +214,8 @@ L'app tourne sur une **vieille tablette Android** avec un petit écran et peu de
 - **Un mode s'abonne, il ne configure rien** : `onMidiNote(cb)` rend sa fonction de désabonnement, à appeler dans `stop()`. Le panneau de connexion vit sur l'accueil, pas dans les modes.
 - **Le MIDI est toujours optionnel.** Aucun mode ne doit devenir inutilisable sans clavier branché, sans permission, ou dans un navigateur sans Web MIDI.
 - **Le CC 64 (pédale) n'est pas encore écouté** : décidé pour plus tard, au moment de [plan/09](plan/09-pedale.md). `midi-input.js` reste le seul endroit qui écoutera le MIDI.
+- **Utiliser `event.timestamp`, pas « maintenant »**, dès qu'un jugement de timing est en jeu : quelques millisecondes séparent l'arrivée d'un message de son traitement, et c'est l'ordre de grandeur que la fenêtre de tolérance mesure. Conversion vers l'horloge du Transport : `Tone.Transport.seconds − (performance.now() − event.timestamp) / 1000`.
+- **Les seuils de timing vivent dans `rhythm/timing.js`**, pour 05 comme pour 03 (et 09 plus tard). Son `matchByTime` accepte un critère d'appariement supplémentaire : le rythme n'en met aucun, la validation MIDI y met l'égalité des hauteurs. Ne pas réécrire un second jugement avance/retard.
 
 ## Servir en local
 

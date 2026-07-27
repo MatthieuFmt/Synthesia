@@ -279,6 +279,27 @@ Deux écarts par rapport au découpage prévu, tous deux assumés :
   touches en Canvas du mode Morceau : les mutualiser aujourd'hui produirait une
   abstraction que personne ne réclame.
 
+### Ce qui a été partagé depuis (27/07/2026)
+
+Deux modules sont sortis de cette fonctionnalité le jour où
+[07 — Entraînement de l'oreille](07-entrainement-oreille.md) en a eu besoin de
+la **même** version. Aucun des deux n'a changé le comportement de 02 : ses trois
+campagnes de vérification se rejouent telles quelles (154 / 154 dans Node,
+200 / 200 + 110 / 110 + 50 / 50 dans le navigateur).
+
+- **`session-engine.js`** — le déroulé d'une session : tentatives, série,
+  erreurs mémorisées par cible, pondération des cibles ratées, bilan. Ce qui
+  reste ici est ce qui n'appartient qu'à la lecture d'une note écrite : les six
+  groupes de notes, la clé associée à chaque main, le calendrier des mains, et
+  le tirage d'une note dans le groupe du moment. `note-reading-engine.js` garde
+  exactement les mêmes exports qu'avant : rien d'autre dans l'application n'a eu
+  à bouger.
+- **`piano-dom.js`** — le clavier lui-même. Le `piano.js` universel refusé
+  ci-dessus n'existe toujours pas ; ce module ne mutualise que ce qui l'était
+  réellement, entre deux exercices qui affichent *le même* clavier. Le préfixe
+  de classes CSS est un paramètre (`nr-` ici, `ear-` en 07), si bien que le DOM
+  produit pour cette fonctionnalité est identique à celui d'avant l'extraction.
+
 ### Modèle minimal de l'exercice
 
 ```js

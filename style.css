@@ -384,6 +384,128 @@ body {
   color: var(--muted);
 }
 
+/* ---------- Sous-mode Travail (feature 06) ----------
+   Une ligne supplémentaire sous le transport, affichée seulement quand le
+   bouton Travail est enfoncé (plan/06 § 10 : « le travail d'un passage est un
+   sous-mode, pas l'état par défaut du mode Morceau »). Les commandes sont
+   groupées par sujet pour que le repli en petite largeur coupe entre les
+   groupes plutôt qu'au milieu de l'un d'eux. */
+.practice-toggle { gap: 6px; }
+
+.practice-toggle[aria-pressed="true"] {
+  background: var(--cursor, #ffae57);
+  border-color: var(--cursor, #ffae57);
+  color: #1b1b1b;
+}
+
+.practice-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1 1 100%;
+  flex-wrap: wrap;
+  min-width: 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.practice-bar[hidden] { display: none; }
+
+.practice-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+/* Les commandes gardent leur taille : c'est le bilan, en fin de ligne, qui
+   cède la place. Sans cela, un en-tête sur une seule ligne les réduirait à
+   quelques pixels — impossibles à toucher. */
+.practice-bar .btn,
+.practice-bar select {
+  flex: 0 0 auto;
+}
+
+/* Le sous-mode ajoute une ligne à l'en-tête : celui-ci doit pouvoir se replier,
+   y compris là où il tient d'ordinaire sur un seul rang (paysage étroit). La
+   classe est posée par song-mode.js — `:has()` n'est pas acquis sur la
+   tablette. */
+.topbar.practice-open,
+.topbar.practice-open .mode-controls {
+  flex-wrap: wrap;
+}
+
+.practice-btn {
+  height: 32px;
+  padding: 0 10px;
+  gap: 5px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.practice-bar .icon-btn {
+  width: 32px;
+  flex: 0 0 32px;
+  height: 32px;
+  font-size: 15px;
+}
+
+.practice-select {
+  height: 32px;
+  line-height: 30px;
+  font-size: 12px;
+  max-width: 150px;
+}
+
+/* Réglage actif : même accent orange que le curseur de lecture, pour que
+   « ce qui est en marche » se lise d'un coup d'œil. */
+.practice-hand[aria-pressed="true"],
+.practice-switch[aria-pressed="true"] {
+  background: var(--cursor, #ffae57);
+  border-color: var(--cursor, #ffae57);
+  color: #1b1b1b;
+  font-weight: 600;
+}
+
+.practice-btn:disabled {
+  opacity: .45;
+  cursor: default;
+}
+
+.practice-tempo-value {
+  min-width: 48px;
+  text-align: center;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.practice-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 180px;
+  min-width: 0;
+}
+
+.practice-status-text {
+  font-size: 12px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Proposition de tempo : jamais appliquée d'office (plan/06 § 8), donc c'est
+   un bouton, pas un message. */
+.practice-suggest {
+  background: #1f6f43;
+  border-color: #2ea043;
+  color: #eaffef;
+}
+
+.practice-suggest[hidden] { display: none; }
+
 /* ---------- Écran d'accueil ---------- */
 /* L'accueil vit dans la même scène que les fonctionnalités : il gère donc son
    propre défilement, la scène restant en overflow: hidden pour le canvas. */
@@ -824,6 +946,328 @@ body {
 }
 
 .nr-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+/* ============================================================
+   Mode Entraînement de l'oreille (feature 07)
+   ============================================================ */
+
+/* Même forme d'écran que la Lecture de notes — les deux exercices sont
+   symétriques (plan/07 § 3) —, mais leur propre famille de classes : c'est la
+   règle du dossier, chaque mode garde ses styles. Le clavier, lui, est
+   réellement partagé (piano-dom.js), donc ses règles sont recopiées à
+   l'identique sous le préfixe ear-. */
+.ear {
+  height: 100%;
+  overflow-y: auto;
+  padding: 22px 20px 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  text-align: center;
+}
+
+.ear-heading {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.ear-subheading {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.ear-lede {
+  margin: 0;
+  max-width: 46ch;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+/* ---------- Réglages de départ ---------- */
+.ear-choice {
+  width: 100%;
+  max-width: 560px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.ear-choice-legend {
+  padding: 0 0 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.ear-choice-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+.ear-choice-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex: 1 1 140px;
+  min-height: 52px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease;
+}
+
+.ear-choice-btn:hover:not(:disabled) { background: #1c2230; }
+
+.ear-choice-btn.is-selected {
+  border-color: var(--cursor);
+  background: #1c2230;
+  font-weight: 600;
+}
+
+.ear-choice-btn:disabled { cursor: default; opacity: .5; }
+
+.ear-choice-soon {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--muted);
+}
+
+.ear-primary,
+.ear-secondary {
+  min-height: 44px;
+  padding: 10px 22px;
+  font-size: 15px;
+}
+
+.ear-primary {
+  border-color: var(--cursor);
+  color: var(--cursor);
+}
+
+/* ---------- Écran d'exercice ---------- */
+.ear-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.ear-progress { font-weight: 600; color: var(--text); }
+
+.ear-hint { min-height: 36px; padding: 6px 14px; }
+
+.ear-instruction {
+  margin: 0;
+  max-width: 46ch;
+  font-size: 14px;
+  color: var(--text);
+}
+
+/* Écouter est le geste central de cet exercice : c'est le bouton le plus gros
+   de l'écran, et réécouter ne coûte jamais rien (plan/07 § 6). */
+.ear-listen {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+.ear-play {
+  min-height: 52px;
+  padding: 12px 34px;
+  border-color: var(--cursor);
+  color: var(--cursor);
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.ear-reference { min-height: 52px; padding: 12px 18px; }
+
+.ear-feedback {
+  min-height: 22px;
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.ear-feedback[data-status="correct"] { color: #4ade80; }
+.ear-feedback[data-status="wrong"] { color: #f87171; }
+
+/* ---------- Propositions de réponse (intervalles, majeur/mineur) ---------- */
+/* Le niveau Difficile des intervalles en propose douze : une grille qui se
+   remplit toute seule évite de choisir un nombre de colonnes par niveau. */
+.ear-choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  width: 100%;
+  max-width: 560px;
+  margin-top: auto;
+}
+
+.ear-answer {
+  min-height: 48px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  transition: background .15s ease;
+}
+
+.ear-answer:hover { background: #1c2230; }
+.ear-answer.is-correct { border-color: #1f9d55; background: #14361f; }
+.ear-answer.is-wrong { border-color: #c0392b; background: #3a1512; }
+
+.ear-answer:focus-visible {
+  outline: 3px solid var(--cursor);
+  outline-offset: -3px;
+}
+
+/* ---------- Clavier de réponse (même clavier que la Lecture de notes) ---------- */
+.ear-keyboard {
+  width: 100%;
+  max-width: 560px;
+  height: 160px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  touch-action: pan-x;
+}
+
+.ear-keyboard::-webkit-scrollbar { height: 6px; }
+.ear-keyboard::-webkit-scrollbar-thumb {
+  border-radius: 3px;
+  background: var(--border);
+}
+
+.ear--exercise .ear-keyboard { margin-top: auto; }
+
+.ear-keyboard-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.ear-whites {
+  display: flex;
+  height: 100%;
+  gap: 2px;
+}
+
+.ear-blacks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.ear-key {
+  padding: 0;
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.ear-key--white {
+  flex: 1 1 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 8px;
+  border-radius: 0 0 6px 6px;
+  background: linear-gradient(#ffffff, #d7d0c2);
+  color: #6b6252;
+}
+
+.ear-key--black {
+  position: absolute;
+  top: 0;
+  height: 62%;
+  border-radius: 0 0 4px 4px;
+  background: linear-gradient(#2b313b, #080a0e);
+  pointer-events: auto;
+}
+
+.ear-key-label { font-size: 11px; }
+
+.ear-key:active { filter: brightness(.85); }
+
+.ear-key.is-correct { background: linear-gradient(#7ee2a8, #1f9d55); }
+.ear-key.is-wrong { background: linear-gradient(#f9a8a8, #c0392b); }
+
+.ear-key.is-hinted {
+  outline: 3px solid var(--cursor);
+  outline-offset: -3px;
+}
+
+.ear-key:focus-visible {
+  outline: 3px solid var(--cursor);
+  outline-offset: -3px;
+}
+
+/* ---------- Bilan de session ---------- */
+.ear-stats {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ear-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 130px;
+  padding: 14px 18px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+}
+
+.ear-stat-value { font-size: 22px; font-weight: 600; }
+.ear-stat-label { font-size: 12px; color: var(--muted); }
+
+.ear-review {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+}
+
+.ear-review-item { padding: 2px 0; }
+
+.ear-note {
+  margin: 0;
+  max-width: 46ch;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.ear-actions {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
@@ -1657,6 +2101,239 @@ body {
 .rh-count[data-status="missed"] { border-color: #c0392b; }
 
 /* ============================================================
+   Mode Programme d'entraînement (feature 04)
+   ============================================================ */
+
+/* Même forme que les autres écrans sans Canvas : une colonne qui défile d'
+   elle-même, la scène restant en overflow: hidden. Le texte est aligné à
+   gauche : ce sont des listes à lire, pas un exercice à centrer. */
+.tp {
+  height: 100%;
+  overflow-y: auto;
+  padding: 22px 20px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.tp-heading {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.tp-date {
+  margin: -10px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.tp-lede {
+  margin: 0;
+  max-width: 60ch;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.tp-all-done {
+  margin: 0;
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 174, 87, .5);
+  border-radius: 8px;
+  color: var(--cursor);
+  font-size: 14px;
+}
+
+.tp-list,
+.tp-config {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tp-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+}
+
+/* Une séance déjà faite reste lisible : elle s'efface un peu, elle ne
+   disparaît pas — le programme doit rester consultable en entier. */
+.tp-item[data-state="done"] { opacity: .62; }
+
+.tp-item-main {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.tp-item-title {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.tp-item-meta,
+.tp-item-hint {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.tp-item-hint { margin: 0; }
+
+.tp-item-side {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+
+.tp-item-state {
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--muted);
+}
+
+.tp-item[data-state="todo"] .tp-item-state {
+  border-color: rgba(255, 174, 87, .5);
+  color: var(--cursor);
+}
+
+.tp-start { min-height: 36px; }
+
+.tp-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.tp-primary,
+.tp-secondary {
+  min-height: 44px;
+  padding: 10px 22px;
+  font-size: 15px;
+}
+
+.tp-primary {
+  border-color: var(--cursor);
+  color: var(--cursor);
+}
+
+.tp-note {
+  margin: 0;
+  max-width: 46ch;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* ---------- Configuration ---------- */
+.tp-config-item {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+}
+
+.tp-config-item[data-included="false"] { opacity: .7; }
+
+/* Toute la ligne du titre est la cible de la coche : au doigt, une case à
+   cocher seule serait trop petite (CLAUDE.md, cibles ≥ 30 px). */
+.tp-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 36px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tp-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.tp-toggle[aria-pressed="true"] .tp-check {
+  border-color: var(--cursor);
+  color: var(--cursor);
+}
+
+.tp-config-title { font-size: 15px; font-weight: 600; }
+
+.tp-config-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.tp-freq {
+  display: flex;
+  gap: 6px;
+}
+
+.tp-choice-btn {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #21262d;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background .15s ease;
+}
+
+.tp-choice-btn.is-selected {
+  border-color: var(--cursor);
+  color: var(--cursor);
+}
+
+.tp-stepper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 6px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.tp-stepper-value {
+  min-width: 9ch;
+  text-align: center;
+  font-size: 13px;
+}
+
+.tp-stepper .icon-btn:disabled { opacity: .4; cursor: default; }
+
+/* ============================================================
    Responsive — petits écrans & téléphones en paysage
    ============================================================ */
 
@@ -1703,6 +2380,13 @@ body.force-landscape .landscape-btn { display: inline-flex; }
   .nr-primary,
   .nr-secondary { min-height: 40px; font-size: 14px; }
 
+  .ear-heading { font-size: 17px; }
+  .ear-keyboard { height: 132px; }
+  .ear-choice-btn { flex: 1 1 100px; }
+  .ear-choices { grid-template-columns: repeat(auto-fit, minmax(104px, 1fr)); }
+  .ear-primary,
+  .ear-secondary { min-height: 40px; font-size: 14px; }
+
   /* Exercices : mêmes proportions comprimées. L'en-tête de l'exercice passe à
      la ligne plutôt que d'écraser les boutons. */
   .ex { padding: 16px 12px 26px; gap: 12px; }
@@ -1715,6 +2399,19 @@ body.force-landscape .landscape-btn { display: inline-flex; }
   .ex-run-goal { display: none; }
   .ex-run-hand { display: none; }
   .ex-run-btn { height: 30px; padding: 0 8px; font-size: 12px; }
+
+  /* Programme : la ligne d'une séance passe sur deux rangs plutôt que d'écraser
+     le bouton Démarrer, qui doit rester frappable au doigt. */
+  .tp { padding: 16px 12px 26px; gap: 12px; }
+  .tp-heading { font-size: 17px; }
+  .tp-item { flex-wrap: wrap; padding: 10px 12px; }
+  .tp-item-main { flex: 1 1 100%; }
+  .tp-item-side { width: 100%; justify-content: flex-end; }
+  .tp-primary,
+  .tp-secondary { min-height: 40px; font-size: 14px; }
+  .tp-choice-btn { flex: 1 1 90px; min-height: 34px; font-size: 12px; }
+  .tp-config-row { gap: 6px; }
+  .tp-stepper-value { min-width: 8ch; font-size: 12px; }
 
   /* Rythme : la portée et la zone de frappe doivent rester grandes, c'est le
      reste qui se comprime. */
@@ -1755,6 +2452,20 @@ body.force-landscape .landscape-btn { display: inline-flex; }
 
   .annotation-toggle { width: 30px; height: 30px; flex: 0 0 30px; }
   .annotation-toggle .toolbar-icon { width: 30px; height: 30px; padding: 6px; }
+
+  /* Travail : le bouton se réduit à son icône, et la ligne de commandes se
+     replie par groupes. Les cibles restent à 30 px minimum. */
+  .practice-toggle { width: 30px; flex: 0 0 30px; justify-content: center; padding: 0; }
+  .practice-toggle-label { display: none; }
+  .practice-bar { gap: 6px; padding-top: 6px; }
+  .practice-btn { height: 30px; padding: 0 7px; }
+  .practice-btn-label { display: none; }
+  #practiceMarkStart,
+  #practiceMarkEnd { width: 30px; justify-content: center; padding: 0; }
+  .practice-bar .icon-btn { width: 30px; flex: 0 0 30px; height: 30px; }
+  .practice-select { height: 30px; line-height: 28px; max-width: 108px; }
+  .practice-tempo-value { min-width: 42px; font-size: 12px; }
+  .practice-status { flex-basis: 100%; }
 
   /* Une base large fait passer le transport à la ligne quand les contrôles du
      mode occupent déjà la largeur : le curseur de position reste manipulable
@@ -1814,11 +2525,30 @@ body.force-landscape .song-info { margin-top: 6px; font-size: 12px; }
   .fullscreen-btn { width: 34px; height: 32px; }
   .song-info { margin-top: 6px; font-size: 12px; }
 
+  /* Travail : c'est l'orientation réellement utilisée sur la tablette. La
+     ligne de commandes reste sur un seul rang — c'est la hauteur qui manque,
+     pas la largeur — et le canvas ne perd que 32 px. */
+  .practice-toggle-label { display: none; }
+  .practice-toggle { width: 34px; flex: 0 0 34px; justify-content: center; padding: 0; }
+  .practice-bar { gap: 8px; padding-top: 5px; }
+  .practice-btn { height: 30px; padding: 0 8px; }
+  .practice-bar .icon-btn { width: 30px; flex: 0 0 30px; height: 30px; }
+  .practice-select { height: 30px; line-height: 28px; max-width: 120px; }
+
   /* Lecture de notes : la portée et le clavier doivent tenir sans défilement. */
   .nr { padding: 10px 14px 16px; gap: 8px; }
   .nr-staff { max-width: 360px; }
   .nr-keyboard { height: 96px; }
   .nr-lede { display: none; }
+
+  /* Oreille : rien n'est dessiné à la place de la portée, l'écran est donc
+     court. On rend au clavier et aux propositions ce que gagne l'accroche. */
+  .ear { padding: 10px 14px 16px; gap: 8px; }
+  .ear-keyboard { height: 96px; }
+  .ear-lede { display: none; }
+  .ear-play { min-height: 44px; padding: 10px 28px; }
+  .ear-reference { min-height: 44px; }
+  .ear-answer { min-height: 40px; }
 
   /* Exercices : c'est l'orientation réellement utilisée sur la tablette. Le
      rouleau prend tout ce qui reste, l'en-tête tient sur une seule ligne. */
@@ -1830,6 +2560,13 @@ body.force-landscape .song-info { margin-top: 6px; font-size: 12px; }
   .ex-runbar { flex-wrap: nowrap; padding: 5px 10px; }
   .ex-run-goal { display: none; }
   .ex-run-btn { height: 30px; }
+
+  /* Programme : le texte d'accroche et la date cèdent, les lignes de séances
+     restent entières — c'est tout l'écran. */
+  .tp { padding: 10px 14px 16px; gap: 10px; }
+  .tp-lede { display: none; }
+  .tp-date { display: none; }
+  .tp-item { padding: 8px 12px; }
 
   /* Rythme : la hauteur est rare. On sacrifie le texte d'accroche et on réduit
      la portée, jamais la cible de frappe. L'écran le plus chargé est la

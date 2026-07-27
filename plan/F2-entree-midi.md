@@ -1,11 +1,11 @@
 # Fondation F2 — Entrée clavier MIDI
 
-> Statut : **fondation en place** (26/07/2026). Détection, permission, choix de
-> l'appareil, branchement à chaud et normalisation des notes fonctionnent, avec
-> un panneau de connexion sur l'accueil et un affichage des notes reçues (§ 15).
-> **Aucune fonctionnalité ne la consomme encore** : c'est l'étape suivante du
-> backlog. Et il reste la seule vérification que rien ne remplace : un vrai
-> clavier branché.
+> Statut : **fondation en place et consommée** (26/07/2026). Détection,
+> permission, choix de l'appareil, branchement à chaud et normalisation des notes
+> fonctionnent, avec un panneau de connexion sur l'accueil (§ 15). Trois
+> fonctionnalités s'y abonnent : 03 valide les notes jouées, 05 en fait une
+> entrée de reproduction, 01 allume ses touches. Reste la seule vérification que
+> rien ne remplace : **un vrai clavier branché**.
 
 [Retour à la checklist générale](README.md)
 
@@ -228,8 +228,13 @@ n'auront qu'à s'abonner : elles n'ont pas à porter l'interface de connexion.
   connecté.
 - [x] Jouer une touche physique déclenche un évènement reçu par la
   fonctionnalité active.
-  (reçu et affiché par le panneau de l'accueil — le seul abonné pour l'instant ;
-  une fonctionnalité consommatrice viendra à l'étape 12 du backlog)
+  (trois consommatrices depuis le 26/07/2026 : les [Exercices
+  techniques](03-technique-doigts.md#étape-d--validation-midi--faite-le-26072026)
+  valident les notes jouées, l'[Entraînement
+  rythmique](05-entrainement-rythmique.md#étape-e--entrée-midi-physique--faite-le-26072026)
+  en fait sa troisième entrée, et le [mode
+  Morceau](01-apprentissage-morceau.md#le-clavier-physique-dès-maintenant-26072026)
+  allume ses touches)
 - [x] Débrancher le clavier ne bloque ni l'application ni la fonctionnalité
   en cours.
 - [x] Toute fonctionnalité proposant le MIDI reste utilisable sans clavier

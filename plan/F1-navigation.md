@@ -134,7 +134,8 @@ src/
   music.js             # noms, hauteurs MIDI, positions sur portée (partagé)    [fait]
   audio.js             # échantillonneur piano, lecture d'une note (partagé)    [fait]
   perf.js       # profil de l'appareil : canvas bridé, audio léger       [fait]
-  piano.js             # géométrie, rendu et interactions du clavier (partagé)  [pas nécessaire]
+  piano.js             # clavier universel, tous modes confondus                [pas nécessaire]
+  piano-dom.js         # clavier en <button> de 02 et 07 (partagé)              [fait 27/07]
 ```
 
 `viewport.js` ne figurait pas dans la liste d'origine : il est apparu en
@@ -149,14 +150,24 @@ prévu : la Lecture de notes a été la première à en avoir besoin.
 même profil d'appareil que le canvas du mode Morceau pour choisir son jeu
 d'échantillons — le dupliquer l'aurait fait dériver.
 
-`piano.js` n'a **pas** été extrait, et n'a pas à l'être pour l'instant : les
-deux claviers de l'application n'ont rien en commun. Celui du mode Morceau
-occupe 88 touches dessinées en Canvas, alignées sur des colonnes de notes qui
-tombent ; celui de la Lecture de notes est une octave de `<button>` du DOM,
-assez larges pour le doigt et activables au clavier. Mutualiser les deux
-demanderait d'abstraire une géométrie qu'aucune des deux ne partage
-réellement. La règle reste la même : on extraira le jour où deux
-fonctionnalités auront besoin du **même** clavier.
+`piano.js` — le clavier universel, tous modes confondus — n'a **pas** été
+extrait, et n'a toujours pas à l'être : celui du mode Morceau occupe 88 touches
+dessinées en Canvas, alignées sur des colonnes de notes qui tombent ; celui de
+la Lecture de notes est une octave de `<button>` du DOM, assez larges pour le
+doigt et activables au clavier. Mutualiser les deux demanderait d'abstraire une
+géométrie qu'aucune des deux ne partage réellement.
+
+La règle annoncée ici — « on extraira le jour où deux fonctionnalités auront
+besoin du **même** clavier » — s'est appliquée telle quelle le **27/07/2026** :
+l'Entraînement de l'oreille (07) a eu besoin exactement du clavier de la Lecture
+de notes, à l'étendue près, et `piano-dom.js` est né ce jour-là. Deux détails
+qui valent pour les extractions suivantes :
+
+- ce qui différait entre les deux modes — la famille de classes CSS — est devenu
+  un **paramètre**, pas une copie ni un second module ;
+- le DOM produit pour 02 est resté identique au octet près, ce qui a permis de
+  rejouer ses harnais **tels quels**. Un harnais qu'il faut réécrire pour qu'il
+  passe ne mesure plus rien.
 
 `index.html` devra séparer une barre commune (retour à l'accueil, plein
 écran) des contrôles propres à chaque fonctionnalité, aujourd'hui tous

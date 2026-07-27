@@ -1,11 +1,11 @@
 # Feature 03 — Exercices techniques et agilité des doigts
 
-> Statut : **MVP en pratique libre en place** (26/07/2026). Boucle complète pour
-> les trois familles du MVP — famille → réglages → consigne → décompte d'une
-> mesure → répétitions dans un rouleau avec doigtés → bilan — vérifiée dans un
-> navigateur (§ 17). Restent la validation MIDI (étape D, dépend de
-> [F2](F2-entree-midi.md)), les trois familles hors MVP, les tonalités autres que
-> Do majeur et les niveaux au-delà de Débutant.
+> Statut : **MVP complet, en pratique libre et au clavier MIDI** (26/07/2026).
+> Boucle complète pour les trois familles du MVP — famille → réglages → consigne
+> → décompte d'une mesure → répétitions dans un rouleau avec doigtés → bilan —
+> et, si un clavier est branché, un bilan qui dit quelles notes sont passées
+> (§ 17). Restent les trois familles hors MVP, les tonalités autres que Do
+> majeur, les niveaux au-delà de Débutant, et le test avec un vrai clavier.
 
 [Retour à la checklist générale](README.md)
 
@@ -22,9 +22,9 @@
   [05](05-entrainement-rythmique.md))
 - [x] Implémenter les trois familles du MVP.
   (Déliement, Accords et Arpèges, un exercice chacune)
-- [ ] Valider la pratique avec et sans clavier MIDI.
-  (pratique libre vérifiée ; la validation MIDI attend
-  [F2](F2-entree-midi.md) — étape D)
+- [x] Valider la pratique avec et sans clavier MIDI.
+  (les deux vérifiées le 26/07/2026 — la validation MIDI par une doublure du
+  Web MIDI ; reste le test avec un vrai clavier, ligne de [F2](F2-entree-midi.md))
 - [ ] Ajouter le choix de difficulté.
   (absent volontairement : le catalogue ne contient que des exercices Débutant,
   un sélecteur à une seule valeur serait un faux choix — § 13 étape C)
@@ -460,12 +460,19 @@ et il n'a rien eu à ajouter à son format (§ 7 de F3) :
 | `session-start` | `{ exerciseId, family, handMode, key, tempo, repetitions, metronome, demo }` — tout ce qui ne varie pas pendant la séance |
 | `repetition` | une série terminée, `outcome: "none"`, cible `{ exerciseId, hand, key, tempo, repetition }` |
 | `session-end` | `done` si le bilan est atteint, `abandoned` sinon, avec `{ completedRepetitions, plannedRepetitions, tempo, seconds }` |
+| `run` (26/07/2026) | une série **jugée au clavier MIDI**, `clean` ou `flawed`, avec `given: { correct, total, extras, meanFraction }` |
 
 `outcome: "none"` est le point important : en pratique libre, **rien n'est
 mesuré**. Une série faite n'est pas une série réussie, et aucune vue ne pourra
-la compter comme telle. C'est ce qui permettra d'ajouter plus tard les `run` en
-`clean` / `flawed` de la validation MIDI sans réinterpréter l'historique déjà
-écrit.
+la compter comme telle.
+
+C'est exactement ce qui a permis d'ajouter la validation MIDI sans toucher au
+format ni réinterpréter l'historique : la même série devient un `run` en `clean`
+ou `flawed` quand les notes ont été vues, et reste un `repetition` en `none`
+quand elles ne l'ont pas été. Le `session-start` porte `validated`, donc une vue
+future sait toujours laquelle des deux elle lit. C'est le seul endroit de
+l'application où le **type** d'évènement dépend de ce que l'application a
+réellement observé.
 
 Deux conséquences immédiates, gratuites :
 
@@ -600,6 +607,44 @@ MVP (Accords / Les deux, 16 blanches), à 360×640, 390×844, 844×390 et 1280×
   différence avec la Lecture de notes est nette : là-bas, le clavier **est** la
   réponse, et c'est pour ça qu'il défile latéralement plutôt que de rétrécir
   ([02 § 4](02-lecture-notes.md#clavier-des-grandes-étendues)).
+
+### Validation de l'étape D — clavier MIDI (26 juillet 2026)
+
+**Hors navigateur** — 70 vérifications sur 70 (partagées avec l'appariement
+généralisé de `rhythm/timing.js`), dans Node :
+
+- série parfaite : verdict `clean`, précision de 100 % par main, rythme régulier,
+  rien à retravailler ;
+- deux notes oubliées : verdict `flawed`, et les verdicts disent **lesquelles** ;
+- fausse note à la place d'une bonne : une manquée **et** une en trop ;
+- notes justes mais toutes en retard : la série reste `clean`, et c'est le timing
+  qui dit le retard — la décision n° 1 ci-dessus, vérifiée ;
+- note hors de la fenêtre : manquée, pas simplement en retard ;
+- accord incomplet : le pas fautif est désigné et nommé par la note ratée ;
+- accord légèrement étalé : reste propre, mais son étalement se voit dans le
+  timing — la décision n° 2, vérifiée ;
+- deux mains : la main muette est identifiable par sa précision ;
+- rien joué du tout : aucune moyenne inventée, aucune tendance déduite ;
+- deux séries à des tempos différents : l'agrégation reste juste, parce que
+  l'écart est porté en **fraction de temps** et non en millisecondes ;
+- appariement : une note de la bonne hauteur est retenue même si une fausse est
+  plus proche dans le temps — ce qu'un simple « le plus proche » aurait raté.
+
+**Dans Chrome sans interface** — 18 vérifications de plus dans le harnais MIDI,
+trois exécutions identiques. Un faux Web MIDI joue la première série
+entièrement et oublie la première note de la seconde :
+
+- le réglage « Clavier MIDI » n'apparaît **que** parce qu'un clavier écoute, et
+  le clavier est nommé ;
+- le bilan affiche « Tes notes » : 15 / 16 notes justes, 1 / 2 séries sans
+  faute, la proportion, la tendance rythmique commentée, et le pas raté
+  signalé ;
+- le bilan ne dit **plus** qu'il ne reçoit rien ;
+- journal : deux `run` (`clean` puis `flawed`), aucun `repetition` non mesuré
+  dans cette séance, le détail chiffré présent, l'écart moyen brut conservé —
+  pas un degré —, et `validated: true` sur la séance ;
+- sans clavier, la même séance repasse en `repetition`/`none` avec
+  `validated: false`, vérifié dans le harnais des exercices.
 
 **Non-régression** — les harnais des campagnes précédentes rejoués tels quels :
 154/154 sur le moteur de la Lecture de notes et 74/74 sur le journal dans Node,

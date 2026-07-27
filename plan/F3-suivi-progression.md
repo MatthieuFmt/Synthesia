@@ -13,6 +13,12 @@
 > `beat` du journal, avec la mesure brute dans `given: { deviationMs }` comme le
 > § 7 le prévoyait
 > ([05 § 14](05-entrainement-rythmique.md#14-ce-que-la-séance-laisse-dans-le-journal)).
+>
+> Le 27/07/2026, le journal a trouvé son **premier consommateur extérieur** : le
+> Programme d'entraînement (04) calcule ses séances dues à partir de lui, via la
+> première vue de `progress/views.js`. Le pari du § 3 est tenu — brancher une
+> fonctionnalité qui *lit* n'a demandé aucun champ nouveau, aucune migration, et
+> aucune modification des fonctionnalités qui *écrivent*.
 
 [Retour à la checklist générale](README.md)
 
@@ -24,6 +30,9 @@
 - [x] Définir et figer le format d'un évènement (à faire tôt).
 - [x] Implémenter la persistance locale.
 - [ ] Implémenter les vues de progression.
+  (une seule des six existe : l'**historique des séances**, écrite le
+  27/07/2026 quand le Programme d'entraînement (04) en a eu besoin — § 10,
+  étape B. Les cinq autres attendent une fonctionnalité qui les demande)
 - [x] Implémenter les révisions adaptées aux erreurs précédentes.
   (forme minimale : les notes les plus ratées reviennent plus souvent ; le
   volet « les moins vues récemment » attend l'étape D)
@@ -86,7 +95,7 @@ fonctionnalité.
 | [07 — Oreille](07-entrainement-oreille.md) | Réponses par note et par intervalle | Intervalles confondus |
 | [08 — Lecture de partitions](08-lecture-partitions.md) | Réponses par note, durée, altération | Difficultés de lecture à revoir |
 | [09 — Pédale](09-pedale.md) | Verdicts de changement de pédale | Types d'erreur récurrents |
-| [04 — Programme d'entraînement](04-programme-entrainement.md) | Séances terminées | Historique des séances (section 5) |
+| [04 — Programme d'entraînement](04-programme-entrainement.md) | Rien : c'est le seul consommateur pur | Historique des séances (section 5) ✅ |
 
 ## 5. Chevauchement avec le Programme d'entraînement (04)
 
@@ -254,7 +263,7 @@ Décisions d'implémentation prises avec le format (25/07/2026) :
 src/
   progress/
     store.js        # écriture du journal, lecture, compaction, export/effacement [fait]
-    views.js        # les six vues calculées de la section 6                 [à faire]
+    views.js        # les six vues de la section 6         [1 sur 6 : les séances]
     review.js       # sélection des éléments à revoir en priorité              [fait]
 ```
 
@@ -264,9 +273,13 @@ testables sans navigateur — même principe que le moteur d'exercice de
 d'ailleurs son stockage **et** son horloge en paramètres, ce qui permet de
 vérifier hors navigateur le plafond, le quota dépassé et l'écriture groupée.
 
-`views.js` n'existe pas encore : aucune vue n'est construite tant que le
-journal ne contient pas de données réelles. C'est la conséquence assumée du
-découpage de F3 en deux temps.
+`views.js` a été créé le 27/07/2026 avec **une seule** vue, l'historique des
+séances, parce que le Programme d'entraînement (04) en avait réellement besoin.
+Les cinq autres attendent toujours une fonctionnalité qui les demande : aucune
+vue n'est construite tant que rien ne la consomme, même quand les données
+dorment déjà dans le journal. C'est la conséquence assumée du découpage de F3
+en deux temps, et la même règle que pour l'extraction des modules partagés
+(CLAUDE.md).
 
 ## 10. Étapes de réalisation
 
@@ -288,7 +301,13 @@ découpage de F3 en deux temps.
 ### Étape B — Vues de base
 
 - [ ] Notes souvent confondues.
-- [ ] Historique des séances.
+- [x] Historique des séances. — **faite le 27/07/2026**
+  (`progress/views.js` : `sessions()` reconstitue les séances à partir des
+  paires `session-start` / `session-end`, filtrables par fonctionnalité et par
+  période ; `completedSessions()` ne garde que celles allées jusqu'à leur
+  bilan. Un `session-end` orphelin — dont le début est parti avec le plafond du
+  journal — reste une séance terminée. Consommée par
+  [04](04-programme-entrainement.md#11-découpage-technique--fait-le-27072026))
 - [ ] Évolution par main.
 
 ### Étape C — Vues liées au tempo
@@ -318,8 +337,12 @@ découpage de F3 en deux temps.
   séances distinctes.
 - [ ] Le tempo maximal propre est conservé par exercice et par passage.
 - [ ] La progression est consultable séparément pour chaque main.
-- [ ] Le Programme d'entraînement (04) calcule ses séances dues à partir du
+- [x] Le Programme d'entraînement (04) calcule ses séances dues à partir du
   journal de F3, sans tenir un second historique.
+  (27/07/2026 : `training-log.js` n'a jamais été écrit, et le harnais vérifie
+  explicitement qu'aucun second journal n'apparaît dans `localStorage`. Le
+  branchement n'a demandé **aucune** modification des fonctionnalités
+  productrices — le format figé le 25/07/2026 suffisait)
 - [x] Une session de révision propose en priorité les éléments ratés
   précédemment.
   (les notes ratées sortent plus souvent ; le critère « le moins vu récemment »

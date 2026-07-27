@@ -1,10 +1,9 @@
 # Feature 05 — Entraînement rythmique
 
-> Statut : **MVP des trois familles en place** (26/07/2026). Métronome,
-> Reconnaissance et Reproduction (au tap et au piano à l'écran) fonctionnent de
-> bout en bout, vérifiés dans un navigateur (§ 18). Restent l'entrée MIDI
-> physique (étape E, dépend de [F2](F2-entree-midi.md)), les triolets et la
-> saisie libre en Reconnaissance.
+> Statut : **les trois familles et les trois entrées en place** (26/07/2026).
+> Métronome, Reconnaissance et Reproduction — au tap, au piano à l'écran et au
+> clavier MIDI physique — fonctionnent de bout en bout, vérifiés dans un
+> navigateur (§ 18). Restent les triolets et la saisie libre en Reconnaissance.
 
 [Retour à la checklist générale](README.md)
 
@@ -22,7 +21,9 @@
 - [x] Implémenter la reproduction (tap et piano à l'écran).
   (écoute puis reproduction sans couper la pulsation, jugement par frappe,
   couleur sur chaque note du motif)
-- [ ] Brancher l'entrée MIDI (F2) pour la reproduction au piano physique.
+- [x] Brancher l'entrée MIDI (F2) pour la reproduction au piano physique.
+  (troisième mode d'entrée, visible mais désactivé tant qu'aucun clavier
+  n'écoute ; la hauteur reste ignorée, comme au piano à l'écran — étape E)
 - [ ] Ajouter les triolets du niveau Difficile.
   (hors MVP : ils demandent une subdivision qui ne divise pas le temps par
   deux et une notation à crochet — § 6 et § 18)
@@ -309,12 +310,32 @@ pas le dessin.
   (écart en millisecondes à chaque frappe, puis chaque note du motif colorée
   selon son jugement ; le bilan dit aussi la **tendance**)
 
-### Étape E — Entrée MIDI physique
+### Étape E — Entrée MIDI physique — **faite le 26/07/2026**
 
-- [ ] Brancher [F2](F2-entree-midi.md) pour reproduire sur un clavier MIDI
+- [x] Brancher [F2](F2-entree-midi.md) pour reproduire sur un clavier MIDI
   physique.
-- [ ] Vérifier l'absence de régression du mode tap / piano à l'écran quand
+  (troisième mode d'entrée, visible mais désactivé tant qu'aucun clavier
+  n'écoute ; la hauteur reste ignorée, comme au piano à l'écran)
+- [x] Vérifier l'absence de régression du mode tap / piano à l'écran quand
   MIDI n'est pas branché.
+  (les 141 vérifications du mode Rythme rejouées, dont les deux entrées
+  d'origine)
+
+**L'horodatage du message MIDI est utilisé, pas l'instant du rappel.** C'est le
+seul endroit où cela change quelque chose de mesurable : quelques millisecondes
+séparent l'arrivée d'un message de son traitement, et c'est précisément l'ordre
+de grandeur que la fenêtre du § 5 juge. On corrige donc l'instant
+(`Transport.seconds − (now − timestamp)`) au lieu de lire simplement
+« maintenant ». C'est ce que
+[F2 § 8](F2-entree-midi.md#8-modèle-normalisé--en-place) avait anticipé en
+gardant `timeStamp`.
+
+Deux filets, parce qu'un clavier peut être débranché entre deux écrans :
+
+- un réglage `midi` restauré d'une séance passée n'est repris que si le clavier
+  écoute encore ;
+- si le clavier disparaît entre le réglage et le départ, la séance retombe sur
+  le tap plutôt que de s'ouvrir muette.
 
 ## 13. Critères d'acceptation
 
@@ -331,8 +352,10 @@ pas le dessin.
   inventée.
   (le Métronome n'en a **aucun** : c'est un outil ; la Reproduction n'affiche
   pas de précision s'il n'y a rien à mesurer)
-- [ ] Une fois F2 disponible, la reproduction fonctionne aussi avec un
+- [x] Une fois F2 disponible, la reproduction fonctionne aussi avec un
   clavier MIDI physique, sans régression du mode tap / piano à l'écran.
+  (26/07/2026 — vérifié avec une doublure du Web MIDI ; le test avec un vrai
+  clavier reste la ligne ouverte de [F2](F2-entree-midi.md))
 - [ ] Les trois niveaux de difficulté proposent des motifs et des tempos
   différents et cohérents avec la section 6.
   (les trois niveaux, leurs mesures — 4/4, 3/4, 6/8 — et leurs tempos sont en
