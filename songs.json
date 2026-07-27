@@ -4,6 +4,17 @@
   { "title": "Coldplay — Speed of Sound", "file": "midi/Coldplay%20-%20Speed%20of%20Sound.mid" },
   { "title": "Paul de Senneville — Mariage d'Amour", "file": "midi/Paul%20de%20Senneville%20-%20Mariage%20d'Amour.mid" },
 
+  { "title": "Hanon — Exercice nº 1", "file": "morceaux-exercice/hanon-01.mid" },
+  { "title": "Hanon — Exercice nº 2", "file": "morceaux-exercice/hanon-02.mid" },
+  { "title": "Hanon — Exercice nº 3", "file": "morceaux-exercice/hanon-03.mid" },
+  { "title": "Hanon — Exercice nº 4", "file": "morceaux-exercice/hanon-04.mid" },
+  { "title": "Hanon — Exercice nº 5", "file": "morceaux-exercice/hanon-05.mid" },
+
+  { "title": "Czerny — Op. 821 nº 1", "file": "morceaux-exercice/czerny-op821-01.mid" },
+  { "title": "Czerny — Op. 821 nº 2", "file": "morceaux-exercice/czerny-op821-02.mid" },
+  { "title": "Czerny — Op. 821 nº 3", "file": "morceaux-exercice/czerny-op821-03.mid" },
+  { "title": "Czerny — Op. 821 nº 4", "file": "morceaux-exercice/czerny-op821-04.mid" },
+
   { "title": "Czerny — Op. 840 nº 1", "file": "morceaux-exercice/czerny-op840-01.mid" },
   { "title": "Czerny — Op. 840 nº 2", "file": "morceaux-exercice/czerny-op840-02.mid" },
   { "title": "Czerny — Op. 840 nº 3", "file": "morceaux-exercice/czerny-op840-03.mid" },
@@ -14,6 +25,17 @@
   { "title": "Czerny — Op. 840 nº 8", "file": "morceaux-exercice/czerny-op840-08.mid" },
   { "title": "Czerny — Op. 840 nº 9", "file": "morceaux-exercice/czerny-op840-09.mid" },
   { "title": "Czerny — Op. 840 nº 10", "file": "morceaux-exercice/czerny-op840-10.mid" },
+
+  { "title": "Burgmüller — Op. 100 nº 1 « La Candeur »", "file": "morceaux-exercice/burgmuller-op100-01.mid" },
+  { "title": "Burgmüller — Op. 100 nº 2 « L'Arabesque »", "file": "morceaux-exercice/burgmuller-op100-02.mid" },
+  { "title": "Burgmüller — Op. 100 nº 3 « La Pastorale »", "file": "morceaux-exercice/burgmuller-op100-03.mid" },
+  { "title": "Burgmüller — Op. 100 nº 4 « La Petite Réunion »", "file": "morceaux-exercice/burgmuller-op100-04.mid" },
+  { "title": "Burgmüller — Op. 100 nº 5 « Innocence »", "file": "morceaux-exercice/burgmuller-op100-05.mid" },
+  { "title": "Burgmüller — Op. 100 nº 6 « Progrès »", "file": "morceaux-exercice/burgmuller-op100-06.mid" },
+
+  { "title": "Clementi — Sonatine op. 36 nº 1, I. Allegro", "file": "morceaux-exercice/clementi-op36-1-1.mid" },
+  { "title": "Clementi — Sonatine op. 36 nº 1, II. Andante", "file": "morceaux-exercice/clementi-op36-1-2.mid" },
+  { "title": "Clementi — Sonatine op. 36 nº 1, III. Vivace", "file": "morceaux-exercice/clementi-op36-1-3.mid" },
 
   { "title": "Satie — Gnossienne nº 1", "file": "morceaux-exercice/satie-gnossienne-1.mid" },
   { "title": "Satie — Gnossienne nº 2", "file": "morceaux-exercice/satie-gnossienne-2.mid" },
