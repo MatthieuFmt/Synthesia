@@ -39,11 +39,13 @@ pour avancer, pas avant.
 | 07 | Entraînement de l'oreille | Trois familles sur quatre ; mélodie hors MVP | [07-entrainement-oreille.md](07-entrainement-oreille.md) |
 | 08 | Lecture de partitions | Cinq étapes en place — suite de 02 | [08-lecture-partitions.md](08-lecture-partitions.md) |
 | 09 | Exercices de pédale | Écoute, directe et syncopée ; Application à venir | [09-pedale.md](09-pedale.md) |
+| 10 | Fluidité | Notes défilantes — le niveau 4 de 02 | [10-fluidite.md](10-fluidite.md) |
 
-Deux fonctionnalités prolongent une fonctionnalité existante plutôt que d'en
+Trois fonctionnalités prolongent une fonctionnalité existante plutôt que d'en
 ouvrir une nouvelle : **06** répond aux décisions laissées ouvertes par
-**01**, et **08** poursuit l'étape D de **02**. Elles ont leur propre fichier
-parce qu'elles sont volumineuses, mais elles réutilisent le moteur de leur
+**01**, **08** poursuit l'étape D de **02**, et **10** en construit le
+niveau 4 (les notes qui défilent). Elles ont leur propre fichier parce
+qu'elles sont volumineuses, mais elles réutilisent le moteur de leur
 fonctionnalité d'origine au lieu de le dupliquer.
 
 ## Checklist générale
@@ -315,6 +317,20 @@ Voir [le plan détaillé de la Lecture de partitions](08-lecture-partitions.md).
 
 Voir [le plan détaillé des Exercices de pédale](09-pedale.md).
 
+### Feature 10 — Fluidité
+
+- [x] Définir la frontière avec la Lecture de notes et la Lecture de partitions.
+- [x] Faire défiler des notes vers une cible, à vitesse réglable.
+  (Canvas bridé par le profil de l'appareil ; la traversée dure toujours cinq
+  secondes, la vitesse règle la densité — lire vite, c'est lire plus de notes)
+- [x] Juger une note manquée sans punir.
+  (`missed` au journal, le mot déjà employé par 05 ; elle revient plus souvent
+  ensuite, comme une note ratée)
+- [x] Produire un bilan : premier coup, précision, meilleure série, à revoir.
+- [ ] Ajouter les altérations et la double portée défilantes.
+
+Voir [le plan détaillé de la Fluidité](10-fluidite.md).
+
 ## Ordre de réalisation recommandé
 
 1. ~~Construire la fondation Navigation ([F1](F1-navigation.md)) : écran
@@ -509,6 +525,25 @@ Voir [le plan détaillé des Exercices de pédale](09-pedale.md).
     consommateur prévu. Et brancher le volet ancienneté des révisions n'a
     modifié **aucune** fonctionnalité : 02, 07 et 08 passaient déjà par
     `priorWeights`.
+19. ~~Construire la Fluidité ([10](10-fluidite.md)) : le niveau 4 du parcours
+    de 02, laissé de côté depuis le premier jour.~~ **Fait** (27/07/2026) :
+    des notes défilent vers une ligne d'arrivée, à trois vitesses, et la série
+    mesure la régularité. Voir
+    [10 § 9](10-fluidite.md#9-validation-effectuée-27-juillet-2026).
+
+    Rien n'a été redéfini : groupes de notes de `note-reading-engine.js`,
+    tirage pondéré de `session-engine.js`, clavier de `piano-dom.js`, poids
+    hérités de F3. Une seule ligne a changé ailleurs — `progress/review.js`
+    compte désormais `missed` comme un raté, une note sortie de l'écran étant
+    une note à revoir. C'est aussi le premier écran de lecture en **Canvas** :
+    les portées de 02, 05 et 08 restent en SVG parce que rien n'y bouge.
+20. ~~Afficher l'ordre du jour dès l'ouverture de l'application.~~ **Fait**
+    (27/07/2026) : le panneau « Aujourd'hui » de l'accueil
+    (`src/today-panel.js`) montre les séances dues et coche en vert celles qui
+    sont faites, sans qu'il faille ouvrir le Programme. Il appelle le
+    `dueToday()` de 04 — aucune règle n'est dupliquée, seul l'affichage lui
+    appartient. Voir
+    [04 § 8](04-programme-entrainement.md#le-même-ordre-du-jour-sur-laccueil--27072026).
 
 ### Pourquoi cet ordre
 

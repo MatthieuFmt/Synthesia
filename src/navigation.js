@@ -10,6 +10,7 @@
 // ============================================================================
 
 import { createMidiPanel } from "./midi-controls.js";
+import { createTodayPanel } from "./today-panel.js";
 
 const HOME_TITLE = "Accueil";
 const STATUS_LABELS = {
@@ -23,10 +24,12 @@ let stage = null;
 let homeButton = null;
 let titleLabel = null;
 
-// Panneau MIDI de l'accueil (fondation F2). L'accueil est reconstruit à chaque
-// retour : le panneau doit être libéré, sinon chaque visite laisserait un abonné
-// derrière elle.
+// Panneaux de l'accueil (« Aujourd'hui » et MIDI). L'accueil est reconstruit à
+// chaque retour : les panneaux doivent être libérés, sinon chaque visite
+// laisserait un abonné derrière elle — et l'état « fait / à faire » du jour est
+// ainsi recalculé après chaque séance.
 let midiPanel = null;
+let todayPanel = null;
 let homeListeners = null;
 
 export function initNavigation(features) {
@@ -90,16 +93,25 @@ function showHome() {
   heading.className = "home-title";
   heading.textContent = "Que veux-tu travailler ?";
 
+  homeListeners = new AbortController();
+
+  // Ce qu'il reste à faire aujourd'hui, en tête : c'est la première question
+  // qu'on se pose en ouvrant l'application (plan/04, étendu à l'accueil).
+  todayPanel = createTodayPanel({
+    features: availableFeatures(),
+    onOpen: (featureId) => switchTo(featureId),
+    signal: homeListeners.signal,
+  });
+
   const grid = document.createElement("ul");
   grid.className = "feature-grid";
   for (const feature of registry) {
     grid.appendChild(renderCard(feature));
   }
 
-  home.append(heading, grid);
+  home.append(heading, todayPanel.element, grid);
 
   // Le clavier physique se branche ici, avant de choisir un exercice.
-  homeListeners = new AbortController();
   midiPanel = createMidiPanel({ signal: homeListeners.signal });
   home.appendChild(midiPanel.element);
 
@@ -109,6 +121,8 @@ function showHome() {
 function disposeHome() {
   midiPanel?.dispose();
   midiPanel = null;
+  todayPanel?.dispose();
+  todayPanel = null;
   homeListeners?.abort();
   homeListeners = null;
 }

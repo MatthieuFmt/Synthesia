@@ -104,7 +104,11 @@ function featureTitle(featureId) {
 }
 
 function programmableFeatures() {
-  return availableFeatures().filter((feature) => feature.id !== SELF_ID);
+  // L'écran Progression se consulte, il ne se pratique pas : le planifier
+  // créerait une séance impossible à « faire » (il n'écrit rien au journal).
+  return availableFeatures().filter(
+    (feature) => feature.id !== SELF_ID && feature.id !== "progress"
+  );
 }
 
 function featureIds() {

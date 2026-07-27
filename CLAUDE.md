@@ -31,6 +31,8 @@ Chaque fonctionnalité (mode) est un objet avec cette signature :
 ```
 src/main.js                 # bootstrap : enregistre les features, init viewport + navigation
 src/navigation.js           # registre des features, switchTo(), availableFeatures(), accueil
+src/today-panel.js          # panneau « Aujourd'hui » de l'accueil : séances dues et
+                            # cochées ; lit dueToday() de 04, ne calcule aucune règle
 src/training-mode.js        # mode Programme (04) : écrans Aujourd'hui et configuration (DOM)
 src/training-program.js     # règles du Programme (sans DOM) : fréquences, séances dues,
                             # persistance ; ne tient aucun historique, il lit celui de F3
@@ -40,6 +42,8 @@ src/song-practice.js        # règles du Travail (06), sans DOM : passages, acco
 src/note-reading-mode.js    # mode Lecture de notes : portée SVG + clavier DOM (1 à 2 octaves)
 src/note-reading-engine.js  # ce qui n'appartient qu'à 02 : groupes de notes par niveau
                             # et par main, clé de portée, calendrier des mains (sans DOM)
+src/fluency-mode.js         # mode Fluidité (10) : notes défilantes en Canvas, niveau 4
+                            # du parcours de 02 — seul écran de lecture qui défile
 src/sheet-reading-mode.js   # mode Lecture de partitions (08) : cinq étapes, suite de 02
 src/sheet/exercises.js      # mesures et questions de 08 par étape ; les mesures de
                             # « Valeurs et silences » sont les motifs 4/4 de 05 (sans DOM)
@@ -168,6 +172,7 @@ Tous les plans sont dans `plan/`. Le backlog maître est `plan/README.md`.
 | 07 — Oreille | ✅ 3 familles × 3 niveaux ; mélodie hors MVP |
 | 08 — Lecture partitions | ✅ 5 étapes : mesures, valeurs/silences, altérations, empilements, double portée |
 | 09 — Pédale | ✅ Écoute + directe + syncopée, 3 entrées ; famille Application → plus tard |
+| 10 — Fluidité | ✅ Notes défilantes (Canvas), 3 vitesses ; altérations/double portée → plus tard |
 
 ## Contraintes matérielles (CRITIQUE)
 
@@ -179,7 +184,7 @@ L'app tourne sur une **vieille tablette Android** avec un petit écran et peu de
 - **Pas de framework lourd**. Pas de React, Vue, Svelte, etc. Vanilla JS uniquement.
 - **Pas de build step**. Pas de webpack, vite, etc. Modules ES natifs chargés directement par le navigateur.
 - **Pas de bibliothèque externe superflue**. Actuellement les seules dépendances sont Tone.js et @tonejs/midi (CDN), strictement nécessaires à l'audio et au parsing MIDI.
-- **Canvas, pas de DOM pour le rendu principal**. Le piano roll et le clavier sont dessinés sur un seul `<canvas>` — c'est le cas du mode Morceau et du mode Exercices. Ne pas introduire de rendu DOM pour la partie temps réel *qui défile*. Deux exceptions assumées, parce que rien n'y défile : la **Lecture de notes** (une note fixe, un clic) et le **Rythme** (une portée fixe, une pulsation) utilisent une portée SVG statique et des `<button>` — cibles tactiles plus grandes, et zéro boucle d'animation. Le Rythme va plus loin : ce qui bouge (le point de pulsation, les changements de phase) est **planifié à l'avance sur le Transport et rendu par `Tone.Draw`**, donc aucun `requestAnimationFrame` du tout. À privilégier quand les changements visuels sont peu nombreux et connus d'avance.
+- **Canvas, pas de DOM pour le rendu principal**. Le piano roll et le clavier sont dessinés sur un seul `<canvas>` — c'est le cas du mode Morceau, du mode Exercices et de la **Fluidité** (les notes qui défilent vers la ligne d'arrivée). Ne pas introduire de rendu DOM pour la partie temps réel *qui défile*. Deux exceptions assumées, parce que rien n'y défile : la **Lecture de notes** (une note fixe, un clic) et le **Rythme** (une portée fixe, une pulsation) utilisent une portée SVG statique et des `<button>` — cibles tactiles plus grandes, et zéro boucle d'animation. Le Rythme va plus loin : ce qui bouge (le point de pulsation, les changements de phase) est **planifié à l'avance sur le Transport et rendu par `Tone.Draw`**, donc aucun `requestAnimationFrame` du tout. À privilégier quand les changements visuels sont peu nombreux et connus d'avance.
 - **`requestAnimationFrame` avec throttling**. Ne pas dépasser 30 FPS sur profil bas. Toujours annuler les rAF dans `stop()`.
 - **Éviter les allocations dans la boucle de rendu**. Pré-calculer les géométries, réutiliser les tableaux typés (`Int16Array` pour WHITE_INDEX_BY_MIDI).
 - **Pas d'animations CSS lourdes**. Les transitions sont limitées à `background .15s ease`.

@@ -6,7 +6,13 @@
 > touche → retour → dix questions → bilan, vérifié dans un navigateur (§ 9).
 > L'étape D est faite pour tout ce qui relève de la progression : les résultats
 > sont enregistrés, le bilan est séparé par main et les notes ratées reviennent
-> plus souvent. Restent les altérations, puis ce qui appartient à 08.
+> plus souvent.
+>
+> **Étape D close le 27/07/2026** : les altérations et la double portée sont
+> faites dans [08](08-lecture-partitions.md), et le niveau 4 « Fluidité » du
+> § 3 — les notes qui défilent — est devenu un mode à part entière
+> (`src/fluency-mode.js`), qui réutilise les groupes de notes et la
+> pondération définis ici.
 
 [Retour à la checklist générale](README.md)
 
@@ -407,9 +413,15 @@ distinctes, y compris pour la pondération.
   (vue « révisions adaptées » de [F3](F3-suivi-progression.md)).
   (poids de 1 à 3 selon les tentatives récentes ; les notes jamais vues gardent
   le poids par défaut et ne sont donc pas défavorisées)
-- [ ] Introduire les dièses et les bémols.
-- [ ] Proposer plus tard une vraie double portée avec deux notes simultanées.
-- [ ] Ajouter ensuite le mode chronométré avec notes défilantes.
+- [x] Introduire les dièses et les bémols.
+  (faits dans [08](08-lecture-partitions.md), étape « Altérations », 27/07/2026)
+- [x] Proposer plus tard une vraie double portée avec deux notes simultanées.
+  (faite dans [08](08-lecture-partitions.md), étape 5, 27/07/2026)
+- [x] Ajouter ensuite le mode chronométré avec notes défilantes.
+  (c'est le **mode Fluidité**, `src/fluency-mode.js`, 27/07/2026 : le niveau 4
+  du parcours du § 3 — notes qui défilent, vitesse réglable, série continue et
+  score de précision. Il réutilise les groupes de notes de ce plan et la
+  pondération de F3 ; rien n'y est redéfini)
 
 Les trois dernières lignes sont détaillées dans
 [08 — Lecture de partitions](08-lecture-partitions.md), qui poursuit cette
@@ -690,10 +702,18 @@ main. Le MVP du § 8 est atteint : tous ses critères sont remplis (§ 9).
 
 L'**étape D** est faite pour tout son volet progression (25/07/2026) : les
 résultats sont enregistrés via [F3](F3-suivi-progression.md), le bilan est
-séparé par main et les notes les plus ratées reviennent plus souvent. La suite
-propre à cette fonctionnalité est l'introduction des **altérations**. Le
-défilement des notes et la vraie double portée appartiennent à
-[08 — Lecture de partitions](08-lecture-partitions.md).
+séparé par main et les notes les plus ratées reviennent plus souvent.
+
+Elle est **entièrement close depuis le 27/07/2026** : les altérations et la
+double portée sont faites dans
+[08 — Lecture de partitions](08-lecture-partitions.md), et le défilement
+chronométré — le niveau 4 « Fluidité » du § 3 — est un mode à part entière,
+`src/fluency-mode.js`. Ce dernier n'a rien redéfini : les groupes de notes
+viennent de `note-reading-engine.js`, le tirage pondéré de
+`session-engine.js`, le clavier de `piano-dom.js` et les poids hérités de
+F3. Il apporte en revanche ce que 02 s'interdisait — la pression du temps —
+et son seul ajout au vocabulaire du journal est l'usage de `missed` pour une
+note sortie de l'écran, mot déjà réservé aux frappes manquées par 05.
 
 ## 11. Hors périmètre pour le moment
 

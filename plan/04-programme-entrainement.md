@@ -153,6 +153,33 @@ Affiché :
   liste entièrement cochée ne le dit pas assez ;
 - l'accès à la configuration du programme.
 
+### Le même ordre du jour sur l'accueil — 27/07/2026
+
+Ouvrir l'application et devoir cliquer « Programme » pour savoir quoi faire
+était un pas de trop : le panneau **« Aujourd'hui »** de l'accueil
+(`src/today-panel.js`) affiche désormais le même ordre du jour, en tête de
+l'écran d'accueil, au-dessus des cartes.
+
+Il ne duplique aucune règle : il appelle `dueToday()` de
+`training-program.js` avec le journal de F3, exactement comme cet écran-ci.
+Ce qui lui est propre est uniquement de l'affichage :
+
+- une **coche verte** par séance faite, la ligne passant en gris — l'état se
+  lit sans lire ;
+- les séances faites sont **reléguées en bas de liste**, celles à faire
+  restant en haut ;
+- le bandeau vert « Tout est fait pour aujourd'hui » remplace le compteur
+  quand plus rien n'est dû ;
+- une séance faite reste **cliquable** : pratiquer plus que prévu n'est jamais
+  empêché, ici comme sur l'écran de 04 ;
+- **avant toute configuration**, le panneau propose le programme par défaut de
+  `defaultItem()` plutôt qu'un vide, en indiquant qu'il est personnalisable.
+
+L'écran Programme garde ce que le panneau n'a pas : la configuration, les
+fréquences détaillées et les libellés « Quota atteint ». Le panneau se
+recalcule à chaque retour à l'accueil, puisque l'accueil est reconstruit à
+chaque fois (F1) — une séance terminée s'y voit donc cochée immédiatement.
+
 ## 9. Écran de configuration du programme
 
 - liste des fonctionnalités disponibles (issues du registre F1), chacune avec

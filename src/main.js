@@ -14,6 +14,7 @@ import { initNavigation } from "./navigation.js";
 import { trainingFeature } from "./training-mode.js";
 import { songFeature } from "./song-mode.js";
 import { noteReadingFeature } from "./note-reading-mode.js";
+import { fluencyFeature } from "./fluency-mode.js";
 import { sheetReadingFeature } from "./sheet-reading-mode.js";
 import { exerciseFeature } from "./exercise-mode.js";
 import { rhythmFeature } from "./rhythm-mode.js";
@@ -27,6 +28,7 @@ const FEATURES = [
   trainingFeature,
   songFeature,
   noteReadingFeature,
+  fluencyFeature,      // niveau 4 de la Lecture de notes (plan/02 § 3)
   sheetReadingFeature, // suite directe de la Lecture de notes (plan/08)
   exerciseFeature,
   rhythmFeature,

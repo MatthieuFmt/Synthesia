@@ -61,7 +61,9 @@ export function recentAttempts(
     if (entry.total >= limit) continue;
 
     entry.total++;
-    if (event.outcome === "wrong") entry.wrong++;
+    // Une note manquée (sortie de l'écran en Fluidité sans avoir été jouée)
+    // est un raté au même titre qu'une fausse : elle doit revenir.
+    if (event.outcome === "wrong" || event.outcome === "missed") entry.wrong++;
   }
 
   return stats;
