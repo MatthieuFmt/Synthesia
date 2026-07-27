@@ -24,7 +24,7 @@ pour avancer, pas avant.
 | --- | --- | --- | --- |
 | F1 | Navigation entre les fonctionnalités | Première boucle en place | [F1-navigation.md](F1-navigation.md) |
 | F2 | Entrée clavier MIDI (reconnaissance des touches jouées) | En place, consommée par 01, 03 et 05 | [F2-entree-midi.md](F2-entree-midi.md) |
-| F3 | Suivi de progression | Journal en place, vues à construire | [F3-suivi-progression.md](F3-suivi-progression.md) |
+| F3 | Suivi de progression | Complet : journal, six vues, écran, export/effacement | [F3-suivi-progression.md](F3-suivi-progression.md) |
 
 ## Fonctionnalités
 
@@ -37,8 +37,8 @@ pour avancer, pas avant.
 | 05 | Entraînement rythmique | Trois familles, trois entrées | [05-entrainement-rythmique.md](05-entrainement-rythmique.md) |
 | 06 | Travail intelligent d'un morceau | Cinq outils en place — sous-mode de 01 | [06-travail-intelligent-morceau.md](06-travail-intelligent-morceau.md) |
 | 07 | Entraînement de l'oreille | Trois familles sur quatre ; mélodie hors MVP | [07-entrainement-oreille.md](07-entrainement-oreille.md) |
-| 08 | Lecture de partitions | Planifiée — suite de 02 | [08-lecture-partitions.md](08-lecture-partitions.md) |
-| 09 | Exercices de pédale | Planifiée | [09-pedale.md](09-pedale.md) |
+| 08 | Lecture de partitions | Cinq étapes en place — suite de 02 | [08-lecture-partitions.md](08-lecture-partitions.md) |
+| 09 | Exercices de pédale | Écoute, directe et syncopée ; Application à venir | [09-pedale.md](09-pedale.md) |
 
 Deux fonctionnalités prolongent une fonctionnalité existante plutôt que d'en
 ouvrir une nouvelle : **06** répond aux décisions laissées ouvertes par
@@ -108,14 +108,14 @@ Voir [le plan détaillé de l'Entrée MIDI](F2-entree-midi.md).
 - [x] Implémenter la persistance locale.
   (`localStorage`, écriture groupée, plafond de 4 000 évènements, stockage
   refusé ou plein sans conséquence sur l'exercice)
-- [ ] Implémenter les vues de progression.
-  (une seule des six existe — l'historique des séances, `progress/views.js`,
-  écrite le 27/07/2026 parce que le Programme d'entraînement en avait
-  réellement besoin. Les cinq autres attendent une fonctionnalité qui les
-  demande)
+- [x] Implémenter les vues de progression.
+  (les six vues de F3 § 6 existent, consommées par l'écran « Progression » de
+  l'accueil — qui offre aussi l'export JSON, l'effacement en deux temps et la
+  compaction du journal ancien. Fait le 27/07/2026, étapes B à E)
 - [x] Implémenter les révisions adaptées aux erreurs précédentes.
-  (les notes ratées reviennent plus souvent ; « les moins vues récemment »
-  attend l'étape D de F3)
+  (les notes ratées reviennent plus souvent, et les cibles les moins vues
+  récemment reçoivent un léger surpoids — étape D faite le 27/07/2026,
+  alimentant 02, 07 et 08 sans qu'une ligne n'y change)
 
 Voir [le plan détaillé du Suivi de progression](F3-suivi-progression.md).
 
@@ -160,7 +160,10 @@ Voir [le plan détaillé du mode Morceau](01-apprentissage-morceau.md).
 - [x] Enregistrer les résultats, séparer le bilan par main et faire revenir les
   notes ratées. (25/07/2026 —
   [02 § 9](02-lecture-notes.md#validation-de-létape-d--progression-25-juillet-2026))
-- [ ] Introduire les dièses et les bémols.
+- [x] Introduire les dièses et les bémols.
+  (fait le 27/07/2026, là où 02 le prévoyait : dans la
+  [Lecture de partitions](08-lecture-partitions.md), étape « Altérations » —
+  02 lui-même reste sans altération, comme son MVP le voulait)
 
 Voir [le plan détaillé de la Lecture de notes](02-lecture-notes.md).
 
@@ -275,11 +278,18 @@ Voir [le plan détaillé de l'Entraînement de l'oreille](07-entrainement-oreill
 - [x] Définir la progression note unique → mesure → double portée.
 - [x] Définir l'ordre d'introduction des nouveautés (une seule à la fois).
 - [x] Définir la frontière avec la Lecture de notes et l'Entraînement rythmique.
-- [ ] Étendre le rendu de portée aux petites mesures.
-- [ ] Ajouter les valeurs rythmiques et les silences.
-- [ ] Ajouter les altérations.
-- [ ] Ajouter les notes simultanées.
-- [ ] Ajouter la vraie double portée.
+- [x] Étendre le rendu de portée aux petites mesures.
+  (`sheet/staff-render.js` : rendu maison, décision de
+  [08 § 13](08-lecture-partitions.md#13-décisions-ouvertes--tranchées-le-27072026))
+- [x] Ajouter les valeurs rythmiques et les silences.
+  (réponse en QCM ; les mesures sont les motifs 4/4 du catalogue de 05)
+- [x] Ajouter les altérations.
+  (accidentels puis armure ; les enharmonies sont acceptées d'office)
+- [x] Ajouter les notes simultanées.
+  (empilements validés dans n'importe quel ordre, comme les accords de 06)
+- [x] Ajouter la vraie double portée.
+  (deux portées reliées, bilan séparé par main —
+  [08 § 16](08-lecture-partitions.md#16-validation-effectuée-27-juillet-2026))
 
 Voir [le plan détaillé de la Lecture de partitions](08-lecture-partitions.md).
 
@@ -288,10 +298,20 @@ Voir [le plan détaillé de la Lecture de partitions](08-lecture-partitions.md).
 - [x] Définir les quatre familles d'exercices de pédale.
 - [x] Définir la pédale syncopée comme technique centrale.
 - [x] Définir un MVP utilisable sans pédale physique.
-- [ ] Détecter une pédale physique (CC 64) via l'entrée MIDI.
-- [ ] Implémenter la pédale de substitution (clavier / écran).
-- [ ] Implémenter les exercices de pédale directe et syncopée.
-- [ ] Implémenter la mesure du changement de pédale.
+- [x] Détecter une pédale physique (CC 64) via l'entrée MIDI.
+  (dans `midi-input.js`, seul endroit qui écoute le MIDI — la décision ouverte
+  de F2 § 13 est tranchée et faite)
+- [x] Implémenter la pédale de substitution (clavier / écran).
+  (barre d'espace et bouton à l'écran, annoncés comme un remplacement)
+- [x] Implémenter les exercices de pédale directe et syncopée.
+  (l'application joue le Do–Fa–Sol–Do de 03 ; ce qui sonne tient réellement
+  par la pédale — lever étouffe, oublier s'entend)
+- [x] Implémenter la mesure du changement de pédale.
+  (quatre verdicts « propre / brouillé / trou / oubliée », fenêtres en
+  fraction de temps de `rhythm/timing.js` —
+  [09 § 18](09-pedale.md#18-validation-effectuée-27-juillet-2026))
+- [ ] Implémenter la famille Application (un passage réel, avec les indices
+  de pédale déjà affichés par le mode Morceau) — après le reste, comme prévu.
 
 Voir [le plan détaillé des Exercices de pédale](09-pedale.md).
 
@@ -451,14 +471,44 @@ Voir [le plan détaillé des Exercices de pédale](09-pedale.md).
     nommés, ascendants seulement, pas de « chanter puis vérifier »), et une
     cinquième est apparue — la qualité d'un intervalle n'est demandée qu'au
     niveau Difficile, où « tous les intervalles jusqu'à l'octave » l'impose.
-16. Construire la Lecture de partitions ([08](08-lecture-partitions.md)) :
+16. ~~Construire la Lecture de partitions ([08](08-lecture-partitions.md)) :
     petites mesures, valeurs et silences, altérations, notes simultanées puis
-    double portée.
-17. Construire les Exercices de pédale ([09](09-pedale.md)), une fois F2
-    capable d'émettre les évènements CC 64.
-18. Terminer le Suivi de progression ([F3](F3-suivi-progression.md), étapes
+    double portée.~~ **Fait** (27/07/2026), les cinq étapes — voir
+    [08 § 16](08-lecture-partitions.md#16-validation-effectuée-27-juillet-2026).
+
+    Le pari de 08 § 15 est tenu : le moteur de session extrait pour 07 a
+    absorbé la suite de notes **sans changer d'une ligne** — `nextQuestion`
+    étant injectable, il suffit de lui faire suivre la partition au lieu de
+    tirer au sort. Deux décisions tranchées en construisant : la durée se
+    répond en QCM (pas de timing — c'est la frontière avec 05), et le rendu
+    de portée reste maison jusqu'à la double portée comprise. Le vrai partage
+    promis au § 4 va plus loin que prévu : les mesures de l'étape « Valeurs et
+    silences » **sont** les motifs 4/4 du catalogue de 05, pas une seconde
+    liste.
+17. ~~Construire les Exercices de pédale ([09](09-pedale.md)), une fois F2
+    capable d'émettre les évènements CC 64.~~ **Fait** (27/07/2026) pour
+    Écoute, Pédale directe et Pédale syncopée — l'Application attend, comme
+    son plan le prévoyait. Voir
+    [09 § 18](09-pedale.md#18-validation-effectuée-27-juillet-2026).
+
+    F2 émet désormais les évènements CC 64 (la dernière décision ouverte de
+    son § 13), et les trois entrées — pédale physique, barre d'espace, bouton —
+    convergent vers le même point de jugement. Rien n'a été réécrit : les
+    fenêtres des verdicts viennent de `rhythm/timing.js`, la pulsation de
+    `metronome.js`, l'enchaînement Do–Fa–Sol–Do de 03.
+18. ~~Terminer le Suivi de progression ([F3](F3-suivi-progression.md), étapes
     B à E) : vues de progression, révisions adaptées aux erreurs passées,
-    export et effacement des données.
+    export et effacement des données.~~ **Fait** (27/07/2026) : les six vues
+    existent, l'écran « Progression » de l'accueil les affiche, les révisions
+    ajoutent « le moins vu récemment », et les données s'exportent et
+    s'effacent. Voir
+    [F3 § 12](F3-suivi-progression.md#validation-effectuée-des-étapes-b-à-e-27-juillet-2026).
+
+    La règle « aucune vue sans consommateur » a tenu jusqu'au bout : les cinq
+    vues restantes n'ont été écrites que pour l'écran de progression, dernier
+    consommateur prévu. Et brancher le volet ancienneté des révisions n'a
+    modifié **aucune** fonctionnalité : 02, 07 et 08 passaient déjà par
+    `priorWeights`.
 
 ### Pourquoi cet ordre
 

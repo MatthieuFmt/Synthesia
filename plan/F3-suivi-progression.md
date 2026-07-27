@@ -19,6 +19,13 @@
 > première vue de `progress/views.js`. Le pari du § 3 est tenu — brancher une
 > fonctionnalité qui *lit* n'a demandé aucun champ nouveau, aucune migration, et
 > aucune modification des fonctionnalités qui *écrivent*.
+>
+> Le même jour, les **étapes B à E** ont été menées : les six vues du § 6
+> existent, un écran de progression les affiche (carte « Progression » de
+> l'accueil), les révisions tiennent compte du « moins vu récemment », et
+> l'utilisateur peut exporter puis effacer ses données. Le pari a tenu une
+> seconde fois : tout s'est calculé sur le journal tel qu'il était — aucun
+> champ ajouté, aucune migration, aucune fonctionnalité productrice modifiée.
 
 [Retour à la checklist générale](README.md)
 
@@ -29,13 +36,15 @@
 - [x] Trancher le chevauchement avec l'historique du Programme d'entraînement.
 - [x] Définir et figer le format d'un évènement (à faire tôt).
 - [x] Implémenter la persistance locale.
-- [ ] Implémenter les vues de progression.
-  (une seule des six existe : l'**historique des séances**, écrite le
-  27/07/2026 quand le Programme d'entraînement (04) en a eu besoin — § 10,
-  étape B. Les cinq autres attendent une fonctionnalité qui les demande)
+- [x] Implémenter les vues de progression.
+  (les six vues du § 6 existent dans `progress/views.js` : l'historique des
+  séances — écrit d'abord pour 04 —, puis notes confondues, exercices
+  maîtrisés, tempo maximal propre et évolution par main, écrites le 27/07/2026
+  quand l'écran de progression est devenu leur premier consommateur réel)
 - [x] Implémenter les révisions adaptées aux erreurs précédentes.
-  (forme minimale : les notes les plus ratées reviennent plus souvent ; le
-  volet « les moins vues récemment » attend l'étape D)
+  (les notes les plus ratées reviennent plus souvent, et le volet « les moins
+  vues récemment » est en place depuis l'étape D : léger surpoids d'ancienneté,
+  toujours plus petit que celui d'une erreur)
 
 ## 1. Pourquoi c'est une fondation et pas une fonctionnalité
 
@@ -263,8 +272,9 @@ Décisions d'implémentation prises avec le format (25/07/2026) :
 src/
   progress/
     store.js        # écriture du journal, lecture, compaction, export/effacement [fait]
-    views.js        # les six vues de la section 6         [1 sur 6 : les séances]
+    views.js        # les six vues de la section 6                            [fait]
     review.js       # sélection des éléments à revoir en priorité              [fait]
+  progress-mode.js  # écran de progression : les vues + export/effacement      [fait]
 ```
 
 Ces modules ne doivent **jamais** dépendre du Canvas ni du DOM, pour rester
@@ -275,11 +285,11 @@ vérifier hors navigateur le plafond, le quota dépassé et l'écriture groupée
 
 `views.js` a été créé le 27/07/2026 avec **une seule** vue, l'historique des
 séances, parce que le Programme d'entraînement (04) en avait réellement besoin.
-Les cinq autres attendent toujours une fonctionnalité qui les demande : aucune
-vue n'est construite tant que rien ne la consomme, même quand les données
-dorment déjà dans le journal. C'est la conséquence assumée du découpage de F3
-en deux temps, et la même règle que pour l'extraction des modules partagés
-(CLAUDE.md).
+Les cinq autres ont été écrites le même jour — mais pas avant d'avoir leur
+consommateur : c'est l'écran de progression (`progress-mode.js`, étape E) qui
+les a demandées, exactement comme 04 avait demandé la première. La règle
+« aucune vue tant que rien ne la consomme » a donc tenu jusqu'au bout, l'écran
+de progression étant lui-même la dernière étape prévue du plan.
 
 ## 10. Étapes de réalisation
 
@@ -298,9 +308,12 @@ en deux temps, et la même règle que pour l'extraction des modules partagés
   (stockage refusé, journal illisible, version inconnue et quota dépassé sont
   tous couverts et vérifiés — § 12)
 
-### Étape B — Vues de base
+### Étape B — Vues de base — **faite le 27/07/2026**
 
-- [ ] Notes souvent confondues.
+- [x] Notes souvent confondues.
+  (`confusedTargets()` : pour chaque cible ratée, les réponses données à la
+  place, les plus fréquentes d'abord — générique, `given` de n'importe quelle
+  fonctionnalité)
 - [x] Historique des séances. — **faite le 27/07/2026**
   (`progress/views.js` : `sessions()` reconstitue les séances à partir des
   paires `session-start` / `session-end`, filtrables par fonctionnalité et par
@@ -308,35 +321,63 @@ en deux temps, et la même règle que pour l'extraction des modules partagés
   bilan. Un `session-end` orphelin — dont le début est parti avec le plafond du
   journal — reste une séance terminée. Consommée par
   [04](04-programme-entrainement.md#11-découpage-technique--fait-le-27072026))
-- [ ] Évolution par main.
+- [x] Évolution par main.
+  (`handEvolution()` séance par séance, et `handSummary()` — le récent contre
+  l'ensemble ; aucune précision calculée sur zéro tentative)
 
-### Étape C — Vues liées au tempo
+### Étape C — Vues liées au tempo — **faite le 27/07/2026**
 
-- [ ] Exercices maîtrisés.
-- [ ] Tempo maximal joué proprement.
+- [x] Exercices maîtrisés.
+  (`runStats()` / `masteredRuns()` : maîtrisé = au moins trois exécutions
+  propres sur au moins deux séances distinctes — la règle « plusieurs
+  réussites espacées » du § 6. La main fait partie de l'identité : maîtriser
+  la droite ne dit rien de la gauche)
+- [x] Tempo maximal joué proprement.
+  (même regroupement : plus haut `tempo` (03, en bpm) ou `tempoPercent` (06)
+  parmi les exécutions propres — les deux unités conservées telles quelles,
+  le journal ne connaissant pas le tempo de référence d'un morceau)
 
-### Étape D — Révisions adaptées
+### Étape D — Révisions adaptées — **faite le 27/07/2026**
 
-- [ ] Sélectionner les éléments les plus ratés et les moins vus récemment.
-- [ ] Alimenter la génération de questions de 02, puis de 07 et 08.
-- [ ] Proposer une reprise ciblée en début de séance.
+- [x] Sélectionner les éléments les plus ratés et les moins vus récemment.
+  (`priorWeights()` combine les deux : poids d'erreur jusqu'à 3, plus un
+  surpoids d'ancienneté plafonné à 0,5 pour une cible connue mais absente des
+  trente dernières tentatives — le raté pèse toujours plus que l'ancien)
+- [x] Alimenter la génération de questions de 02, puis de 07 et 08.
+  (les trois passent déjà par `priorWeights` : le volet ancienneté les nourrit
+  sans qu'une ligne de 02, 07 ou 08 change)
+- [x] Proposer une reprise ciblée en début de séance.
+  (c'est la forme retenue : la première session venue fait déjà revenir le
+  raté et l'ancien en priorité — pas d'écran « reprise » séparé, qui aurait
+  été un second chemin vers le même tirage)
 
-### Étape E — Maîtrise des données
+### Étape E — Maîtrise des données — **faite le 27/07/2026**
 
-- [ ] Écran de progression lisible, sans surcharge de graphiques.
-- [ ] Export et effacement des données.
-- [ ] Compaction du journal ancien.
+- [x] Écran de progression lisible, sans surcharge de graphiques.
+  (carte « Progression » de l'accueil, `progress-mode.js` : cinq sections en
+  listes — séances, confusions, exercices/passages, mains, données. Des
+  listes, pas de graphiques : décision du § 13 tranchée pour le mobile)
+- [x] Export et effacement des données.
+  (export en fichier JSON versionné ; effacement en deux temps, sans dialogue
+  bloquant, et l'écran vide constate lui-même la disparition)
+- [x] Compaction du journal ancien.
+  (`store.compact()`, déclenchée à l'ouverture de l'écran de progression : le
+  détail au-delà des 2 500 évènements récents est abandonné, mais **toutes**
+  les bornes de séance survivent — l'historique qui nourrit 04 reste complet,
+  et les révisions ne lisent de toute façon que le récent)
 
 ## 11. Critères d'acceptation
 
 - [x] Les résultats d'une séance survivent à un rechargement de la page.
-- [ ] Les notes confondues sont visibles et exactes après plusieurs sessions.
-  (la donnée est enregistrée — `given` porte la note jouée à la place — mais
-  aucune vue ne l'affiche encore)
-- [ ] Un exercice n'est « maîtrisé » qu'après plusieurs réussites sur des
+- [x] Les notes confondues sont visibles et exactes après plusieurs sessions.
+  (vue `confusedTargets`, affichée par l'écran de progression — vérifiée sur
+  un journal fabriqué et dans le navigateur après une vraie erreur)
+- [x] Un exercice n'est « maîtrisé » qu'après plusieurs réussites sur des
   séances distinctes.
-- [ ] Le tempo maximal propre est conservé par exercice et par passage.
-- [ ] La progression est consultable séparément pour chaque main.
+  (trois exécutions propres sur au moins deux séances ; une seule réussite ne
+  suffit pas, vérifié)
+- [x] Le tempo maximal propre est conservé par exercice et par passage.
+- [x] La progression est consultable séparément pour chaque main.
 - [x] Le Programme d'entraînement (04) calcule ses séances dues à partir du
   journal de F3, sans tenir un second historique.
   (27/07/2026 : `training-log.js` n'a jamais été écrit, et le harnais vérifie
@@ -347,9 +388,10 @@ en deux temps, et la même règle que pour l'extraction des modules partagés
   précédemment.
   (les notes ratées sortent plus souvent ; le critère « le moins vu récemment »
   reste à l'étape D)
-- [ ] L'utilisateur peut effacer ses données, et l'application le lui
+- [x] L'utilisateur peut effacer ses données, et l'application le lui
   indique clairement.
-  (`clear()` existe dans le journal, mais aucun écran ne l'appelle — étape E)
+  (bouton en deux temps sur l'écran de progression, qui rappelle aussi que
+  l'export est la seule sauvegarde possible sans serveur)
 - [x] Un `localStorage` indisponible n'empêche pas de pratiquer.
 
 ## 12. Validation prévue
@@ -420,13 +462,57 @@ du nouveau bilan par main, à 360×640, 390×844, 844×390 et 1280×800 : deux
 lignes de 27 px, sans débordement ni chevauchement, le bilan tenant dans la
 scène sans défilement.
 
+### Validation effectuée des étapes B à E (27 juillet 2026)
+
+**Vues, révisions et compaction, hors navigateur** — harnais Node (89
+vérifications passées au total avec 08 et 09, trois exécutions identiques),
+dont pour F3, sur un journal fabriqué :
+
+- notes confondues : la cible la plus ratée en tête, avec la réponse donnée la
+  plus fréquente et ses comptes exacts ;
+- maîtrise : trois exécutions propres sur deux séances = maîtrisé ; une seule
+  exécution propre = pas maîtrisé ; le filtre `masteredRuns` ne rend que le
+  premier ;
+- tempo : meilleur tempo **propre** (l'exécution ratée à 90 ne compte pas), et
+  le pourcentage de 06 conservé tel quel à côté des bpm de 03 ;
+- par main : compteurs par séance, précision nulle jamais inventée (main sans
+  tentative → `null`), agrégats globaux exacts ;
+- révisions : âge des cibles compté toutes cibles confondues, surpoids
+  d'ancienneté entre 1 et 1,5 pour une cible jamais ratée mais ancienne, rien
+  pour une cible récente toujours juste, et une cible ratée pèse toujours plus
+  qu'une cible simplement ancienne ;
+- compaction : sur 60 séances de 60 tentatives, le détail ancien part, le
+  récent garde le sien, **toutes** les fins de séance survivent ; export
+  versionné complet ; effacement qui vide journal et stockage.
+
+**Dans Chromium** (doublure de Tone.js, cf. [08 § 16](08-lecture-partitions.md#16-validation-effectuée-27-juillet-2026)) :
+
+- l'écran de progression affiche ses cinq sections ; la séance de Lecture de
+  partitions jouée pendant la campagne apparaît dans l'historique, et la note
+  ratée pendant cette séance apparaît en « confondue avec » ;
+- l'export télécharge bien un fichier `synthesia-progression-AAAA-MM-JJ.json` ;
+- l'effacement demande une confirmation (bouton armé), puis vide réellement
+  `localStorage` et l'écran le constate ;
+- mise en page : aucun débordement horizontal sur 390×844, 844×390 et
+  1280×800.
+
 ## 13. Décisions ouvertes
 
-- Faut-il permettre le **réimport** d'un export, ou l'export sert-il
-  seulement d'archive ? Le réimport soulève la question des doublons.
-- Quelle profondeur d'historique garder en détail avant compaction ?
-- L'écran de progression doit-il montrer des graphiques d'évolution, ou de
-  simples listes suffisent-elles pour rester lisible sur mobile ?
+Trois sont tranchées avec l'étape E (27/07/2026) :
+
+- ~~Faut-il permettre le **réimport** d'un export ?~~ **Pas pour l'instant :
+  l'export est une archive.** Le réimport soulève la question des doublons et
+  attendra un besoin réel — la décision est documentée, pas fermée.
+- ~~Quelle profondeur d'historique garder en détail avant compaction ?~~
+  **Les 2 500 évènements les plus récents** (environ la moitié du plafond) ;
+  au-delà, seules les bornes de séance survivent. Les révisions ne lisent que
+  les 8 dernières tentatives par cible : elles ne voient pas la différence.
+- ~~Graphiques d'évolution, ou simples listes ?~~ **Des listes.** Sur le petit
+  écran cible, un graphique lisible aurait coûté plus qu'il ne montre ; la
+  comparaison « en tout / sur les dernières séances » dit déjà le sens.
+
+Restent ouvertes :
+
 - Faut-il un objectif de régularité (séries de jours pratiqués), sachant que
   ce type d'indicateur peut devenir culpabilisant — ce que le dossier évite
   déjà pour le score des exercices

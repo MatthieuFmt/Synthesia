@@ -40,6 +40,11 @@ src/song-practice.js        # règles du Travail (06), sans DOM : passages, acco
 src/note-reading-mode.js    # mode Lecture de notes : portée SVG + clavier DOM (1 à 2 octaves)
 src/note-reading-engine.js  # ce qui n'appartient qu'à 02 : groupes de notes par niveau
                             # et par main, clé de portée, calendrier des mains (sans DOM)
+src/sheet-reading-mode.js   # mode Lecture de partitions (08) : cinq étapes, suite de 02
+src/sheet/exercises.js      # mesures et questions de 08 par étape ; les mesures de
+                            # « Valeurs et silences » sont les motifs 4/4 de 05 (sans DOM)
+src/sheet/staff-render.js   # rendu SVG d'une mesure : clé, armure, chiffrage, figures,
+                            # empilements, silences, curseur, double portée
 src/ear-training-mode.js    # mode Oreille : écoute + clavier ou propositions (DOM)
 src/ear/questions.js        # stimuli de 07 par famille et niveau, et sa session (sans DOM)
 src/session-engine.js       # PARTAGÉ (02, 07) : déroulé d'une session — tentatives,
@@ -53,13 +58,21 @@ src/exercises/validate-run.js  # verdict d'une série jouée au clavier MIDI (sa
 src/rhythm-mode.js          # mode Rythme : métronome, reconnaissance, reproduction
 src/rhythm/patterns.js      # figures (durées/silences), motifs par niveau (sans DOM)
 src/rhythm/timing.js        # jugement à l'heure/avance/retard, appariement (sans DOM)
-src/metronome.js            # PARTAGÉ (03, 05) : grille de pulsation + décompte, sans DOM
-src/midi-input.js           # PARTAGÉ (F2) : Web MIDI, appareils, notes normalisées (sans DOM)
+src/pedal-mode.js           # mode Pédale (09) : écoute, directe, syncopée — trois entrées
+src/pedal/timing.js         # verdicts propre/brouillé/trou/oubliée, fenêtres de
+                            # rhythm/timing.js (sans DOM)
+src/metronome.js            # PARTAGÉ (03, 05, 09) : grille de pulsation + décompte, sans DOM
+src/midi-input.js           # PARTAGÉ (F2) : Web MIDI, appareils, notes normalisées
+                            # + pédale CC 64 depuis 09 (sans DOM)
 src/midi-controls.js        # PARTAGÉ (F2) : panneau de connexion, affiché sur l'accueil
-src/progress/store.js       # PARTAGÉ (F3) : journal d'évènements dans localStorage
-src/progress/review.js      # PARTAGÉ (F3) : ce qu'il faut faire revenir en priorité
-src/progress/views.js       # PARTAGÉ (F3) : vues calculées — 1 sur 6, l'historique
-                            # des séances, écrite quand 04 en a eu besoin
+src/progress/store.js       # PARTAGÉ (F3) : journal d'évènements dans localStorage,
+                            # export, compaction (les bornes de séance survivent)
+src/progress/review.js      # PARTAGÉ (F3) : ce qu'il faut faire revenir en priorité —
+                            # le plus raté, et le moins vu récemment
+src/progress/views.js       # PARTAGÉ (F3) : les six vues calculées (séances, confusions,
+                            # maîtrise, tempo propre, évolution par main)
+src/progress-mode.js        # écran Progression (F3 étape E) : vues + export/effacement ;
+                            # n'écrit jamais de séance au journal
 src/music.js                # PARTAGÉ : noms latins, hauteurs MIDI, positions sur portée
 src/audio.js                # PARTAGÉ : createAudio() → ensureReady/playNote/dispose
 src/perf.js                 # PARTAGÉ : profil de l'appareil (canvas bridé, audio léger)
@@ -91,8 +104,13 @@ la surface publique de ce dernier change.
 **Le piano roll, lui, n'est toujours pas mutualisé** : le mode Morceau
 et le mode Exercices gardent chacun le leur, pour la raison écrite dans
 [plan/03 § 12](plan/03-technique-doigts.md#le-rouleau-na-pas-été-mutualisé-avec-le-mode-morceau) ;
-même chose pour les deux portées (cinq lignes en 02, une seule en 05), qui ne
-partagent aucune coordonnée.
+même chose pour les portées. Celle de 02 (une note isolée), celle de 05 (une
+ligne) et celle de 08 (`sheet/staff-render.js` : une mesure complète, armure,
+figures, double portée) ne partagent aucune coordonnée — et 02 n'a **pas** été
+migré vers le rendu de 08 : son DOM n'a pas bougé d'un octet, ce qui laisse
+ses harnais valides comme mesure de non-régression. La migration se fera le
+jour où 02 aura besoin de quelque chose que seul `staff-render.js` sait faire,
+pas avant.
 
 Deux briques *sont* partagées dès le premier jour, parce qu'un second
 consommateur en avait besoin de la **même** version, pas d'une variante :
@@ -139,17 +157,17 @@ Tous les plans sont dans `plan/`. Le backlog maître est `plan/README.md`.
 | # | Statut |
 |---|---|
 | F1 — Navigation | ✅ Implémenté |
-| F2 — Entrée MIDI clavier | ✅ Fondation + branchée dans 01, 03 et 05 |
-| F3 — Suivi progression | ✅ Étape A (journal) + 1 vue sur 6 (séances) ; reste → B-E |
+| F2 — Entrée MIDI clavier | ✅ Fondation + notes (01, 03, 05, 08) + pédale CC 64 (09) |
+| F3 — Suivi progression | ✅ Complet : journal, 6 vues, écran Progression, export/effacement, compaction |
 | 01 — Apprentissage morceau | ✅ Lecteur + clavier MIDI ; travail guidé via 06 |
-| 02 — Lecture de notes | ✅ MVP + progression ; altérations → 08 |
+| 02 — Lecture de notes | ✅ MVP + progression ; altérations faites dans 08 |
 | 03 — Technique doigts | ✅ MVP + validation MIDI |
 | 04 — Programme entraînement | ✅ Aujourd'hui + configuration ; lit le journal F3 |
 | 05 — Rythme | ✅ 3 familles × 3 entrées (tap, piano, MIDI) |
 | 06 — Travail intelligent morceau | ✅ 5 outils : passages, mains, boucle, attente, tempo |
 | 07 — Oreille | ✅ 3 familles × 3 niveaux ; mélodie hors MVP |
-| 08 — Lecture partitions | 📋 Planifié (suite 02) |
-| 09 — Pédale | 📋 Planifié |
+| 08 — Lecture partitions | ✅ 5 étapes : mesures, valeurs/silences, altérations, empilements, double portée |
+| 09 — Pédale | ✅ Écoute + directe + syncopée, 3 entrées ; famille Application → plus tard |
 
 ## Contraintes matérielles (CRITIQUE)
 
@@ -213,7 +231,7 @@ L'app tourne sur une **vieille tablette Android** avec un petit écran et peu de
 - **Contrairement à l'audio, l'état MIDI survit à `stop()`** : une permission accordée et un appareil choisi n'ont aucune raison d'être redemandés à chaque changement de mode. C'est l'exception assumée à la règle « rien ne survit à stop() ».
 - **Un mode s'abonne, il ne configure rien** : `onMidiNote(cb)` rend sa fonction de désabonnement, à appeler dans `stop()`. Le panneau de connexion vit sur l'accueil, pas dans les modes.
 - **Le MIDI est toujours optionnel.** Aucun mode ne doit devenir inutilisable sans clavier branché, sans permission, ou dans un navigateur sans Web MIDI.
-- **Le CC 64 (pédale) n'est pas encore écouté** : décidé pour plus tard, au moment de [plan/09](plan/09-pedale.md). `midi-input.js` reste le seul endroit qui écoutera le MIDI.
+- **Le CC 64 (pédale) est écouté depuis 09** : `midi-input.js` émet des évènements `{ type: "pedal", down, timestamp, source }` sur un abonnement séparé (`onPedal`/`onMidiPedal`). Tout-ou-rien (seuil à mi-course), seuls les changements sont émis, et la pédale est relâchée au débranchement comme les notes tenues. `midi-input.js` reste le seul endroit qui écoute le MIDI.
 - **Utiliser `event.timestamp`, pas « maintenant »**, dès qu'un jugement de timing est en jeu : quelques millisecondes séparent l'arrivée d'un message de son traitement, et c'est l'ordre de grandeur que la fenêtre de tolérance mesure. Conversion vers l'horloge du Transport : `Tone.Transport.seconds − (performance.now() − event.timestamp) / 1000`.
 - **Les seuils de timing vivent dans `rhythm/timing.js`**, pour 05 comme pour 03 (et 09 plus tard). Son `matchByTime` accepte un critère d'appariement supplémentaire : le rythme n'en met aucun, la validation MIDI y met l'égalité des hauteurs. Ne pas réécrire un second jugement avance/retard.
 

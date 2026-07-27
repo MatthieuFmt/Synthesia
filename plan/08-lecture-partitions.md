@@ -1,6 +1,7 @@
 # Feature 08 — Lecture de partitions
 
-> Statut : planifiée — aucune partie n'est encore implémentée.
+> Statut : **implémentée** (27/07/2026) — les cinq étapes fonctionnent de bout
+> en bout, du réglage au bilan. Voir la [validation](#16-validation-effectuée-27-juillet-2026).
 > Suite directe de [02 — Lecture de notes](02-lecture-notes.md), dont elle
 > reprend et poursuit l'étape D.
 
@@ -11,11 +12,17 @@
 - [x] Définir la progression note unique → mesure → double portée.
 - [x] Définir l'ordre d'introduction des nouveautés (une seule à la fois).
 - [x] Définir la frontière avec la Lecture de notes et l'Entraînement rythmique.
-- [ ] Étendre le rendu de portée aux petites mesures.
-- [ ] Ajouter les valeurs rythmiques et les silences.
-- [ ] Ajouter les altérations.
-- [ ] Ajouter les notes simultanées.
-- [ ] Ajouter la vraie double portée.
+- [x] Étendre le rendu de portée aux petites mesures.
+  (`sheet/staff-render.js` : mesure complète, clé, armure, chiffrage, curseur)
+- [x] Ajouter les valeurs rythmiques et les silences.
+  (dessinés d'après les figures de `rhythm/patterns.js`, silences en glyphes)
+- [x] Ajouter les altérations.
+  (accidentels puis armure ; Fa♯ et Sol♭ acceptés — la validation compare des
+  touches, pas des noms)
+- [x] Ajouter les notes simultanées.
+  (empilements de deux ou trois notes, validés dans n'importe quel ordre)
+- [x] Ajouter la vraie double portée.
+  (deux portées reliées, une main par clé, temps à deux mains, bilan par main)
 
 ## 1. Problème utilisateur
 
@@ -178,64 +185,93 @@ pourrait, plus tard, s'afficher pendant le travail d'un morceau
 
 ## 11. Étapes de réalisation
 
-### Étape A — Petites mesures
+### Étape A — Petites mesures — **faite le 27/07/2026**
 
-- [ ] Afficher plusieurs notes sur une portée, avec la note attendue mise en
+- [x] Afficher plusieurs notes sur une portée, avec la note attendue mise en
   évidence.
-- [ ] Valider les notes d'une mesure dans l'ordre.
-- [ ] Réutiliser le moteur de session et le bilan de 02.
+  (un halo suit l'évènement attendu, les évènements déjà lus s'estompent)
+- [x] Valider les notes d'une mesure dans l'ordre.
+  (la mesure n'avance pas tant que la note attendue n'est pas jouée)
+- [x] Réutiliser le moteur de session et le bilan de 02.
+  (`session-engine.js` tel quel : les questions suivent la partition au lieu
+  d'être tirées une à une — l'aléatoire a déjà joué à la génération des
+  mesures, pondération des séances passées comprise)
 
-### Étape B — Valeurs rythmiques et silences
+### Étape B — Valeurs rythmiques et silences — **faite le 27/07/2026**
 
-- [ ] Dessiner noires, blanches, rondes et croches.
-- [ ] Dessiner les silences correspondants.
-- [ ] Trancher et implémenter la façon de répondre à une durée (section 13).
-- [ ] Partager le vocabulaire de durées avec 05.
+- [x] Dessiner noires, blanches, rondes et croches.
+  (têtes pleines ou évidées, hampes orientées, crochets — comme le mode Rythme)
+- [x] Dessiner les silences correspondants.
+  (les glyphes déjà déclarés par les figures de `rhythm/patterns.js`)
+- [x] Trancher et implémenter la façon de répondre à une durée (section 13).
+  (tranché : QCM — voir la décision en section 13)
+- [x] Partager le vocabulaire de durées avec 05.
+  (au-delà du vocabulaire : les mesures de cette étape sont **les motifs 4/4
+  du catalogue de 05** filtrés au vocabulaire de l'étape, pas une seconde liste)
 
-### Étape C — Altérations
+### Étape C — Altérations — **faite le 27/07/2026**
 
-- [ ] Dessiner dièses et bémols accidentels.
-- [ ] Accepter les enharmonies (Fa♯ et Sol♭ sur la même touche).
-- [ ] Introduire l'armure et l'appliquer à toute la mesure.
+- [x] Dessiner dièses et bémols accidentels.
+- [x] Accepter les enharmonies (Fa♯ et Sol♭ sur la même touche).
+  (automatique : la validation compare des hauteurs MIDI, donc des touches)
+- [x] Introduire l'armure et l'appliquer à toute la mesure.
+  (Sol majeur — Fa♯ — ou Fa majeur — Si♭ ; la note écrite reste sans signe et
+  la mesure en armure contient toujours au moins une note réellement altérée)
 
-### Étape D — Notes simultanées
+### Étape D — Notes simultanées — **faite le 27/07/2026**
 
-- [ ] Aligner verticalement deux ou trois notes.
-- [ ] Valider un empilement dans n'importe quel ordre.
+- [x] Aligner verticalement deux ou trois notes.
+  (tierces empilées partageant une hampe)
+- [x] Valider un empilement dans n'importe quel ordre.
+  (chaque note juste reste allumée, une fausse est signalée sans faire reculer
+  les autres — même règle que [06 § 7](06-travail-intelligent-morceau.md#7-mode--attendre-la-bonne-note-))
 
-### Étape E — Double portée
+### Étape E — Double portée — **faite le 27/07/2026**
 
-- [ ] Dessiner deux portées reliées avec leurs clés.
-- [ ] Attendre une note à chaque main, éventuellement simultanément.
-- [ ] Produire un bilan séparé par main, comme prévu en
+- [x] Dessiner deux portées reliées avec leurs clés.
+  (barres de mesure communes et accolade à gauche)
+- [x] Attendre une note à chaque main, éventuellement simultanément.
+  (temps à une main, et temps à deux mains joués comme un empilement)
+- [x] Produire un bilan séparé par main, comme prévu en
   [02 étape D](02-lecture-notes.md#étape-d--progression).
 
 ## 12. Critères d'acceptation
 
-- [ ] L'utilisateur peut lire et jouer une mesure de plusieurs notes.
-- [ ] Les valeurs rythmiques et les silences de la section 5 sont affichés
+- [x] L'utilisateur peut lire et jouer une mesure de plusieurs notes.
+- [x] Les valeurs rythmiques et les silences de la section 5 sont affichés
   lisiblement et correctement identifiés.
-- [ ] Les dièses et bémols sont gérés, et les deux noms d'une même touche
+- [x] Les dièses et bémols sont gérés, et les deux noms d'une même touche
   noire sont acceptés.
-- [ ] Une armure s'applique correctement aux notes de la mesure.
-- [ ] Un empilement de notes est validé quel que soit l'ordre de jeu.
-- [ ] La double portée affiche les deux clés et attend les deux mains.
-- [ ] Chaque étape reste jouable au clic, au toucher et au clavier MIDI si
+- [x] Une armure s'applique correctement aux notes de la mesure.
+- [x] Un empilement de notes est validé quel que soit l'ordre de jeu.
+- [x] La double portée affiche les deux clés et attend les deux mains.
+- [x] Chaque étape reste jouable au clic, au toucher et au clavier MIDI si
   disponible.
-- [ ] La Lecture de notes (02) ne régresse pas.
+  (le clavier de réponse est celui de `piano-dom.js` ; l'entrée MIDI de F2
+  répond aux questions de hauteur, jamais exigée)
+- [x] La Lecture de notes (02) ne régresse pas.
+  (vérifié dans le navigateur — la portée de 02 et son moteur n'ont pas changé
+  d'une ligne, seule l'armature de pondération partagée a évolué, cf. F3 étape D)
 
-## 13. Décisions ouvertes
+## 13. Décisions ouvertes — tranchées le 27/07/2026
 
-- **Comment répond-on à une durée ?** En la choisissant (QCM), ou en
-  maintenant la touche le bon nombre de temps ? La seconde option est plus
-  musicale mais introduit une mesure de timing, donc un recouvrement avec
-  [05](05-entrainement-rythmique.md) — et exige alors un métronome.
-- **Rendu maison ou bibliothèque de gravure** (section 8) ? À trancher au
-  début de l'étape B, pas avant.
-- Faut-il générer les mesures aléatoirement, ou proposer de vraies
-  mélodies courtes du domaine public, plus musicales à lire ?
-- Faut-il pouvoir lire directement une partition issue d'un fichier MIDI de
-  la bibliothèque, ou rester sur des exercices générés ?
+- **Comment répond-on à une durée ?** Tranché : **en la nommant (QCM)**, comme
+  la Reconnaissance de 05. Maintenir la touche le bon nombre de temps aurait
+  introduit une mesure de timing — le recouvrement avec 05 que la section 4
+  écarte — et exigé un métronome dans un exercice qui n'a pas de tempo.
+- **Rendu maison ou bibliothèque de gravure ?** Tranché : **rendu maison**
+  (SVG), jusqu'à la double portée comprise. À cette taille de mesure —
+  pas de ligature, pas de mesure multi-voix — la gravure reste simple ; une
+  bibliothèque redeviendra une question si de vraies partitions arrivent.
+- **Mesures générées ou vraies mélodies ?** Générées pour ce MVP : c'est ce
+  qui permet la pondération des difficultés passées. Les mélodies du domaine
+  public restent une piste pour une étape ultérieure.
+- **Lire une partition d'un fichier MIDI de la bibliothèque ?** Non pour le
+  MVP — exercices générés seulement. La décision est documentée, pas fermée.
+- Une décision d'implémentation s'y est ajoutée : **chaque étape n'introduit
+  que sa nouveauté** — les étapes 3 à 5 reviennent à des noires, la variété
+  des durées restant la compétence de l'étape 2. C'est l'application du
+  principe « une seule difficulté nouvelle à la fois » de la section 5.
 
 ## 14. Hors périmètre pour le moment
 
@@ -246,7 +282,7 @@ pourrait, plus tard, s'afficher pendant le travail d'un morceau
   Fluidité déjà envisagé en [02](02-lecture-notes.md#parcours-pédagogique-proposé).
 - Pas de mesures composées complexes au-delà de ce que 05 introduit.
 
-## 15. Première priorité
+## 15. Première priorité — faite
 
 Construire l'étape 1 seule : **une mesure de quatre noires sur une portée →
 la note attendue est mise en évidence → l'utilisateur joue les quatre notes
@@ -254,3 +290,57 @@ dans l'ordre → bilan identique à celui de la Lecture de notes.** Cette étape
 ne demande presque aucun rendu nouveau et valide que le moteur de session de
 02 supporte bien une suite de notes au lieu d'une note isolée — c'est le
 vrai risque à lever avant d'investir dans la gravure musicale.
+
+Le risque est levé sans qu'une ligne du moteur change : `nextQuestion` est
+injectable depuis l'extraction de `session-engine.js`, et il suffit de lui
+faire suivre la partition (`phases[answeredQuestions]`) au lieu de tirer au
+sort. Tout le reste — tentatives, série, « une erreur ne change pas la
+question », pondération, bilan — sert tel quel.
+
+## 16. Validation effectuée (27 juillet 2026)
+
+**Génération et moteur, hors navigateur** — harnais Node sur `sheet/exercises.js`
+(hasard injecté, trois exécutions identiques), parmi 89 vérifications passées
+couvrant aussi 09 et F3 :
+
+- disponibilité des combinaisons : cinq étapes, droite/gauche partout sauf la
+  double portée qui impose les deux mains ;
+- étape 1 : trois mesures de quatre noires, bonne clé par main, notes dans le
+  groupe, jamais deux fois la même note à la suite ; une erreur conserve la
+  question ; bilan exact (premier coup, à revoir) ;
+- étape 2 : les mesures sont les motifs 4/4 de 05 (tous valides d'après
+  `patternIssues`), une question de hauteur par note plus une question de durée
+  par évènement, QCM contenant toujours la bonne réponse sans doublon ;
+- étape 3 : accidentels puis armure, dièse qui monte et bémol qui descend d'un
+  demi-ton, armure sans signe écrit qui altère le bon degré, au moins une note
+  réellement altérée par mesure en armure, question altérée attendant bien la
+  touche noire ;
+- étape 4 : deux empilements par mesure, de deux ou trois notes du groupe, clé
+  de pondération indépendante de l'ordre interne des notes ;
+- étape 5 : deux clés, temps à deux mains avec une note par main, jamais trois
+  temps consécutifs à la même main, bilan par main présent ;
+- pondération héritée : sur 300 sessions, une note au poids 3 sort dans ~23 %
+  des tirages (contre ~9 % sans poids), les autres continuant de sortir.
+
+**Dans Chromium** (Tone.js remplacé par une doublure locale, le CDN étant bloqué
+dans l'environnement de vérification — le harnais teste l'application, pas la
+synthèse) — 42 vérifications passées au total avec 09 et F3, dont pour 08 :
+
+- réglages : cinq étapes, « Les deux » désactivé hors double portée et imposé
+  par elle ;
+- session complète de l'étape 1 jusqu'au bilan, à l'indice : progression
+  affichée, erreur signalée sans changer de question, bilan à trois chiffres ;
+- journal F3 : `session-end` en `done`, chaque tentative porte sa cible, une
+  erreur conserve la note jouée à la place ;
+- étape 2 : le QCM de durée apparaît avec quatre propositions et le clavier se
+  masque pendant la question de durée ;
+- étape 5 : deux clés dessinées et l'accolade présente ;
+- non-régression : le mode Morceau démarre et s'arrête proprement, aucune
+  erreur de page.
+
+**Mise en page** — 27 vérifications sur trois fenêtres (390×844, 844×390,
+1280×800) : aucun débordement horizontal sur les réglages, l'exercice et le
+bilan ; portée visible ; touches blanches ≥ 30 px.
+
+Reste à vérifier sur l'appareil réel : le toucher sur la tablette et le rendu
+sonore (la doublure de Tone ne joue rien).

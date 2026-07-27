@@ -205,8 +205,11 @@ n'auront qu'à s'abonner : elles n'ont pas à porter l'interface de connexion.
   (un refus est un **état**, pas une exception : l'appelant n'a pas à écrire un
   `try` pour une réponse prévisible)
 - [x] Écouter les messages note on/off et les normaliser en `noteEvent`.
-  (canal ignoré, vélocité 0 traitée comme un relâchement, tout ce qui n'est pas
-  une note ignoré — y compris le CC 64, qui attend [09](09-pedale.md))
+  (canal ignoré, vélocité 0 traitée comme un relâchement, tout le reste
+  ignoré. Le CC 64 a rejoint l'écoute le 27/07/2026, quand [09](09-pedale.md)
+  en a eu besoin : évènements `{ type: "pedal", down, timestamp, source }` sur
+  un abonnement séparé `onPedal`, seuil binaire à mi-course, seuls les
+  changements émis, et la pédale relâchée au débranchement comme les notes)
 - [x] Gérer le branchement et le débranchement en cours de session.
   (repli sur l'appareil restant, et les notes tenues sont **relâchées** pour ne
   pas laisser une fonctionnalité suspendue à une note qui ne reviendra pas)
@@ -270,7 +273,8 @@ n'auront qu'à s'abonner : elles n'ont pas à porter l'interface de connexion.
   et cette brique doit rester le seul endroit qui écoute le MIDI. À traiter
   au moment où 09 est construit, pas avant. Les indices de pédale affichés
   aujourd'hui dans le mode Morceau viennent uniquement du fichier importé et
-  ne sont pas concernés.
+  ne sont pas concernés. **Fait le 27/07/2026**, avec la construction de 09 :
+  voir l'étape C ci-dessus.
 - À partir de quand une fonctionnalité peut-elle exiger le MIDI plutôt que
   le proposer en option (par exemple un futur exercice pensé uniquement pour
   un vrai piano) ?

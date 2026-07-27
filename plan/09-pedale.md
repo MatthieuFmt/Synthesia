@@ -1,8 +1,9 @@
 # Feature 09 — Exercices de pédale
 
-> Statut : planifiée — aucun exercice n'est encore implémenté.
-> L'application sait déjà **afficher** la pédale d'un fichier MIDI, mais pas
-> encore la **détecter** ni l'enseigner.
+> Statut : **MVP implémenté** (27/07/2026) — Écoute, Pédale directe et Pédale
+> syncopée fonctionnent avec les trois entrées ; la famille Application (étape
+> E) reste à faire, comme prévu. Voir la
+> [validation](#18-validation-effectuée-27-juillet-2026).
 
 [Retour à la checklist générale](README.md)
 
@@ -11,10 +12,19 @@
 - [x] Définir les quatre familles d'exercices de pédale.
 - [x] Définir la pédale syncopée comme technique centrale.
 - [x] Définir un MVP utilisable sans pédale physique.
-- [ ] Détecter une pédale physique (CC 64) via l'entrée MIDI.
-- [ ] Implémenter la pédale de substitution (clavier / écran).
-- [ ] Implémenter les exercices de pédale directe et syncopée.
-- [ ] Implémenter la mesure du changement de pédale.
+- [x] Détecter une pédale physique (CC 64) via l'entrée MIDI.
+  (`midi-input.js` émet les évènements de pédale — la décision ouverte de
+  [F2 § 13](F2-entree-midi.md#13-décisions-ouvertes) est tranchée)
+- [x] Implémenter la pédale de substitution (clavier / écran).
+  (barre d'espace tenue/relâchée, et bouton à l'écran au doigt ou à la souris)
+- [x] Implémenter les exercices de pédale directe et syncopée.
+  (l'application joue le Do–Fa–Sol–Do de 03, l'utilisateur ne travaille que la
+  pédale — et ce qui sonne tient réellement par elle : lever étouffe)
+- [x] Implémenter la mesure du changement de pédale.
+  (`pedal/timing.js` : propre / brouillé / trou / oubliée, fenêtres en
+  fraction de temps héritées de `rhythm/timing.js`)
+- [ ] Implémenter la famille Application (passage réel) — après le reste,
+  comme prévu en section 5.
 
 ## 1. Problème utilisateur
 
@@ -170,27 +180,43 @@ src/
 
 ## 12. Étapes de réalisation
 
-### Étape A — Entrée pédale
+### Étape A — Entrée pédale — **faite le 27/07/2026**
 
-- [ ] Étendre [F2](F2-entree-midi.md) pour émettre les évènements CC 64.
-- [ ] Implémenter la pédale de substitution (barre d'espace, bouton écran).
-- [ ] Afficher l'état de la pédale et l'entrée utilisée.
+- [x] Étendre [F2](F2-entree-midi.md) pour émettre les évènements CC 64.
+  (dans `midi-input.js`, seul endroit qui écoute le MIDI : évènements
+  normalisés `{ type: "pedal", down, timestamp, source }`, seuil binaire à
+  mi-course, seuls les changements sont émis, et une pédale restée enfoncée
+  est relâchée au débranchement comme les notes tenues)
+- [x] Implémenter la pédale de substitution (barre d'espace, bouton écran).
+  (la barre d'espace est capturée pendant l'exercice et ne déclenche rien
+  d'autre ; le bouton s'enfonce au doigt ou à la souris et se relâche au lâcher)
+- [x] Afficher l'état de la pédale et l'entrée utilisée.
+  (témoin enfoncée/levée permanent ; l'écran dit que la barre d'espace
+  **remplace** la pédale — le pied n'est pas travaillé)
 
-### Étape B — Écoute
+### Étape B — Écoute — **faite le 27/07/2026**
 
-- [ ] Jouer un même accord avec et sans pédale.
-- [ ] Faire entendre une pédale gardée trop longtemps sur un enchaînement.
+- [x] Jouer un même accord avec et sans pédale.
+- [x] Faire entendre une pédale gardée trop longtemps sur un enchaînement.
+  (et, en regard, le même enchaînement changé proprement — le contraste est
+  la leçon ; aucune séance n'est écrite au journal : l'Écoute est un outil,
+  comme le Métronome de 05)
 
-### Étape C — Pédale directe
+### Étape C — Pédale directe — **faite le 27/07/2026**
 
-- [ ] Générer des accords tenus et espacés.
-- [ ] Valider l'enfoncement et le lever avec la note.
+- [x] Générer des accords tenus et espacés.
+  (le Do–Fa–Sol–Do de 03, un accord par mesure, tempo lent réglable)
+- [x] Valider l'enfoncement et le lever avec la note.
+  (l'enfoncement est jugé par le `judge` de `rhythm/timing.js` — à l'heure /
+  en avance / en retard / manquée —, pas un second jugement)
 
-### Étape D — Pédale syncopée
+### Étape D — Pédale syncopée — **faite le 27/07/2026**
 
-- [ ] Générer un enchaînement d'accords avec changement attendu.
-- [ ] Implémenter les quatre verdicts de la section 7.
-- [ ] Afficher le retour immédiat par changement, puis le bilan.
+- [x] Générer un enchaînement d'accords avec changement attendu.
+- [x] Implémenter les quatre verdicts de la section 7.
+- [x] Afficher le retour immédiat par changement, puis le bilan.
+  (chaque changement est jugé juste après sa fenêtre, planifié sur le
+  Transport et rendu par `Tone.Draw` ; le bilan réutilise ces mêmes résultats)
 
 ### Étape E — Application
 
@@ -201,17 +227,21 @@ src/
 
 ## 13. Critères d'acceptation
 
-- [ ] L'utilisateur entend clairement la différence avec et sans pédale.
-- [ ] L'exercice fonctionne sans pédale physique, avec une substitution
+- [x] L'utilisateur entend clairement la différence avec et sans pédale.
+- [x] L'exercice fonctionne sans pédale physique, avec une substitution
   annoncée comme telle.
-- [ ] Une pédale physique branchée est détectée et son état affiché en temps
+- [x] Une pédale physique branchée est détectée et son état affiché en temps
   réel.
-- [ ] La pédale directe est validée sur des accords tenus.
-- [ ] Un changement syncopé reçoit l'un des quatre verdicts de la section 7,
+  (via la doublure Web MIDI ; reste le test avec une vraie pédale, comme F2)
+- [x] La pédale directe est validée sur des accords tenus.
+- [x] Un changement syncopé reçoit l'un des quatre verdicts de la section 7,
   immédiatement après le geste.
-- [ ] Aucune mesure n'est affichée lorsqu'aucune entrée pédale n'est
+- [x] Aucune mesure n'est affichée lorsqu'aucune entrée pédale n'est
   détectée.
-- [ ] L'affichage de pédale existant du mode Morceau ne régresse pas.
+  (un geste absent est « oubliée » / « manquée » — jamais un pourcentage)
+- [x] L'affichage de pédale existant du mode Morceau ne régresse pas.
+  (le mode Morceau n'a pas été touché ; vérifié au démarrage dans le
+  navigateur)
 
 ## 14. Validation prévue
 
@@ -226,10 +256,18 @@ src/
 
 ## 15. Décisions ouvertes
 
-- Faut-il représenter la pédale par la notation traditionnelle (*Ped.* et
-  astérisque) ou par la ligne continue déjà dessinée par `drawPedalCues` ?
-- Faut-il gérer la demi-pédale, ou rester en tout-ou-rien ? Beaucoup de
-  pédales numériques n'envoient d'ailleurs qu'une valeur binaire.
+Deux sont tranchées avec le MVP (27/07/2026) :
+
+- **Demi-pédale : non** — tout-ou-rien, seuil MIDI binaire à mi-course
+  (CC 64 ≥ 64 = enfoncée), et seuls les changements d'état sont émis. C'est ce
+  qu'envoient la plupart des pédales numériques, et les verdicts de la
+  section 7 ne parlent que d'états.
+- **Représentation : ni *Ped.* ni ligne** dans les exercices du MVP — les
+  accords affichés et le témoin d'état suffisent, il n'y a pas de partition à
+  annoter. La question redeviendra réelle à l'étape E, sur un passage.
+
+Restent ouvertes :
+
 - Faut-il traiter les autres pédales (una corda, sostenuto), ou s'en tenir
   définitivement à la pédale de sustain ?
 - La pédale doit-elle apparaître dans le travail d'un passage
@@ -245,7 +283,7 @@ src/
 - Pas de correction de la posture du pied, qui relève d'un professeur —
   comme déjà indiqué en [03 § 10](03-technique-doigts.md#10-sécurité-et-bonnes-habitudes).
 
-## 17. Première priorité
+## 17. Première priorité — faite
 
 Construire la boucle qui apprend le geste essentiel, sans matériel :
 **choisir Pédale → entendre un accord avec puis sans pédale → passer à
@@ -253,3 +291,43 @@ l'enchaînement Do–Fa–Sol–Do à 60 BPM → changer la pédale à la barre 
 sur chaque accord → recevoir « propre / brouillé / trou / oubliée » à chaque
 changement.** Une fois cette boucle juste, brancher CC 64 via
 [F2](F2-entree-midi.md) ne change que la source des évènements.
+
+C'est exactement ce qui s'est passé : les trois entrées convergent vers le
+même point (`pedalInput`), et la pédale physique n'y ajoute que la correction
+d'horloge par l'horodatage du message — comme la Reproduction rythmique.
+
+Un détail d'implémentation compte pour la suite : l'effet sonore est réel.
+Les « doigts » de l'application lâchent l'accord peu après l'attaque, et ce
+qui sonne encore ne tient que par la pédale — oublier de lever s'entend
+(bouillie), lever sans réenfoncer s'entend (silence). Le retour des verdicts
+confirme ce que l'oreille vient de constater, il ne le remplace pas.
+
+## 18. Validation effectuée (27 juillet 2026)
+
+**Verdicts, hors navigateur** — harnais Node sur `pedal/timing.js` (parmi les
+89 vérifications passées avec 08 et F3, trois exécutions identiques) :
+
+- les quatre verdicts sur tous les cas de la section 7 : propre ; levée trop
+  tard → brouillé ; réenfoncée avant l'accord ou avant d'être levée →
+  brouillé ; jamais réenfoncée, réenfoncée bien après, ou levée bien trop tôt
+  → trou ; jamais levée → oubliée ;
+- fenêtres en fraction de temps : les mêmes gestes jugés identiquement à un
+  tempo deux fois plus lent ;
+- appariement sur un enchaînement complet (un geste ne sert jamais à deux
+  accords) et bilan par verdict sans taux inventé ;
+- chaque verdict s'écrit dans le vocabulaire fermé du journal
+  (`on-time` / `blurred` / `gap` / `missed`), comme F3 § 7 le prévoyait.
+
+**Dans Chromium** (doublure de Tone.js, cf. [08 § 16](08-lecture-partitions.md#16-validation-effectuée-27-juillet-2026)) :
+
+- réglages : trois familles, tempo visible pour les exercices mesurés ;
+- Écoute : les quatre démonstrations présentes ;
+- exercice syncopé : les quatre accords affichés, témoin « levée » au départ ;
+- barre d'espace : enfoncée au `keydown`, relâchée au `keyup` ; bouton à
+  l'écran : enfoncé au `pointerdown`, relâché au `pointerup` — le témoin suit
+  dans les deux cas ;
+- mise en page : aucun débordement sur 390×844, 844×390 et 1280×800, pédale
+  d'au moins 64 px de haut partout.
+
+Restent à vérifier sur le matériel réel : une vraie pédale CC 64 branchée à un
+piano numérique, et le rendu sonore de la résonance (la doublure ne joue rien).

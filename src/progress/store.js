@@ -26,6 +26,13 @@ export const MAX_EVENTS = 4000;
 // s'accumulent donc en mémoire entre deux enregistrements.
 const WRITE_INTERVAL_MS = 1500;
 
+// Compaction (F3 étape E) : au-delà de ce nombre d'évènements, le détail des
+// tentatives anciennes est abandonné — seules leurs bornes de séance sont
+// gardées. L'historique des séances (la vue qui nourrit le Programme) reste
+// donc complet, et les vues de détail se recalculent sur le récent, où vivent
+// déjà les révisions (RECENT_ATTEMPTS par cible).
+export const DETAIL_EVENTS = 2500;
+
 // Vocabulaire fermé (plan/F3-suivi-progression.md § 7). Une valeur nouvelle
 // s'ajoute au plan puis ici, jamais à la volée : les vues ne calculent quelque
 // chose de commun que si ce vocabulaire tient.
@@ -185,6 +192,33 @@ export function createProgressStore({
       } catch {
         writable = false;
       }
+    },
+
+    // Export (F3 § 8) : le document tel qu'il est stocké — la seule sauvegarde
+    // possible sans serveur. Une copie, comme `log()`.
+    exportPayload() {
+      return { v: LOG_VERSION, exportedAt: now(), log: [...log] };
+    },
+
+    // Compaction (F3 étape E) : garde le détail des `keepDetail` évènements les
+    // plus récents ; des plus anciens, seules les bornes de séance survivent.
+    // Rend vrai si quelque chose a été retiré.
+    compact({ keepDetail = DETAIL_EVENTS } = {}) {
+      const cutoff = log.length - keepDetail;
+      if (cutoff <= 0) return false;
+
+      const kept = log.filter(
+        (event, index) =>
+          index >= cutoff ||
+          event.type === "session-start" ||
+          event.type === "session-end"
+      );
+      if (kept.length === log.length) return false;
+
+      log = kept;
+      dirty = true;
+      write();
+      return true;
     },
 
     // Faux dès qu'une écriture a définitivement échoué : l'exercice continue,

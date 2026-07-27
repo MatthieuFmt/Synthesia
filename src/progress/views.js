@@ -7,8 +7,12 @@
 //
 //  Première vue construite : l'historique des séances, parce que le Programme
 //  d'entraînement (04) en a réellement besoin — il lit ce journal au lieu d'en
-//  tenir un second (plan/F3 § 5). Les autres vues du § 6 viendront quand une
-//  fonctionnalité les demandera.
+//  tenir un second (plan/F3 § 5).
+//
+//  Les cinq autres vues du § 6 ont été écrites le 27/07/2026, quand l'écran de
+//  progression (F3 étape E) est devenu leur premier consommateur réel : notes
+//  souvent confondues, exercices maîtrisés, tempo maximal propre et évolution
+//  par main. Toutes se calculent depuis le journal brut, sans migration.
 //
 //  Aucun DOM, aucun Canvas.
 // ============================================================================
@@ -90,4 +94,227 @@ export function completedSessions(log, options = {}) {
 export function sessionMinutes(session) {
   if (session.startedAt === null || session.endedAt === null) return null;
   return Math.max(0, Math.round((session.endedAt - session.startedAt) / 60000));
+}
+
+// ----------------------------------------------------------------------------
+//  Notes souvent confondues (plan/F3 § 6, première ligne)
+//
+//  Pour chaque cible ratée, les réponses données à la place — les plus
+//  fréquentes d'abord. Générique : tout `answer` en `wrong` qui porte une
+//  cible et un `given` compte, quelle que soit la fonctionnalité. `keyOf`
+//  identifie la cible, `givenKeyOf` la réponse donnée.
+// ----------------------------------------------------------------------------
+export function confusedTargets(
+  log,
+  {
+    featureIds = null,
+    keyOf = (target) => JSON.stringify(target),
+    givenKeyOf = (given) => JSON.stringify(given),
+    limit = 5,
+  } = {}
+) {
+  const wanted = featureIds === null ? null : new Set(featureIds);
+  const byTarget = new Map();
+
+  for (const event of log) {
+    if (event.type !== "answer" || event.outcome !== "wrong") continue;
+    if (wanted && !wanted.has(event.featureId)) continue;
+    if (!event.target || event.given === undefined) continue;
+
+    const key = keyOf(event.target);
+    let entry = byTarget.get(key);
+    if (!entry) {
+      entry = {
+        key,
+        featureId: event.featureId,
+        target: event.target,
+        wrong: 0,
+        given: new Map(),
+      };
+      byTarget.set(key, entry);
+    }
+    entry.wrong++;
+    entry.target = event.target; // la forme la plus récente fait foi
+
+    const givenKey = givenKeyOf(event.given);
+    const given = entry.given.get(givenKey);
+    if (given) given.count++;
+    else entry.given.set(givenKey, { key: givenKey, given: event.given, count: 1 });
+  }
+
+  return [...byTarget.values()]
+    .sort((a, b) => b.wrong - a.wrong)
+    .slice(0, limit)
+    .map((entry) => ({
+      key: entry.key,
+      featureId: entry.featureId,
+      target: entry.target,
+      wrong: entry.wrong,
+      confusedWith: [...entry.given.values()].sort((a, b) => b.count - a.count),
+    }));
+}
+
+// ----------------------------------------------------------------------------
+//  Exercices maîtrisés et tempo maximal propre (plan/F3 § 6, lignes 2 et 3)
+//
+//  Une exécution est un `run` en `clean`/`flawed` : 03 en écrit par exercice,
+//  06 par passage de morceau. Les deux vues partagent le même regroupement.
+//
+//  Règle transversale du § 6 : « acquis après plusieurs réussites espacées » —
+//  un exercice n'est maîtrisé qu'avec au moins MASTERY_CLEAN_RUNS exécutions
+//  propres réparties sur au moins MASTERY_SESSIONS séances distinctes.
+// ----------------------------------------------------------------------------
+export const MASTERY_CLEAN_RUNS = 3;
+export const MASTERY_SESSIONS = 2;
+
+// Identité d'un exercice ou d'un passage dans le journal. La main en fait
+// partie : maîtriser la main droite ne dit rien de la gauche.
+export function runKey(target) {
+  if (target.exerciseId) return `exercise:${target.exerciseId}:${target.hand ?? "?"}`;
+  if (target.songId) return `section:${target.songId}:${target.sectionId ?? "?"}:${target.hand ?? "?"}`;
+  return `run:${JSON.stringify(target)}`;
+}
+
+export function runStats(log, { featureIds = null } = {}) {
+  const wanted = featureIds === null ? null : new Set(featureIds);
+  const byRun = new Map();
+
+  for (const event of log) {
+    if (event.type !== "run" || !event.target) continue;
+    if (wanted && !wanted.has(event.featureId)) continue;
+
+    const key = runKey(event.target);
+    let entry = byRun.get(key);
+    if (!entry) {
+      entry = {
+        key,
+        featureId: event.featureId,
+        target: event.target,
+        runs: 0,
+        cleanRuns: 0,
+        cleanSessions: new Set(),
+        // Tempo maximal joué proprement : 03 écrit un tempo absolu (bpm), 06 un
+        // pourcentage du tempo du morceau — les deux sont conservés tels quels,
+        // jamais convertis (le journal ne connaît pas le tempo de référence).
+        bestCleanTempo: null,
+        bestCleanTempoPercent: null,
+        lastAt: 0,
+      };
+      byRun.set(key, entry);
+    }
+
+    entry.runs++;
+    entry.target = event.target;
+    entry.lastAt = event.at ?? entry.lastAt;
+    if (event.outcome === "clean") {
+      entry.cleanRuns++;
+      entry.cleanSessions.add(event.sessionId);
+      if (Number.isFinite(event.target.tempo)) {
+        entry.bestCleanTempo = Math.max(entry.bestCleanTempo ?? 0, event.target.tempo);
+      }
+      if (Number.isFinite(event.target.tempoPercent)) {
+        entry.bestCleanTempoPercent = Math.max(
+          entry.bestCleanTempoPercent ?? 0,
+          event.target.tempoPercent
+        );
+      }
+    }
+  }
+
+  return [...byRun.values()].map((entry) => ({
+    key: entry.key,
+    featureId: entry.featureId,
+    target: entry.target,
+    runs: entry.runs,
+    cleanRuns: entry.cleanRuns,
+    cleanSessionCount: entry.cleanSessions.size,
+    bestCleanTempo: entry.bestCleanTempo,
+    bestCleanTempoPercent: entry.bestCleanTempoPercent,
+    lastAt: entry.lastAt,
+    mastered:
+      entry.cleanRuns >= MASTERY_CLEAN_RUNS &&
+      entry.cleanSessions.size >= MASTERY_SESSIONS,
+  }));
+}
+
+export function masteredRuns(log, options = {}) {
+  return runStats(log, options).filter((entry) => entry.mastered);
+}
+
+// ----------------------------------------------------------------------------
+//  Évolution par main (plan/F3 § 6, quatrième ligne)
+//
+//  Précision par main, séance par séance, à partir des `answer` qui portent une
+//  main. Le lecteur compare le récent à l'ancien ; la vue ne fait que compter —
+//  aucune précision n'est calculée sur zéro tentative.
+// ----------------------------------------------------------------------------
+export function handEvolution(log, { featureIds = null } = {}) {
+  const wanted = featureIds === null ? null : new Set(featureIds);
+  const bySession = new Map();
+  const ordered = [];
+
+  for (const event of log) {
+    if (event.type !== "answer") continue;
+    if (wanted && !wanted.has(event.featureId)) continue;
+    const hand = event.target?.hand;
+    if (hand !== "left" && hand !== "right") continue;
+
+    let session = bySession.get(event.sessionId);
+    if (!session) {
+      session = {
+        sessionId: event.sessionId,
+        at: event.at ?? event.sessionId,
+        byHand: {
+          left: { attempts: 0, correct: 0 },
+          right: { attempts: 0, correct: 0 },
+        },
+      };
+      bySession.set(event.sessionId, session);
+      ordered.push(session);
+    }
+
+    const counts = session.byHand[hand];
+    counts.attempts++;
+    if (event.outcome === "correct") counts.correct++;
+  }
+
+  for (const session of ordered) {
+    for (const hand of ["left", "right"]) {
+      const counts = session.byHand[hand];
+      counts.accuracy = counts.attempts > 0 ? counts.correct / counts.attempts : null;
+    }
+  }
+  return ordered;
+}
+
+// Agrégat des dernières séances contre l'ensemble : c'est la comparaison que
+// montre l'écran de progression, sans graphique (plan/F3 § 13).
+export function handSummary(log, { featureIds = null, recentSessions = 3 } = {}) {
+  const sessionsWithHands = handEvolution(log, { featureIds });
+  const summary = {};
+
+  for (const hand of ["left", "right"]) {
+    const total = { attempts: 0, correct: 0 };
+    const recent = { attempts: 0, correct: 0 };
+    const withHand = sessionsWithHands.filter(
+      (session) => session.byHand[hand].attempts > 0
+    );
+    withHand.forEach((session, index) => {
+      const counts = session.byHand[hand];
+      total.attempts += counts.attempts;
+      total.correct += counts.correct;
+      if (index >= withHand.length - recentSessions) {
+        recent.attempts += counts.attempts;
+        recent.correct += counts.correct;
+      }
+    });
+    summary[hand] = {
+      attempts: total.attempts,
+      accuracy: total.attempts > 0 ? total.correct / total.attempts : null,
+      recentAttempts: recent.attempts,
+      recentAccuracy: recent.attempts > 0 ? recent.correct / recent.attempts : null,
+      sessions: withHand.length,
+    };
+  }
+  return summary;
 }
