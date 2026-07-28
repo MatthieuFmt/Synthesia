@@ -41,5 +41,9 @@
 
   { "title": "Exercice — Gammes et passage du pouce (moyen)", "file": "morceaux-exercice/genere/gammes-moyen-01.mid" },
   { "title": "Exercice — Gammes et passage du pouce (difficile)", "file": "morceaux-exercice/genere/gammes-difficile-01.mid" },
-  { "title": "Exercice — Gammes et passage du pouce (très difficile)", "file": "morceaux-exercice/genere/gammes-tres-difficile-01.mid" }
+  { "title": "Exercice — Gammes et passage du pouce (très difficile)", "file": "morceaux-exercice/genere/gammes-tres-difficile-01.mid" },
+
+  { "title": "Exercice — Arpèges et accords brisés (moyen)", "file": "morceaux-exercice/genere/arpeges-moyen-01.mid" },
+  { "title": "Exercice — Arpèges et accords brisés (difficile)", "file": "morceaux-exercice/genere/arpeges-difficile-01.mid" },
+  { "title": "Exercice — Arpèges et accords brisés (très difficile)", "file": "morceaux-exercice/genere/arpeges-tres-difficile-01.mid" }
 ]

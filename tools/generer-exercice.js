@@ -173,6 +173,53 @@ function courseGamme({ tonique, mode = "majeur", octaves = 2, depart = 0, sens =
   return hauteurs;
 }
 
+// ---- Arpèges -------------------------------------------------------------
+//
+//  Un accord est une liste d'écarts en demi-tons depuis sa fondamentale. Les
+//  décrire ainsi plutôt qu'en degrés permet la septième diminuée, qui n'existe
+//  dans aucune gamme majeure.
+
+const ACCORDS = {
+  majeur: [0, 4, 7],
+  mineur: [0, 3, 7],
+  "septieme-dominante": [0, 4, 7, 10],
+  "septieme-diminuee": [0, 3, 6, 9],
+};
+
+// Les hauteurs d'un arpège en montant, de la fondamentale au sommet — le
+// sommet étant la fondamentale, `octaves` plus haut.
+function arpegeMontant({ tonique, accord, octaves = 2 }) {
+  const hauteurs = [];
+  for (let k = 0; k < octaves; k++) {
+    for (const ecart of accord) hauteurs.push(tonique + 12 * k + ecart);
+  }
+  hauteurs.push(tonique + 12 * octaves);
+  return hauteurs;
+}
+
+// Aller-retour, le sommet n'étant joué qu'une fois.
+function courseArpege(options) {
+  const montant = arpegeMontant(options);
+  return [...montant, ...montant.slice(0, -1).reverse()];
+}
+
+// Le miroir : part du sommet, descend, remonte. Même longueur que la course
+// montante — c'est ce qui permet de les jouer ensemble en mouvement contraire,
+// note contre note.
+function courseArpegeDescendante({ sommet, accord, octaves = 2 }) {
+  const descendant = arpegeMontant({ tonique: sommet - 12 * octaves, accord, octaves })
+    .slice()
+    .reverse();
+  return [...descendant, ...descendant.slice(0, -1).reverse()];
+}
+
+// Enchaîne plusieurs allers-retours d'affilée.
+function repeter(course, fois) {
+  const suite = [];
+  for (let i = 0; i < fois; i++) suite.push(...course);
+  return suite;
+}
+
 // Même course, en demi-tons : la chromatique n'a pas de degrés.
 function courseChromatique({ depart, octaves = 4 }) {
   const sommet = 12 * octaves;
@@ -595,6 +642,201 @@ function gammesTresDifficile({ tonalite }) {
   return { notes: carnet.notes, duree: t + MESURE };
 }
 
+// ============================================================================
+//  Famille B2 — Arpèges et accords brisés
+//
+//  Ce qu'elle travaille : **la main qui s'ouvre et se déplace en même temps**
+//  (plan § 5, B2). Une gamme demande à la main de traverser ; un arpège lui
+//  demande de traverser *en restant ouverte* sur la forme de l'accord.
+//
+//    moyen          — triades à l'état fondamental sur deux octaves, puis les
+//                     trois positions travaillées sur place ;
+//    difficile      — renversements, septième de dominante, trois octaves,
+//                     puis mouvement contraire ;
+//    très difficile — septième diminuée sur quatre octaves, et des brisés qui
+//                     dépassent l'octave.
+// ============================================================================
+
+function arpegesMoyen({ tonalite }) {
+  const carnet = creerCarnet();
+  const { tonique } = tonalite;
+  const accord = ACCORDS.majeur;
+  let t = 0;
+
+  // A — l'arpège sur deux octaves, en croches, mains à l'octave. Deux
+  // allers-retours : le second n'est plus une découverte, c'est déjà du
+  // travail.
+  const course = courseArpege({ tonique, accord, octaves: 2 });
+  t = poserCourse(carnet, {
+    droite: repeter(course, 2),
+    gauche: aLOctave(repeter(course, 2)),
+    tick: t,
+    pas: CROCHE,
+    finTick: 4 * MESURE,
+  });
+
+  t = poserCharniere(carnet, { tick: t, tonique });
+
+  // B — les trois positions de la triade, **sur place** : c'est l'ouverture de
+  // la main seule, sans déplacement. Chaque mesure part là où la précédente
+  // s'arrête, la main ne saute donc jamais entre deux positions.
+  const positions = [
+    [0, 1, 2, 1], // fondamentale
+    [1, 2, 3, 2], // premier renversement
+    [2, 3, 4, 3], // second renversement
+    [3, 4, 5, 4], // l'octave, une position plus haut
+  ];
+  const echelle = arpegeMontant({ tonique, accord, octaves: 2 });
+  for (const position of positions) {
+    for (let i = 0; i < 8; i++) {
+      const hauteur = echelle[position[i % 4]];
+      const velocite = i % 4 === 0 ? VEL_APPUI : VEL_COURANTE;
+      const tick = t + i * CROCHE;
+      carnet.poser(tick, CROCHE - 25, hauteur, velocite, "droite");
+      carnet.poser(tick, CROCHE - 25, hauteur - 12, velocite, "gauche");
+    }
+    t += MESURE;
+  }
+
+  t = poserCharniere(carnet, { tick: t, tonique });
+
+  // C — le même arpège en doubles. La forme est acquise ; il s'agit
+  // maintenant de la garder en se déplaçant deux fois plus vite.
+  t = poserCourse(carnet, {
+    droite: repeter(course, 4),
+    gauche: aLOctave(repeter(course, 4)),
+    tick: t,
+    pas: DOUBLE,
+    finTick: t + 4 * MESURE,
+  });
+
+  t = poserCharniere(carnet, { tick: t, tonique, duree: 2 * MESURE - 60 });
+  return { notes: carnet.notes, duree: t + MESURE };
+}
+
+function arpegesDifficile({ tonalite }) {
+  const carnet = creerCarnet();
+  const { tonique } = tonalite; // ré4
+  const grave = tonique - 12;   // ré3 : les trois octaves tiennent au clavier
+  let t = 0;
+
+  // A — la triade sur **trois octaves**. La main doit se replacer deux fois
+  // de plus qu'au niveau précédent, sans que la forme se referme.
+  const triade = courseArpege({ tonique: grave, accord: ACCORDS.majeur, octaves: 3 });
+  t = poserCourse(carnet, {
+    droite: repeter(triade, 2),
+    gauche: aLOctave(repeter(triade, 2)),
+    tick: t,
+    pas: CROCHE,
+    finTick: 5 * MESURE,
+  });
+
+  t = poserCharniere(carnet, { tick: t, tonique });
+
+  // B — la **septième de dominante** : quatre sons au lieu de trois, donc des
+  // écarts plus serrés mais un doigt de plus à placer avant de se déplacer.
+  const septieme = courseArpege({
+    tonique: tonique - 5, // la3, la dominante de ré
+    accord: ACCORDS["septieme-dominante"],
+    octaves: 2,
+  });
+  t = poserCourse(carnet, {
+    droite: repeter(septieme, 2),
+    gauche: aLOctave(repeter(septieme, 2)),
+    tick: t,
+    pas: CROCHE,
+    finTick: t + 5 * MESURE,
+  });
+
+  t = poserCharniere(carnet, { tick: t, tonique });
+
+  // C — mouvement **contraire** sur deux octaves : les deux mains s'ouvrent en
+  // sens opposé, et aucune ne peut se régler sur l'autre.
+  const monte = courseArpege({ tonique, accord: ACCORDS.majeur, octaves: 2 });
+  const descend = courseArpegeDescendante({
+    sommet: tonique,
+    accord: ACCORDS.majeur,
+    octaves: 2,
+  });
+  t = poserCourse(carnet, {
+    droite: repeter(monte, 3),
+    gauche: repeter(descend, 3),
+    tick: t,
+    pas: CROCHE,
+    finTick: t + 6 * MESURE,
+  });
+
+  t = poserCharniere(carnet, { tick: t, tonique });
+  return { notes: carnet.notes, duree: t };
+}
+
+function arpegesTresDifficile({ tonalite }) {
+  const carnet = creerCarnet();
+  const { tonique } = tonalite; // do4
+  // La septième diminuée sur la sensible : si-ré-fa-la♭, qui résout sur do.
+  // Quatre intervalles égaux de tierce mineure — la main garde une seule
+  // forme sur quatre octaves.
+  const sensible = tonique - 13; // si2
+  let t = 0;
+
+  const diminuee = courseArpege({
+    tonique: sensible,
+    accord: ACCORDS["septieme-diminuee"],
+    octaves: 4,
+  });
+  t = poserCourse(carnet, {
+    droite: repeter(diminuee, 3),
+    gauche: aLOctave(repeter(diminuee, 3)),
+    tick: t,
+    pas: DOUBLE,
+    appuiTous: 4,
+    finTick: 7 * MESURE,
+  });
+
+  t = poserCharniere(carnet, { tick: t, tonique });
+
+  // B — arpèges **brisés dépassant l'octave** : fondamentale, dixième,
+  // quinte, octave. La main ne se contente plus de s'ouvrir, elle lance le
+  // bras — c'est le geste de la main gauche d'accompagnement romantique.
+  const BRISE = [0, 16, 7, 12];
+  for (const racine of [tonique, tonique + 5, tonique + 7]) {
+    for (let mesure = 0; mesure < 2; mesure++) {
+      for (let i = 0; i < 8; i++) {
+        const hauteur = racine + BRISE[i % 4];
+        const velocite = i % 4 === 0 ? VEL_APPUI : VEL_COURANTE;
+        const tick = t + i * CROCHE;
+        carnet.poser(tick, CROCHE - 25, hauteur, velocite, "droite");
+        carnet.poser(tick, CROCHE - 25, hauteur - 12, velocite, "gauche");
+      }
+      t += MESURE;
+    }
+  }
+
+  t = poserCharniere(carnet, { tick: t, tonique });
+
+  // C — la diminuée en **contraire** sur deux octaves, en doubles.
+  const monte = courseArpege({
+    tonique: sensible + 12,
+    accord: ACCORDS["septieme-diminuee"],
+    octaves: 2,
+  });
+  const descend = courseArpegeDescendante({
+    sommet: sensible + 12,
+    accord: ACCORDS["septieme-diminuee"],
+    octaves: 2,
+  });
+  t = poserCourse(carnet, {
+    droite: repeter(monte, 5),
+    gauche: repeter(descend, 5),
+    tick: t,
+    pas: DOUBLE,
+    finTick: t + 6 * MESURE,
+  });
+
+  t = poserCharniere(carnet, { tick: t, tonique, duree: 2 * MESURE - 60 });
+  return { notes: carnet.notes, duree: t + MESURE };
+}
+
 // ---- Le catalogue de production ----------------------------------------
 //
 //  Une entrée par famille et par niveau. `objectif` et `critere` alimentent la
@@ -652,6 +894,37 @@ const CATALOGUE = [
       },
     },
   },
+  {
+    famille: "b2-arpeges",
+    fichier: "arpeges",
+    titre: "Arpèges et accords brisés",
+    niveaux: {
+      moyen: {
+        tonalite: "do",
+        composer: arpegesMoyen,
+        objectif:
+          "Ouvrir la main sur la forme de l'accord et la garder ouverte en se déplaçant : triade sur deux octaves, puis ses trois positions sur place.",
+        // Un arpège de triade contient la quarte quinte→octave par
+        // construction. C'est sa matière, pas un relâchement du niveau.
+        tolerances: {
+          sautMax: 5,
+          pourquoi: "la quarte quinte-octave est intrinsèque à l'arpège de triade",
+        },
+      },
+      difficile: {
+        tonalite: "re",
+        composer: arpegesDifficile,
+        objectif:
+          "Trois octaves, septième de dominante et mouvement contraire : la main s'ouvre en sens opposé de l'autre.",
+      },
+      "tres-difficile": {
+        tonalite: "do",
+        composer: arpegesTresDifficile,
+        objectif:
+          "Septième diminuée sur quatre octaves, puis des brisés qui dépassent l'octave — la main ne s'ouvre plus, le bras se lance.",
+      },
+    },
+  },
 ];
 
 // Critère de réussite : celui que le sous-mode Travail applique déjà, repris
@@ -667,12 +940,35 @@ const CRITERE_COMMUN =
 //  décrits dans la fiche. On ne vérifie que ce qui se compte.
 // ============================================================================
 
-function verifier(notes, duree, niveau) {
+//  `tolerances` permet à une famille de dépasser **un** plafond nommé, quand
+//  c'est sa matière même qui l'impose et non un relâchement : un arpège
+//  contient une quarte par construction, que le niveau moyen plafonne à la
+//  tierce. Chaque tolérance porte sa raison, s'affiche dans le rapport et est
+//  recopiée dans la fiche du § 9 — elle n'est jamais silencieuse.
+function verifier(notes, duree, niveau, tolerances = null) {
   const hauteurs = notes.map((note) => note.hauteur);
   const ambitus = Math.max(...hauteurs) - Math.min(...hauteurs);
 
   const problemes = [];
   const mesures = {};
+  const tolere = [];
+
+  // Un plafond desserré par une tolérance déclarée, et le fait de l'avoir
+  // desserré : les deux sont rendus à l'appelant.
+  const plafond = (axe) => {
+    const declaree = tolerances?.[axe];
+    return declaree === undefined ? niveau[axe] : declaree;
+  };
+  const signaler = (axe, valeur, texte) => {
+    const limite = plafond(axe);
+    if (limite === null || valeur <= limite) {
+      if (tolerances?.[axe] !== undefined && valeur > niveau[axe]) {
+        tolere.push(`${texte} — toléré jusqu'à ${limite} (${tolerances.pourquoi ?? "sans raison écrite"})`);
+      }
+      return;
+    }
+    problemes.push(texte);
+  };
 
   // Débit : la main la plus chargée, sur la seconde la plus dense — une
   // moyenne sur tout l'exercice masquerait la section rapide. On compte les
@@ -692,9 +988,7 @@ function verifier(notes, duree, niveau) {
     }
   }
   mesures.debit = debitMax;
-  if (debitMax > niveau.debitMax) {
-    problemes.push(`débit ${debitMax} notes/s > ${niveau.debitMax}`);
-  }
+  signaler("debitMax", debitMax, `débit ${debitMax} notes/s > ${niveau.debitMax}`);
 
   // Ambitus mesuré **par main**, pas sur le clavier entier. Le § 4 dit
   // « ambitus total », mais deux mains parallèles à l'octave doublent
@@ -710,9 +1004,11 @@ function verifier(notes, duree, niveau) {
   }
   mesures.ambitus = ambitusMain;
   mesures.ambitusTotal = ambitus;
-  if (niveau.ambitusMax !== null && ambitusMain > niveau.ambitusMax) {
-    problemes.push(`ambitus d'une main ${ambitusMain} demi-tons > ${niveau.ambitusMax}`);
-  }
+  signaler(
+    "ambitusMax",
+    ambitusMain,
+    `ambitus d'une main ${ambitusMain} demi-tons > ${niveau.ambitusMax}`
+  );
   if (Math.min(...hauteurs) < MIDI_MIN || Math.max(...hauteurs) > MIDI_MAX) {
     problemes.push(
       `ambitus hors des bornes lisibles (${Math.min(...hauteurs)}–${Math.max(...hauteurs)}, attendu ${MIDI_MIN}–${MIDI_MAX})`
@@ -742,11 +1038,11 @@ function verifier(notes, duree, niveau) {
     }
   }
   mesures.ecart = ecartMax;
-  if (ecartMax > niveau.ecartMax) {
-    problemes.push(
-      `écart dans une main ${ecartMax} demi-tons > ${niveau.ecartMax} (${situer(ecartOu)})`
-    );
-  }
+  signaler(
+    "ecartMax",
+    ecartMax,
+    `écart dans une main ${ecartMax} demi-tons > ${niveau.ecartMax} (${situer(ecartOu)})`
+  );
 
   // Saut mélodique : d'une attaque à la suivante dans la même main, en
   // ignorant les notes tenues (qui ne sont pas un déplacement).
@@ -772,11 +1068,11 @@ function verifier(notes, duree, niveau) {
     }
   }
   mesures.saut = sautMax;
-  if (sautMax > niveau.sautMax) {
-    problemes.push(
-      `saut mélodique ${sautMax} demi-tons > ${niveau.sautMax} (${situer(sautOu)})`
-    );
-  }
+  signaler(
+    "sautMax",
+    sautMax,
+    `saut mélodique ${sautMax} demi-tons > ${niveau.sautMax} (${situer(sautOu)})`
+  );
 
   mesures.mesures = duree / MESURE;
   mesures.secondes = (duree / TPQ / niveau.tempo) * 60;
@@ -785,7 +1081,7 @@ function verifier(notes, duree, niveau) {
     problemes.push(`durée ${mesures.secondes.toFixed(0)} s hors de 45–120 s`);
   }
 
-  return { mesures, problemes };
+  return { mesures, problemes, tolere };
 }
 
 // ============================================================================
@@ -869,7 +1165,7 @@ function produire(entree, niveauId, { dossier = DOSSIER } = {}) {
   const gamme = creerGamme(tonalite.tonique);
 
   const { notes, duree } = variante.composer({ gamme, niveau, tonalite });
-  const { mesures, problemes } = verifier(notes, duree, niveau);
+  const { mesures, problemes, tolere } = verifier(notes, duree, niveau, variante.tolerances);
 
   const nom = `${entree.titre} (${niveau.libelle})`;
   const chemin = path.join(dossier, `${entree.fichier}-${niveauId}-01.mid`);
@@ -909,6 +1205,7 @@ function produire(entree, niveauId, { dossier = DOSSIER } = {}) {
     notes: notes.length,
     ...mesures,
     problemes,
+    tolere,
   };
 
   if (problemes.length > 0) return rapport; // rien n'est écrit : le niveau ment
@@ -968,6 +1265,7 @@ function main() {
         `    débit ${rapport.debit}/s · ambitus ${rapport.ambitus} · ` +
           `écart ${rapport.ecart} · saut ${rapport.saut}`
       );
+      for (const mot of rapport.tolere) console.log(`    ⚠ ${mot}`);
     }
   }
 

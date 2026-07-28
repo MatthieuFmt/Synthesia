@@ -216,7 +216,9 @@ d'avoir été produit **et** joué dans l'application.
       28/07/2026** : trois fichiers, vérifiés et chargés dans le mode Morceau.
       Fiches ci-dessous. Reste sa version catalogue, avec le doigté — c'est
       elle que le § 3 réclame en premier pour une famille « les deux ».
-- [ ] **B2 Arpèges et accords brisés** — les trois niveaux.
+- [x] **B2 Arpèges et accords brisés** — les trois niveaux. **Fait le
+      28/07/2026** : trois fichiers, vérifiés et chargés dans le mode Morceau.
+      Fiches ci-dessous. Reste sa version catalogue, comme pour B1.
 - [ ] **B3 Sauts et déplacements** — les trois niveaux.
 
 ### Vague 2 — ce qui manque le plus à un autodidacte (12 fichiers)
@@ -338,6 +340,50 @@ réunion de la chromatique (48, les quatre octaves demandées) et des gammes en
 tierces, qui vivent plus haut. Aucune section ne dépasse ce que la ligne B1
 annonce.
 
+#### `arpeges-moyen-01.mid`
+
+| | |
+| --- | --- |
+| Famille · niveau | B2 Arpèges et accords brisés · **moyen** |
+| Tonalité · tempo | do majeur · 80 à la noire |
+| Forme | 16 mesures, 48 s, 238 notes |
+| Objectif | Ouvrir la main sur la forme de l'accord et la garder ouverte en se déplaçant : triade sur deux octaves, puis ses trois positions sur place. |
+| Structure | A (4 mes.) arpège deux octaves en croches, deux allers-retours, mains à l'octave · B (4 mes.) les trois positions **sur place**, chaque mesure partant où la précédente s'arrête · C (4 mes.) le même arpège en **doubles** |
+| Mesuré | débit 6/s · ambitus d'une main 24 · écart 7 · saut 5 |
+| Tolérance | saut porté de 4 à 5 — *la quarte quinte-octave est intrinsèque à l'arpège de triade* |
+| Critère | Deux exécutions propres au tempo cible, sur deux jours distincts. |
+
+#### `arpeges-difficile-01.mid`
+
+| | |
+| --- | --- |
+| Famille · niveau | B2 Arpèges et accords brisés · **difficile** |
+| Tonalité · tempo | ré majeur · 100 à la noire |
+| Forme | 19 mesures, 46 s, 240 notes |
+| Objectif | Trois octaves, septième de dominante et mouvement contraire : la main s'ouvre en sens opposé de l'autre. |
+| Structure | A (5 mes.) triade sur **trois octaves** · B (5 mes.) **septième de dominante** — quatre sons, écarts plus serrés, un doigt de plus à placer · C (6 mes.) **contraire**, les deux mains partant de ré4 et divergeant |
+| Mesuré | débit 4/s · ambitus d'une main 36 · écart 7 · saut 5 |
+| Critère | Deux exécutions propres au tempo cible, sur deux jours distincts. |
+
+La quarte de l'arpège n'a besoin d'aucune tolérance ici : le plafond de saut
+du niveau difficile est l'octave.
+
+#### `arpeges-tres-difficile-01.mid`
+
+| | |
+| --- | --- |
+| Famille · niveau | B2 Arpèges et accords brisés · **très difficile** |
+| Tonalité · tempo | do majeur · 120 à la noire |
+| Forme | 23 mesures, 46 s, 482 notes |
+| Objectif | Septième diminuée sur quatre octaves, puis des brisés qui dépassent l'octave — la main ne s'ouvre plus, le bras se lance. |
+| Structure | A (7 mes.) **septième diminuée** si-ré-fa-sol♯ sur quatre octaves en doubles — quatre tierces mineures égales, une seule forme de main · B (6 mes.) **brisés dépassant l'octave** : fondamentale, dixième, quinte, octave · C (6 mes.) la diminuée en **contraire** |
+| Mesuré | débit 8/s · ambitus d'une main 48 · écart 7 · saut 16 |
+| Critère | Deux exécutions propres au tempo cible, sur deux jours distincts. |
+
+C'est le premier exercice du dossier à atteindre exactement les quatre
+octaves de la ligne B2, et son saut de 16 demi-tons est la dixième que le
+§ 5 réclame — « arpèges brisés dépassant l'octave ».
+
 ## 10. Décisions tranchées avant la vague 1 — 28/07/2026
 
 1. ~~**Combien d'exercices par famille et par niveau ?**~~ **Un seul**,
@@ -401,3 +447,26 @@ allongeant une note pour la faire sortir du calcul.
 
 Ces deux corrections ne relâchent rien : les six exercices produits restent
 mesurés sur quatre axes, et A1 moyen touche toujours trois de ses plafonds.
+
+### Les tolérances déclarées, imposées par les arpèges (28/07/2026)
+
+Troisième rencontre du même genre, et cette fois la réponse n'est pas de
+corriger la mesure mais de permettre une exception nommée.
+
+Un arpège de triade contient la quarte quinte→octave — sol-do — **par
+construction**. Le niveau moyen plafonne les sauts à la tierce. Aucune
+écriture ne fait disparaître cette quarte : elle est la matière même de la
+famille, pas un relâchement.
+
+Une famille peut donc déclarer une **tolérance** sur un axe : le plafond est
+desserré à la valeur déclarée, et la raison est écrite dans le catalogue du
+générateur. Trois garde-fous la rendent honnête plutôt que commode :
+
+- elle est **nommée dans le code**, à côté de l'exercice qu'elle concerne ;
+- elle **s'affiche à chaque production**, précédée d'un ⚠ et suivie de sa
+  raison — jamais silencieuse ;
+- elle est **recopiée dans la fiche** du § 9, ligne « Tolérance ».
+
+Une seule tolérance existe à ce jour : `arpeges-moyen-01`, saut porté de 4 à
+5. Le jour où une famille en réclamerait plusieurs, ou une très large, c'est
+que son niveau est mal choisi — pas que le § 4 est trop strict.
