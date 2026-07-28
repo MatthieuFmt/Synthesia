@@ -9,7 +9,7 @@ qui publie des éditions gravées avec LilyPond à partir de partitions du
 domaine public, et fournit un rendu MIDI de chaque pièce.
 
 Les treize premiers (Czerny op. 840, Gnossiennes) sont les rendus MIDI
-publiés par le site. Les dix-huit ajoutés le 27/07/2026 (Hanon, Czerny
+publiés par le site. Les treize ajoutés le 27/07/2026 (Czerny
 op. 821, Burgmüller, Clementi) ont été **compilés depuis les sources
 LilyPond du dépôt GitHub de Mutopia** (`MutopiaProject/MutopiaProject`,
 répertoire `ftp/`), avec LilyPond 2.24 après passage de `convert-ly` — le
@@ -28,7 +28,6 @@ de les intégrer à la bibliothèque de l'application.
 | `czerny-op821-01.mid` … `-04.mid` | C. Czerny, *160 Kurze Übungen*, op. 821, nos 1 à 4 | **Domaine public** | Aucune |
 | `burgmuller-op100-01.mid` … `-06.mid` | F. Burgmüller, *25 Études faciles et progressives*, op. 100, nos 1 à 6 | **Domaine public** | Aucune |
 | `clementi-op36-1-1.mid` … `-3.mid` | M. Clementi, Sonatine op. 36 nº 1, trois mouvements | **Domaine public** | Aucune |
-| `hanon-01.mid` … `-05.mid` | C.-L. Hanon, *Le Pianiste virtuose*, exercices 1 à 5 | **CC BY-SA 4.0** | Attribution **et** partage à l'identique |
 | `satie-gnossienne-1.mid` … `-3.mid` | E. Satie, *Gnossiennes* nos 1 à 3 | **CC BY-SA 4.0** | Attribution **et** partage à l'identique |
 
 Sources des éditions, telles qu'indiquées par Mutopia :
@@ -38,14 +37,13 @@ Sources des éditions, telles qu'indiquées par Mutopia :
   6990-6993.
 - Burgmüller op. 100 : Collection Litolff, XIXe siècle.
 - Clementi op. 36 nº 1 : *Sonatina Album*, G. Schirmer, 1893.
-- Hanon : Schirmer, 1900.
 - Satie, Gnossienne nº 1 : Éditions Salabert, 22 rue Chauchat, Paris, 1913.
 - Satie, Gnossiennes nos 2 et 3 : Paris, Rouart, Lerolle & Cie., 1913,
   planches R.L. 9884-9886.
 
 ### Conséquence pratique de CC BY-SA 4.0
 
-Les trois Gnossiennes et les cinq Hanon ne sont **pas** dans le domaine
+Les trois Gnossiennes ne sont **pas** dans le domaine
 public : c'est la *gravure* Mutopia qui est sous licence Creative Commons.
 Les diffuser dans l'application impose d'afficher l'attribution (Mutopia
 Project, avec un lien) et de conserver la même licence pour ces fichiers.
@@ -57,7 +55,6 @@ Si l'objectif est d'éviter toute contrainte, s'en tenir à ces derniers.
 
 | Série | Fonctionnalités visées | Pourquoi celle-ci |
 | --- | --- | --- |
-| Hanon 1-5 | [06](../plan/06-travail-intelligent-morceau.md) (boucle, attente, tempo) | Le déliement canonique : motifs réguliers, mains parallèles — parfaits pour la boucle et la montée progressive de tempo |
 | Czerny op. 821 | [06](../plan/06-travail-intelligent-morceau.md) | Huit mesures chacun : l'exercice entier tient dans un seul passage, la boucle est immédiate |
 | Czerny op. 840 | [01](../plan/01-apprentissage-morceau.md), [06](../plan/06-travail-intelligent-morceau.md), [08](../plan/08-lecture-partitions.md) | Études courtes, progressives, deux mains, écriture claire — idéales pour tester le découpage en passages, le travail main par main et la montée de tempo |
 | Burgmüller op. 100 | [01](../plan/01-apprentissage-morceau.md), [06](../plan/06-travail-intelligent-morceau.md) | De vraies petites pièces progressives, plus musicales que des études : la récompense après la technique |
@@ -66,8 +63,8 @@ Si l'objectif est d'éviter toute contrainte, s'en tenir à ces derniers.
 
 ## Vérifications faites sur les fichiers
 
-Analyse des 31 fichiers (13 téléchargés en juillet, 18 compilés le
-27/07/2026) :
+Analyse des 31 fichiers **alors présents** (13 téléchargés en juillet, 18
+compilés le 27/07/2026 ; les 5 Hanon ont été retirés depuis — voir plus bas) :
 
 - tous sont des MIDI **format 1**, 384 ticks par noire, avec **exactement
   deux pistes contenant des notes** ;
@@ -98,18 +95,28 @@ n'ont pas besoin de fichier : elles génèrent leurs accords. La famille
 Application demandera soit un fichier MIDI contenant réellement du CC 64,
 soit une pédalisation saisie à la main dans l'application.
 
-## La décision Hanon, révisée le 27/07/2026
+## La décision Hanon, tranchée en trois temps — retrait le 28/07/2026
 
-Ce dossier avait d'abord **refusé** de télécharger Hanon : le matériel des
-[Exercices techniques (03)](../plan/03-technique-doigts.md#11-modèle-de-données-proposé)
-est **généré** à partir de données, et une liste de fichiers MIDI presque
-identiques aurait fait double emploi.
+1. **Refus** (25/07/2026). Le matériel des
+   [Exercices techniques (03)](../plan/03-technique-doigts.md#11-modèle-de-données-proposé)
+   est **généré** à partir de données, et une liste de fichiers MIDI presque
+   identiques aurait fait double emploi.
+2. **Ajout** (27/07/2026), à la demande de l'utilisateur : joués dans le mode
+   Morceau avec la boucle, l'attente et la montée de tempo du sous-mode
+   Travail (06), ils pouvaient servir autrement que dans 03.
+3. **Retrait** (28/07/2026), à la demande de l'utilisateur : à l'usage, les
+   cinq exercices se ressemblent trop et n'apportent rien. Les fichiers
+   `hanon-01.mid` … `-05.mid` et leurs cinq lignes de `songs.json` ont été
+   supprimés.
 
-Cette décision tient toujours pour 03 — son générateur n'utilise aucun de ces
-fichiers. Mais à la demande de l'utilisateur, les exercices 1 à 5 de Hanon
-ont rejoint la **bibliothèque de morceaux** : joués dans le mode Morceau avec
-la boucle, l'attente et la montée de tempo du sous-mode Travail (06), ce sont
-d'excellents exercices — un usage différent de celui que 03 avait écarté.
+Le refus initial avait donc raison, mais pas tout à fait pour la bonne raison :
+le problème n'est pas que Hanon fasse double emploi avec 03, c'est qu'un
+exercice qui ne travaille qu'**une** chose — cinq doigts en position fixe —
+répétée en soixante variantes ne couvre pas le travail réel. Le remplacement
+est décrit dans
+[plan/exercices-generes.md](../plan/exercices-generes.md) : des exercices
+**générés**, un objectif par exercice, trois niveaux, produits dans
+`genere/` par `tools/generer-exercice.js`.
 
 Reste inchangé :
 
@@ -118,15 +125,17 @@ Reste inchangé :
 
 ## Intégration à la bibliothèque — faite
 
-Les trente et un fichiers sont référencés dans `songs.json` (les treize
-premiers depuis le 25/07/2026, les dix-huit autres depuis le 27/07/2026) et
+Les vingt-six fichiers restants sont référencés dans `songs.json` (les treize
+premiers depuis le 25/07/2026, les treize autres depuis le 27/07/2026) et
 apparaissent dans le sélecteur de morceaux, groupés par compositeur. Le
 bouton d'import de fichier a été retiré de l'application : tout le répertoire
-est livré avec le dépôt.
+est livré avec le dépôt. Les exercices générés de `genere/` s'y ajoutent au
+fur et à mesure de leur production.
 
-L'attribution des fichiers CC BY-SA (Gnossiennes, Hanon) n'est **pas**
+L'attribution des fichiers CC BY-SA (Gnossiennes) n'est **pas**
 affichée dans l'application : celle-ci est un usage personnel, sur le dépôt
 de son auteur, et n'est pas destinée au public. Si elle devait être publiée
 (GitHub Pages ouvert, partage), la clause BY-SA imposerait alors d'afficher
-l'attribution Mutopia Project et de conserver la même licence pour ces huit
-fichiers.
+l'attribution Mutopia Project et de conserver la même licence pour ces trois
+fichiers. Les exercices de `genere/` ne posent pas cette question : ils sont
+écrits par l'application elle-même, à partir de rien.

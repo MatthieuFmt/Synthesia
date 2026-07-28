@@ -48,6 +48,19 @@ niveau 4 (les notes qui défilent). Elles ont leur propre fichier parce
 qu'elles sont volumineuses, mais elles réutilisent le moteur de leur
 fonctionnalité d'origine au lieu de le dupliquer.
 
+## Matériel d'exercice
+
+Ce n'est pas une fonctionnalité : c'est ce que les fonctionnalités font
+pratiquer. Les cinq exercices de Hanon ont été **retirés le 28/07/2026** —
+soixante variantes d'une seule difficulté ne font pas un programme
+technique — et sont remplacés par des exercices **générés**, un objectif par
+exercice, à trois niveaux.
+
+| Sujet | État actuel | Plan détaillé |
+| --- | --- | --- |
+| Exercices générés | Catalogue de 19 familles écrit ; production à faire | [exercices-generes.md](exercices-generes.md) |
+| Fichiers MIDI du dépôt | 26 fichiers Mutopia, licences vérifiées | [morceaux-exercice/README.md](../morceaux-exercice/README.md) |
+
 ## Checklist générale
 
 ### Base déjà disponible
