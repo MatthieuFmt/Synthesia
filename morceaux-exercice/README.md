@@ -130,7 +130,8 @@ premiers depuis le 25/07/2026, les treize autres depuis le 27/07/2026) et
 apparaissent dans le sélecteur de morceaux, groupés par compositeur. Le
 bouton d'import de fichier a été retiré de l'application : tout le répertoire
 est livré avec le dépôt. Les exercices générés de `genere/` s'y ajoutent au
-fur et à mesure de leur production.
+fur et à mesure de leur production — les trois premiers, le déliage A1 à ses
+trois niveaux, depuis le 28/07/2026.
 
 L'attribution des fichiers CC BY-SA (Gnossiennes) n'est **pas**
 affichée dans l'application : celle-ci est un usage personnel, sur le dépôt

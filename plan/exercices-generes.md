@@ -207,9 +207,11 @@ d'avoir été produit **et** joué dans l'application.
 
 ### Vague 1 — le socle (12 fichiers, 4 familles × 3 niveaux)
 
-- [ ] **A1 Déliage** — moyen, difficile, très difficile.
-      (`deliage-01.mid`, produit le 28/07/2026, est le brouillon du niveau
-      moyen : à renommer `deliage-moyen-01.mid` et à recalibrer sur le § 4)
+- [x] **A1 Déliage** — moyen, difficile, très difficile. **Fait le
+      28/07/2026** : trois fichiers écrits, vérifiés contre le § 4 par le
+      générateur lui-même, et chargés dans le mode Morceau. Fiches ci-dessous.
+      Le brouillon `deliage-01.mid` a été supprimé : il glissait sa position
+      dès la première mesure, ce qui est le niveau *difficile*, pas *moyen*.
 - [ ] **B1 Gammes et passage du pouce** — les trois niveaux.
 - [ ] **B2 Arpèges et accords brisés** — les trois niveaux.
 - [ ] **B3 Sauts et déplacements** — les trois niveaux.
@@ -231,19 +233,94 @@ d'avoir été produit **et** joué dans l'application.
 - [ ] A1, A2, A3 et B1, B2 en entrées de `exercises/catalog.js`, avec doigté
       et niveau — puis activer le sélecteur de difficulté de 03.
 
-## 10. Décisions à trancher avant la vague 1
+### Fiches des exercices produits
 
-1. **Combien d'exercices par famille et par niveau ?** Un seul, transposable
-   par paramètre, ou plusieurs fichiers figés ? Un seul suffit si la
-   tonalité est un argument du générateur — mais un seul fichier dans
-   `songs.json` signifie une seule tonalité disponible sans régénérer.
-2. **Les exercices vont-ils dans `songs.json` au fil de l'eau** (le sélecteur
-   passerait de 26 à 80 entrées) **ou dans un écran à part** ? À 57 fichiers,
-   le sélecteur du mode Morceau devient difficile à parcourir sur tablette.
-3. **Le générateur reste-t-il un script Node** (régénération à la main) **ou
-   devient-il un module du navigateur** ? Un module permettrait de choisir
-   tonalité et niveau dans l'application, sans fichier ni `songs.json` — mais
-   c'est un mode de plus, donc un plan de plus.
+Fiche obligatoire du § 6. Les quatre mesures citées sont celles que le
+générateur imprime à chaque production ; elles se relisent avec
+`node tools/generer-exercice.js a1-deliage`.
 
-Ces trois points changent la quantité de fichiers à produire : à trancher
-avant de lancer la vague 1, pas après.
+#### `deliage-moyen-01.mid`
+
+| | |
+| --- | --- |
+| Famille · niveau | A1 Déliage et indépendance · **moyen** |
+| Tonalité · tempo | do majeur · 80 à la noire |
+| Forme | 17 mesures, 51 s, 406 notes |
+| Objectif | Chaque doigt part et revient dans une position de cinq doigts qui ne bouge jamais, une note tenue par mesure. |
+| Structure | A (4 mes.) motif 1-3-2-4-3-5-4-2 en doubles, mains parallèles à l'octave · B (8 mes.) une note tenue par mesure, le pouce puis le cinquième · C (4 mes.) mouvement contraire, positions toujours fixes |
+| Mesuré | débit 6/s · ambitus 24 · écart 7 · saut 4 |
+| Critère | Deux exécutions propres au tempo cible, sur deux jours distincts. |
+
+Il touche ses quatre plafonds exactement : c'est le plus haut niveau *moyen*
+possible, pas un exercice tiède.
+
+#### `deliage-difficile-01.mid`
+
+| | |
+| --- | --- |
+| Famille · niveau | A1 Déliage et indépendance · **difficile** |
+| Tonalité · tempo | ré majeur (2 dièses) · 100 à la noire |
+| Forme | 21 mesures, 50 s, 686 notes |
+| Objectif | Deux notes tenues et des motifs isolant 4-5, sur une position qui glisse d'un degré à chaque mesure. |
+| Structure | A (6 mes.) motif 4-5-4-5-3-5-4-5, mains **décalées d'un temps** · B (8 mes.) **deux** notes tenues, deux voix réelles par main · C (6 mes.) contraire, le pouce tenant pendant que les doigts jouent à l'**octave** |
+| Mesuré | débit 7/s · ambitus 28 · écart 12 · saut 12 |
+| Critère | Deux exécutions propres au tempo cible, sur deux jours distincts. |
+
+#### `deliage-tres-difficile-01.mid`
+
+| | |
+| --- | --- |
+| Famille · niveau | A1 Déliage et indépendance · **très difficile** |
+| Tonalité · tempo | si majeur (5 dièses) · 120 à la noire |
+| Forme | 23 mesures, 46 s, 658 notes |
+| Objectif | Les seuls 3-4-5 sur touches noires, avec tenues, mouvement contraire et une section en trois contre deux. |
+| Structure | A (7 mes.) 3-4-5 seuls sur fa♯-sol♯-la♯, pouce tenu · B (8 mes.) **trois contre deux** — la droite trois notes par temps, la gauche deux, chacune avec sa tenue · C (7 mes.) tenues **et** contraire, position glissée |
+| Mesuré | débit 8/s · ambitus 31 · écart 11 · saut 12 |
+| Critère | Deux exécutions propres au tempo cible, sur deux jours distincts. |
+
+Une précision honnête sur son niveau : il ne touche aucun plafond du § 4, et
+son écart maximal reste une septième, pas la dixième annoncée. Il est très
+difficile par les axes que **la ligne A1 du § 5 nomme** — 3-4-5 seuls, touches
+noires sous les doigts faibles, tenues plus contraire — et par le rapport des
+mains, où le trois-contre-deux relève du niveau le plus haut. C'est
+exactement la règle du § 4 : « un exercice porte le niveau de l'axe le plus
+haut qu'il sollicite ». Les plafonds sont des plafonds, pas des objectifs.
+
+## 10. Décisions tranchées avant la vague 1 — 28/07/2026
+
+1. ~~**Combien d'exercices par famille et par niveau ?**~~ **Un seul**,
+   `<famille>-<niveau>-01.mid`, la tonalité étant une donnée du générateur
+   (`TONALITES`). Le suffixe `-01` reste dans le nom pour qu'un second fichier
+   ne demande aucun renommage le jour où une deuxième tonalité sera utile.
+   Produire d'emblée trois tonalités par niveau ferait 171 fichiers pour une
+   difficulté identique — c'est exactement le reproche fait à Hanon au § 1.
+2. ~~**`songs.json` au fil de l'eau ou écran à part ?**~~ **Au fil de l'eau**,
+   avec le titre `Exercice — <famille> (<niveau>)` du § 6 : le préfixe commun
+   les regroupe dans le sélecteur, qui reste trié. À revoir **à l'ouverture de
+   la vague 3**, où le catalogue dépasserait la soixantaine d'entrées : c'est
+   là que le sélecteur devient pénible sur tablette, pas à 33.
+3. ~~**Script Node ou module du navigateur ?**~~ **Script Node.** Un module
+   embarqué serait un mode de plus — donc un plan de plus, et une boucle de
+   génération dans l'application qui ne sert qu'une fois par exercice. La
+   régénération à la main est le bon coût pour une donnée qui ne change
+   jamais après sa validation.
+
+### Une quatrième décision, apparue en produisant
+
+**Le générateur refuse d'écrire un fichier qui ne tient pas son niveau.**
+`verifier()` mesure les quatre axes du § 4 qui se comptent — débit, ambitus,
+écart dans une main, saut mélodique — et compare aux plafonds du niveau
+déclaré ; il vérifie aussi la durée du § 2 et les bornes MIDI du § 6. Un
+dépassement affiche la mesure fautive et **rien n'est écrit**.
+
+C'est ce qui rend applicable la règle 5 du § 2 (« difficulté explicite, pas au
+feeling »). Les trois exercices de A1 ont d'ailleurs tous été refusés au
+premier jet, pour des raisons qu'aucune relecture n'aurait attrapées : une
+main gauche qui sautait de cinq demi-tons au changement de section, des doigts
+montant à la neuvième là où l'octave était le plafond, une durée de 42 s sous
+le minimum de 45.
+
+Le débit compte les **attaques**, pas les notes : un accord de trois sons est
+un seul geste et ne fait pas jouer la main trois fois plus vite. La première
+version comptait les notes et refusait un exercice à cause de son accord
+final.
