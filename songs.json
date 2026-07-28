@@ -37,5 +37,9 @@
 
   { "title": "Exercice — Déliage et indépendance (moyen)", "file": "morceaux-exercice/genere/deliage-moyen-01.mid" },
   { "title": "Exercice — Déliage et indépendance (difficile)", "file": "morceaux-exercice/genere/deliage-difficile-01.mid" },
-  { "title": "Exercice — Déliage et indépendance (très difficile)", "file": "morceaux-exercice/genere/deliage-tres-difficile-01.mid" }
+  { "title": "Exercice — Déliage et indépendance (très difficile)", "file": "morceaux-exercice/genere/deliage-tres-difficile-01.mid" },
+
+  { "title": "Exercice — Gammes et passage du pouce (moyen)", "file": "morceaux-exercice/genere/gammes-moyen-01.mid" },
+  { "title": "Exercice — Gammes et passage du pouce (difficile)", "file": "morceaux-exercice/genere/gammes-difficile-01.mid" },
+  { "title": "Exercice — Gammes et passage du pouce (très difficile)", "file": "morceaux-exercice/genere/gammes-tres-difficile-01.mid" }
 ]

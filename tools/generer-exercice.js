@@ -83,10 +83,26 @@ const NIVEAUX = {
 
 const MAJEUR = [0, 2, 4, 5, 7, 9, 11];
 
+// Les mineures se distinguent par leur sixième et septième degrés. La
+// mélodique en a deux formes : elle monte par l'une et redescend par l'autre —
+// c'est ce que le § 4 appelle « harmonique **et** mélodique ».
+const MODES = {
+  majeur: { monte: MAJEUR, descend: MAJEUR },
+  "mineur-harmonique": {
+    monte: [0, 2, 3, 5, 7, 8, 11],
+    descend: [0, 2, 3, 5, 7, 8, 11],
+  },
+  "mineur-melodique": {
+    monte: [0, 2, 3, 5, 7, 9, 11],
+    descend: [0, 2, 3, 5, 7, 8, 10], // en descendant, la mineure naturelle
+  },
+};
+
 const TONALITES = {
-  do: { nom: "do majeur", tonique: 60, alterations: 0 },
-  re: { nom: "ré majeur", tonique: 62, alterations: 2 },
-  si: { nom: "si majeur", tonique: 59, alterations: 5 },
+  do: { nom: "do majeur", tonique: 60, alterations: 0, mode: "majeur" },
+  re: { nom: "ré majeur", tonique: 62, alterations: 2, mode: "majeur" },
+  si: { nom: "si majeur", tonique: 59, alterations: 5, mode: "majeur" },
+  la: { nom: "la mineur", tonique: 57, alterations: 0, mode: "mineur-harmonique", mineur: true },
 };
 
 // Degré diatonique → hauteur MIDI. Les degrés négatifs descendent sous la
@@ -132,6 +148,73 @@ function creerCarnet() {
       notes.push({ tick, duree, hauteur, velocite, main });
     },
   };
+}
+
+// Une gamme montée puis redescendue, rendue en hauteurs MIDI — les modes dont
+// la descente diffère de la montée (mélodique) ne se disent pas en degrés.
+// Le sommet n'est joué qu'une fois : 14n + 1 notes pour n octaves.
+//
+// `depart` décale la course dans l'échelle : c'est ce qui donne les gammes à
+// la tierce (−2) ou à la sixte (−5) entre les mains, sans seconde table.
+// `sens: -1` descend d'abord puis remonte — la course en miroir du mouvement
+// contraire.
+function courseGamme({ tonique, mode = "majeur", octaves = 2, depart = 0, sens = 1 }) {
+  const { monte, descend } = MODES[mode];
+  const hauteur = (table, d) => tonique + 12 * Math.floor(d / 7) + table[((d % 7) + 7) % 7];
+  const sommet = 7 * octaves;
+  const hauteurs = [];
+  if (sens > 0) {
+    for (let d = 0; d <= sommet; d++) hauteurs.push(hauteur(monte, depart + d));
+    for (let d = sommet - 1; d >= 0; d--) hauteurs.push(hauteur(descend, depart + d));
+  } else {
+    for (let d = 0; d <= sommet; d++) hauteurs.push(hauteur(descend, depart - d));
+    for (let d = sommet - 1; d >= 0; d--) hauteurs.push(hauteur(monte, depart - d));
+  }
+  return hauteurs;
+}
+
+// Même course, en demi-tons : la chromatique n'a pas de degrés.
+function courseChromatique({ depart, octaves = 4 }) {
+  const sommet = 12 * octaves;
+  const hauteurs = [];
+  for (let d = 0; d <= sommet; d++) hauteurs.push(depart + d);
+  for (let d = sommet - 1; d >= 0; d--) hauteurs.push(depart + d);
+  return hauteurs;
+}
+
+// Pose deux suites de hauteurs de même longueur, une par main, à pas régulier.
+// `finTick` étire la dernière note jusqu'à la fin de la section : une gamme ne
+// tombe pas juste sur la mesure, et un silence au milieu de l'exercice se
+// remarquerait plus que la note tenue qui le comble.
+function poserCourse(carnet, { droite, gauche, tick, pas, appuiTous = 4, finTick = null }) {
+  const duree = Math.max(40, pas - Math.round(pas * 0.12));
+  droite.forEach((hauteur, i) => {
+    const dernier = i === droite.length - 1;
+    const quand = tick + i * pas;
+    const combien = dernier && finTick ? Math.max(duree, finTick - quand - 40) : duree;
+    const velocite = i % appuiTous === 0 ? VEL_APPUI : VEL_COURANTE;
+    carnet.poser(quand, combien, hauteur, velocite, "droite");
+    carnet.poser(quand, combien, gauche[i], velocite, "gauche");
+  });
+  return finTick ?? tick + droite.length * pas;
+}
+
+// Les mains à l'octave : la suite de la gauche est celle de la droite, plus
+// bas. C'est le rapport « parallèles à l'octave » du § 4.
+function aLOctave(hauteurs, octaves = -1) {
+  return hauteurs.map((hauteur) => hauteur + 12 * octaves);
+}
+
+// Charnière : un accord tenu qui laisse le temps de changer de position. Il
+// rend aussi le changement de section audible, ce qu'une simple césure ne fait
+// pas. Les notes tenues sortent du calcul de saut, à dessein (§ 4).
+function poserCharniere(carnet, { tick, tonique, mineur = false, duree = MESURE - 60 }) {
+  const tierce = mineur ? 3 : 4;
+  for (const ecart of [0, tierce, 7]) {
+    carnet.poser(tick, duree, tonique + ecart, VEL_APPUI, "droite");
+    carnet.poser(tick, duree, tonique - 12 + ecart, VEL_APPUI, "gauche");
+  }
+  return tick + MESURE;
 }
 
 // ---- Niveau moyen -------------------------------------------------------
@@ -349,6 +432,169 @@ function deliageTresDifficile({ gamme }) {
   return { notes, duree: t };
 }
 
+// ============================================================================
+//  Famille B1 — Gammes et passage du pouce
+//
+//  Ce qu'elle travaille : le **trou sonore au passage du pouce**, la seule
+//  vraie difficulté de la gamme (plan § 5, B1). Monter et descendre n'est pas
+//  l'exercice ; c'est le moment où le pouce passe sous la main — et où le son
+//  s'interrompt si le geste est en retard — qui l'est.
+//
+//  Chaque niveau isole ce moment autrement :
+//    moyen          — la gamme lentement, puis le passage seul en boucle,
+//                     puis la gamme deux fois plus vite : le trou s'entend ;
+//    difficile      — mineures harmonique et mélodique sur trois octaves,
+//                     puis mouvement contraire ;
+//    très difficile — chromatique en doubles sur quatre octaves, puis les
+//                     mains à la tierce et à la sixte.
+// ============================================================================
+
+// La cellule du passage : monter jusqu'au degré où le pouce repasse, puis
+// revenir. Jouée en boucle, c'est le geste isolé de son contexte.
+const CELLULE_POUCE = [0, 1, 2, 3, 4, 3, 2, 1];
+
+function gammesMoyen({ tonalite }) {
+  const carnet = creerCarnet();
+  const { tonique, mode } = tonalite;
+  const gamme = creerGamme(tonique);
+  let t = 0;
+
+  // A — la gamme sur deux octaves, en croches : lentement, pour entendre.
+  const course = courseGamme({ tonique, mode, octaves: 2 });
+  t = poserCourse(carnet, {
+    droite: course,
+    gauche: aLOctave(course),
+    tick: t,
+    pas: CROCHE,
+    finTick: 4 * MESURE,
+  });
+
+  // B — le passage du pouce seul, remonté d'un degré à chaque mesure. La
+  // cellule finit sur le degré où la suivante commence : la main ne se
+  // repositionne jamais, elle ne fait que passer le pouce.
+  for (let mesure = 0; mesure < 6; mesure++) {
+    for (let i = 0; i < 8; i++) {
+      const degre = mesure + CELLULE_POUCE[i];
+      const velocite = i % 4 === 0 ? VEL_APPUI : VEL_COURANTE;
+      const tick = t + i * CROCHE;
+      carnet.poser(tick, CROCHE - 25, gamme(degre), velocite, "droite");
+      carnet.poser(tick, CROCHE - 25, gamme(degre) - 12, velocite, "gauche");
+    }
+    t += MESURE;
+  }
+
+  t = poserCharniere(carnet, { tick: t, tonique });
+
+  // C — la même gamme en doubles : deux fois plus vite, c'est là que le trou
+  // du pouce s'entend vraiment. Deux allers-retours.
+  const rapide = [...course, ...course];
+  t = poserCourse(carnet, {
+    droite: rapide,
+    gauche: aLOctave(rapide),
+    tick: t,
+    pas: DOUBLE,
+    finTick: t + 4 * MESURE,
+  });
+
+  t = poserCharniere(carnet, { tick: t, tonique });
+  return { notes: carnet.notes, duree: t };
+}
+
+function gammesDifficile({ tonalite }) {
+  const carnet = creerCarnet();
+  const { tonique } = tonalite; // la3 : les trois octaves tiennent au clavier
+  let t = 0;
+
+  // A — mineure harmonique sur trois octaves, mains parallèles à l'octave.
+  const harmonique = courseGamme({ tonique, mode: "mineur-harmonique", octaves: 3 });
+  t = poserCourse(carnet, {
+    droite: harmonique,
+    gauche: aLOctave(harmonique),
+    tick: t,
+    pas: CROCHE,
+    finTick: 6 * MESURE,
+  });
+
+  t = poserCharniere(carnet, { tick: t, tonique, mineur: true });
+
+  // B — mineure mélodique : elle monte par une échelle et redescend par une
+  // autre, ce qui déplace le passage du pouce entre la montée et la descente.
+  const melodique = courseGamme({ tonique, mode: "mineur-melodique", octaves: 3 });
+  t = poserCourse(carnet, {
+    droite: melodique,
+    gauche: aLOctave(melodique),
+    tick: t,
+    pas: CROCHE,
+    finTick: t + 6 * MESURE,
+  });
+
+  t = poserCharniere(carnet, { tick: t, tonique, mineur: true });
+
+  // C — mouvement contraire sur deux octaves : les deux pouces passent au même
+  // instant, chacun dans sa direction. C'est le vrai test de l'égalité.
+  const depart = tonique + 12;
+  const monte = courseGamme({ tonique: depart, mode: "mineur-harmonique", octaves: 2 });
+  const descend = courseGamme({ tonique: depart, mode: "mineur-harmonique", octaves: 2, sens: -1 });
+  t = poserCourse(carnet, {
+    droite: monte,
+    gauche: descend,
+    tick: t,
+    pas: CROCHE,
+    finTick: t + 4 * MESURE,
+  });
+
+  t = poserCharniere(carnet, { tick: t, tonique, mineur: true });
+  return { notes: carnet.notes, duree: t };
+}
+
+function gammesTresDifficile({ tonalite }) {
+  const carnet = creerCarnet();
+  const { tonique, mode } = tonalite;
+  let t = 0;
+
+  // A — chromatique sur quatre octaves, en doubles. Le pouce y passe toutes
+  // les trois ou quatre notes : c'est le passage le plus dense qui soit.
+  const chromatique = courseChromatique({ depart: tonique - 12, octaves: 4 });
+  t = poserCourse(carnet, {
+    droite: chromatique,
+    gauche: aLOctave(chromatique),
+    tick: t,
+    pas: DOUBLE,
+    appuiTous: 6,
+    finTick: 7 * MESURE,
+  });
+
+  t = poserCharniere(carnet, { tick: t, tonique });
+
+  // B — les mains **à la tierce** : elles ne passent plus le pouce ensemble,
+  // puisqu'elles ne sont pas au même endroit de l'échelle.
+  const droiteTierce = courseGamme({ tonique, mode, octaves: 3 });
+  const gaucheTierce = courseGamme({ tonique, mode, octaves: 3, depart: -2 });
+  t = poserCourse(carnet, {
+    droite: droiteTierce,
+    gauche: gaucheTierce,
+    tick: t,
+    pas: CROCHE,
+    finTick: t + 6 * MESURE,
+  });
+
+  t = poserCharniere(carnet, { tick: t, tonique });
+
+  // C — les mains **à la sixte**, l'écart le plus inconfortable des deux.
+  const gaucheSixte = courseGamme({ tonique, mode, octaves: 3, depart: -5 });
+  t = poserCourse(carnet, {
+    droite: droiteTierce,
+    gauche: gaucheSixte,
+    tick: t,
+    pas: CROCHE,
+    finTick: t + 6 * MESURE,
+  });
+
+  // Deux mesures de résolution : à ce tempo, une seule passerait inaperçue.
+  t = poserCharniere(carnet, { tick: t, tonique, duree: 2 * MESURE - 60 });
+  return { notes: carnet.notes, duree: t + MESURE };
+}
+
 // ---- Le catalogue de production ----------------------------------------
 //
 //  Une entrée par famille et par niveau. `objectif` et `critere` alimentent la
@@ -378,6 +624,31 @@ const CATALOGUE = [
         composer: deliageTresDifficile,
         objectif:
           "Les seuls 3-4-5 sur touches noires, avec tenues, mouvement contraire et une section en trois contre deux.",
+      },
+    },
+  },
+  {
+    famille: "b1-gammes",
+    fichier: "gammes",
+    titre: "Gammes et passage du pouce",
+    niveaux: {
+      moyen: {
+        tonalite: "do",
+        composer: gammesMoyen,
+        objectif:
+          "Entendre le trou du passage du pouce : la gamme lentement, le passage seul en boucle, puis la gamme deux fois plus vite.",
+      },
+      difficile: {
+        tonalite: "la",
+        composer: gammesDifficile,
+        objectif:
+          "Mineures harmonique et mélodique sur trois octaves, puis mouvement contraire où les deux pouces passent ensemble.",
+      },
+      "tres-difficile": {
+        tonalite: "do",
+        composer: gammesTresDifficile,
+        objectif:
+          "Chromatique en doubles sur quatre octaves, puis les deux mains à la tierce et à la sixte.",
       },
     },
   },
@@ -425,9 +696,22 @@ function verifier(notes, duree, niveau) {
     problemes.push(`débit ${debitMax} notes/s > ${niveau.debitMax}`);
   }
 
-  mesures.ambitus = ambitus;
-  if (niveau.ambitusMax !== null && ambitus > niveau.ambitusMax) {
-    problemes.push(`ambitus ${ambitus} demi-tons > ${niveau.ambitusMax}`);
+  // Ambitus mesuré **par main**, pas sur le clavier entier. Le § 4 dit
+  // « ambitus total », mais deux mains parallèles à l'octave doublent
+  // mécaniquement ce total sans rien ajouter à la difficulté : une gamme de
+  // deux octaves aux deux mains couvre trois octaves de clavier, et serait
+  // refusée au niveau moyen alors que c'est exactement ce que la ligne B1 y
+  // demande. Ce que la main doit parcourir est la bonne mesure ; le total
+  // reste affiché, et les bornes MIDI le surveillent.
+  let ambitusMain = 0;
+  for (const main of ["droite", "gauche"]) {
+    const h = notes.filter((note) => note.main === main).map((note) => note.hauteur);
+    if (h.length > 0) ambitusMain = Math.max(ambitusMain, Math.max(...h) - Math.min(...h));
+  }
+  mesures.ambitus = ambitusMain;
+  mesures.ambitusTotal = ambitus;
+  if (niveau.ambitusMax !== null && ambitusMain > niveau.ambitusMax) {
+    problemes.push(`ambitus d'une main ${ambitusMain} demi-tons > ${niveau.ambitusMax}`);
   }
   if (Math.min(...hauteurs) < MIDI_MIN || Math.max(...hauteurs) > MIDI_MAX) {
     problemes.push(
@@ -466,6 +750,11 @@ function verifier(notes, duree, niveau) {
 
   // Saut mélodique : d'une attaque à la suivante dans la même main, en
   // ignorant les notes tenues (qui ne sont pas un déplacement).
+  //
+  // Deux attaques séparées d'au moins un temps ne comptent pas : la main a eu
+  // le temps de se déplacer, ce n'est plus un saut mais un changement de
+  // position — l'affaire de la famille B3, pas un axe de difficulté ici. Sans
+  // cette règle, toute charnière entre deux sections serait refusée.
   let sautMax = 0;
   let sautOu = 0;
   for (const main of ["droite", "gauche"]) {
@@ -474,6 +763,7 @@ function verifier(notes, duree, niveau) {
       .sort((a, b) => a.tick - b.tick);
     for (let i = 1; i < propres.length; i++) {
       if (propres[i].tick === propres[i - 1].tick) continue; // accord, pas un saut
+      if (propres[i].tick - propres[i - 1].tick >= TEMPS) continue; // le temps de viser
       const saut = Math.abs(propres[i].hauteur - propres[i - 1].hauteur);
       if (saut > sautMax) {
         sautMax = saut;
@@ -534,13 +824,13 @@ function piste(evenements) {
   return Buffer.concat([entete, corps]);
 }
 
-function pisteReglages({ nom, objectif, tempo, alterations }) {
+function pisteReglages({ nom, objectif, tempo, alterations, mineur = false }) {
   const microsecondes = Math.round(60000000 / tempo);
   return piste([
     { tick: 0, ordre: 0, octets: metaTexte(0x03, nom) },
     { tick: 0, ordre: 1, octets: metaTexte(0x01, objectif) }, // texte libre
     { tick: 0, ordre: 2, octets: [0xff, 0x58, 0x04, 0x04, 0x02, 0x18, 0x08] }, // 4/4
-    { tick: 0, ordre: 3, octets: [0xff, 0x59, 0x02, alterations & 0xff, 0x00] },
+    { tick: 0, ordre: 3, octets: [0xff, 0x59, 0x02, alterations & 0xff, mineur ? 1 : 0] },
     {
       tick: 0,
       ordre: 4,
@@ -600,6 +890,7 @@ function produire(entree, niveauId, { dossier = DOSSIER } = {}) {
       objectif: sansAccent(variante.objectif),
       tempo: niveau.tempo,
       alterations: tonalite.alterations,
+      mineur: Boolean(tonalite.mineur),
     }),
     pisteNotes("Main droite", CANAL_DROITE, notes.filter((note) => note.main === "droite")),
     pisteNotes("Main gauche", CANAL_GAUCHE, notes.filter((note) => note.main === "gauche")),

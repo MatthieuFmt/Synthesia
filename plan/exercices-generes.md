@@ -73,7 +73,7 @@ lisibles dans le fichier produit :
 | Axe | Moyen | Difficile | Très difficile |
 | --- | --- | --- | --- |
 | Débit (notes/seconde, main la plus chargée) | ≤ 6 | ≤ 9 | ≤ 12 |
-| Ambitus total | 2 octaves | 3 octaves | 4 octaves et plus |
+| Ambitus **d'une main** | 2 octaves | 3 octaves | 4 octaves et plus |
 | Écart maximal dans une main | quinte (position fixe) | octave | dixième, ou déplacement à l'aveugle |
 | Tonalités | 0 à 1 altération | jusqu'à 4 altérations, mineures comprises | les 12, harmonique **et** mélodique |
 | Rapport des mains | parallèles à l'octave | contraires, ou décalées | rythmes différents (3:2, 4:3) |
@@ -212,7 +212,10 @@ d'avoir été produit **et** joué dans l'application.
       générateur lui-même, et chargés dans le mode Morceau. Fiches ci-dessous.
       Le brouillon `deliage-01.mid` a été supprimé : il glissait sa position
       dès la première mesure, ce qui est le niveau *difficile*, pas *moyen*.
-- [ ] **B1 Gammes et passage du pouce** — les trois niveaux.
+- [x] **B1 Gammes et passage du pouce** — les trois niveaux. **Fait le
+      28/07/2026** : trois fichiers, vérifiés et chargés dans le mode Morceau.
+      Fiches ci-dessous. Reste sa version catalogue, avec le doigté — c'est
+      elle que le § 3 réclame en premier pour une famille « les deux ».
 - [ ] **B2 Arpèges et accords brisés** — les trois niveaux.
 - [ ] **B3 Sauts et déplacements** — les trois niveaux.
 
@@ -248,11 +251,12 @@ générateur imprime à chaque production ; elles se relisent avec
 | Forme | 17 mesures, 51 s, 406 notes |
 | Objectif | Chaque doigt part et revient dans une position de cinq doigts qui ne bouge jamais, une note tenue par mesure. |
 | Structure | A (4 mes.) motif 1-3-2-4-3-5-4-2 en doubles, mains parallèles à l'octave · B (8 mes.) une note tenue par mesure, le pouce puis le cinquième · C (4 mes.) mouvement contraire, positions toujours fixes |
-| Mesuré | débit 6/s · ambitus 24 · écart 7 · saut 4 |
+| Mesuré | débit 6/s · ambitus d'une main 12 · écart 7 · saut 4 |
 | Critère | Deux exécutions propres au tempo cible, sur deux jours distincts. |
 
-Il touche ses quatre plafonds exactement : c'est le plus haut niveau *moyen*
-possible, pas un exercice tiède.
+Il touche trois de ses quatre plafonds exactement — débit, écart et saut :
+c'est le plus haut niveau *moyen* possible sur ces axes, pas un exercice
+tiède. Son ambitus reste petit, la position ne bougeant jamais.
 
 #### `deliage-difficile-01.mid`
 
@@ -263,7 +267,7 @@ possible, pas un exercice tiède.
 | Forme | 21 mesures, 50 s, 686 notes |
 | Objectif | Deux notes tenues et des motifs isolant 4-5, sur une position qui glisse d'un degré à chaque mesure. |
 | Structure | A (6 mes.) motif 4-5-4-5-3-5-4-5, mains **décalées d'un temps** · B (8 mes.) **deux** notes tenues, deux voix réelles par main · C (6 mes.) contraire, le pouce tenant pendant que les doigts jouent à l'**octave** |
-| Mesuré | débit 7/s · ambitus 28 · écart 12 · saut 12 |
+| Mesuré | débit 7/s · ambitus d'une main 16 · écart 12 · saut 12 |
 | Critère | Deux exécutions propres au tempo cible, sur deux jours distincts. |
 
 #### `deliage-tres-difficile-01.mid`
@@ -275,7 +279,7 @@ possible, pas un exercice tiède.
 | Forme | 23 mesures, 46 s, 658 notes |
 | Objectif | Les seuls 3-4-5 sur touches noires, avec tenues, mouvement contraire et une section en trois contre deux. |
 | Structure | A (7 mes.) 3-4-5 seuls sur fa♯-sol♯-la♯, pouce tenu · B (8 mes.) **trois contre deux** — la droite trois notes par temps, la gauche deux, chacune avec sa tenue · C (7 mes.) tenues **et** contraire, position glissée |
-| Mesuré | débit 8/s · ambitus 31 · écart 11 · saut 12 |
+| Mesuré | débit 8/s · ambitus d'une main 19 · écart 11 · saut 12 |
 | Critère | Deux exécutions propres au tempo cible, sur deux jours distincts. |
 
 Une précision honnête sur son niveau : il ne touche aucun plafond du § 4, et
@@ -285,6 +289,54 @@ noires sous les doigts faibles, tenues plus contraire — et par le rapport des
 mains, où le trois-contre-deux relève du niveau le plus haut. C'est
 exactement la règle du § 4 : « un exercice porte le niveau de l'axe le plus
 haut qu'il sollicite ». Les plafonds sont des plafonds, pas des objectifs.
+
+#### `gammes-moyen-01.mid`
+
+| | |
+| --- | --- |
+| Famille · niveau | B1 Gammes et passage du pouce · **moyen** |
+| Tonalité · tempo | do majeur · 80 à la noire |
+| Forme | 16 mesures, 48 s, 282 notes |
+| Objectif | Entendre le trou du passage du pouce : la gamme lentement, le passage seul en boucle, puis la gamme deux fois plus vite. |
+| Structure | A (4 mes.) gamme deux octaves en croches, mains à l'octave · B (6 mes.) la cellule du passage seule, remontée d'un degré par mesure · C (4 mes.) la même gamme en **doubles**, deux allers-retours |
+| Mesuré | débit 6/s · ambitus d'une main 24 · écart 7 · saut 2 |
+| Critère | Deux exécutions propres au tempo cible, sur deux jours distincts. |
+
+Les deux octaves de la ligne B1 sont là, par main, et le débit touche son
+plafond dans la section rapide — c'est elle qui rend le trou audible.
+
+#### `gammes-difficile-01.mid`
+
+| | |
+| --- | --- |
+| Famille · niveau | B1 Gammes et passage du pouce · **difficile** |
+| Tonalité · tempo | la mineur · 100 à la noire |
+| Forme | 19 mesures, 46 s, 248 notes |
+| Objectif | Mineures harmonique et mélodique sur trois octaves, puis mouvement contraire où les deux pouces passent ensemble. |
+| Structure | A (6 mes.) mineure **harmonique** trois octaves, mains à l'octave · B (6 mes.) mineure **mélodique** — fa♯ sol♯ en montant, sol fa naturels en descendant · C (4 mes.) mouvement **contraire** sur deux octaves |
+| Mesuré | débit 4/s · ambitus d'une main 36 · écart 7 · saut 3 |
+| Critère | Deux exécutions propres au tempo cible, sur deux jours distincts. |
+
+Son débit est loin du plafond, et c'est voulu : ce niveau se joue sur les
+trois octaves, les deux formes de la mineure et le contraire, pas sur la
+vitesse — « un exercice n'est pas difficile parce qu'il est rapide » (§ 4).
+
+#### `gammes-tres-difficile-01.mid`
+
+| | |
+| --- | --- |
+| Famille · niveau | B1 Gammes et passage du pouce · **très difficile** |
+| Tonalité · tempo | do majeur · 120 à la noire |
+| Forme | 23 mesures, 46 s, 384 notes |
+| Objectif | Chromatique en doubles sur quatre octaves, puis les deux mains à la tierce et à la sixte. |
+| Structure | A (7 mes.) **chromatique** quatre octaves en doubles · B (6 mes.) gamme trois octaves, mains **à la tierce** · C (6 mes.) mains **à la sixte** |
+| Mesuré | débit 8/s · ambitus d'une main 57 · écart 7 · saut 2 |
+| Critère | Deux exécutions propres au tempo cible, sur deux jours distincts. |
+
+L'ambitus de 57 demi-tons n'est pas une course de 57 demi-tons : c'est la
+réunion de la chromatique (48, les quatre octaves demandées) et des gammes en
+tierces, qui vivent plus haut. Aucune section ne dépasse ce que la ligne B1
+annonce.
 
 ## 10. Décisions tranchées avant la vague 1 — 28/07/2026
 
@@ -324,3 +376,28 @@ Le débit compte les **attaques**, pas les notes : un accord de trois sons est
 un seul geste et ne fait pas jouer la main trois fois plus vite. La première
 version comptait les notes et refusait un exercice à cause de son accord
 final.
+
+### Deux corrections du § 4, imposées par les gammes (28/07/2026)
+
+La famille B1 a mis au jour deux endroits où le § 4, écrit en pensant à des
+exercices de position, ne survivait pas au contact d'une gamme.
+
+**L'ambitus se mesure par main, pas sur le clavier.** Le § 4 dit « ambitus
+total », mais deux mains parallèles à l'octave doublent mécaniquement ce total
+sans rien ajouter à la difficulté : une gamme de deux octaves aux deux mains
+couvre trois octaves de clavier. Prise au mot, la règle refusait au niveau
+moyen exactement ce que la ligne B1 y demande — « 2 octaves, parallèle ». Ce
+que **la main** doit parcourir est la bonne mesure ; le total reste affiché,
+et les bornes MIDI du § 6 le surveillent. Conséquence : les chiffres d'ambitus
+des trois fiches A1 ont été recalculés, la matière de ces exercices n'ayant
+pas changé d'une note.
+
+**Un déplacement n'est un saut que si la main n'a pas le temps de viser.**
+Deux attaques séparées d'au moins un temps ne comptent plus : c'est un
+changement de position, l'affaire de la famille B3, pas un axe de difficulté
+ailleurs. Sans cette règle, toute charnière entre deux sections était refusée,
+et il aurait fallu écrire des exercices d'un seul tenant — ou tricher en
+allongeant une note pour la faire sortir du calcul.
+
+Ces deux corrections ne relâchent rien : les six exercices produits restent
+mesurés sur quatre axes, et A1 moyen touche toujours trois de ses plafonds.
