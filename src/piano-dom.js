@@ -1,12 +1,12 @@
 // ============================================================================
-//  Clavier de piano en DOM — partagé par 02 et 07
+//  Clavier de piano en DOM — partagé par Lecture de notes, 07 et 08
 //
 //  Une rangée de touches blanches en `<button>` et une rangée de noires posées
 //  par-dessus, limitées à l'étendue utile de l'exercice. Rien n'y défile, donc
 //  rien n'y justifie un Canvas : des `<button>` sont plus larges au doigt,
 //  focalisables et annoncés par leur nom (cf. CLAUDE.md, « Petit écran »).
 //
-//  Extrait de `note-reading-mode.js` le 27/07/2026, quand l'Entraînement de
+//  Extrait de l'ancien `note-reading-mode.js` le 27/07/2026, quand l'Entraînement de
 //  l'oreille (07) a eu besoin du *même* clavier — même étendue calculée depuis
 //  un groupe de notes, même défilement plutôt que des touches sous 30 px, mêmes
 //  états correct / faux / désigné (plan/07-entrainement-oreille.md § 7, qui
@@ -17,7 +17,7 @@
 //  l'octave sans hauteur du Rythme n'ont toujours rien à voir avec celui-ci.
 //
 //  Le préfixe de classes CSS est un paramètre : chaque mode garde sa famille de
-//  styles (`nr-…`, `ear-…`) comme le reste du dossier.
+//  styles (`fl-…`, `ear-…`, `sr-…`) comme le reste du dossier.
 // ============================================================================
 
 import { isWhite, noteDegreeName, octaveOf, pitchClass } from "./music.js";

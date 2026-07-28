@@ -18,7 +18,7 @@ import { FIGURES } from "../rhythm/patterns.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
-// Proportions du glyphe de clé de fa mesurées pour 02 (cf. note-reading-mode) :
+// Proportions du glyphe de clé de fa mesurées pour l'ancien mode 02 :
 // les deux points du glyphe doivent encadrer la 4e ligne, la boîte du glyphe
 // n'ayant aucune raison de coïncider avec la portée.
 const BASS_DOT_GAP_EM = 0.2162;

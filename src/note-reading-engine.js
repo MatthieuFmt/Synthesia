@@ -1,5 +1,5 @@
 // ============================================================================
-//  Moteur de la Lecture de notes — Feature 02
+//  Groupes de notes partagés par la Lecture de notes défilante
 //
 //  Ce qui reste ici est ce qui n'appartient qu'à la lecture d'une note écrite :
 //  les groupes de notes par niveau et par main, la clé associée à chaque main,
@@ -10,7 +10,7 @@
 //  cibles ratées, bilan — vit dans `session-engine.js` depuis le 27/07/2026,
 //  quand l'Entraînement de l'oreille (07) en a eu besoin de la même version
 //  (plan/07-entrainement-oreille.md § 3). La surface publique de ce fichier n'a
-//  pas bougé pour autant : c'est toujours lui qu'appelle `note-reading-mode.js`.
+//  pas bougé pour autant. Le mode défilant en réutilise les groupes et les clés.
 //
 //  Aucun DOM, aucun Canvas, aucun son : ce module est testable sans navigateur
 //  (plan/02-lecture-notes.md § 6). Le hasard est injectable (`random`).

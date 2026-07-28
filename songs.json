@@ -39,5 +39,7 @@
 
   { "title": "Satie — Gnossienne nº 1", "file": "morceaux-exercice/satie-gnossienne-1.mid" },
   { "title": "Satie — Gnossienne nº 2", "file": "morceaux-exercice/satie-gnossienne-2.mid" },
-  { "title": "Satie — Gnossienne nº 3", "file": "morceaux-exercice/satie-gnossienne-3.mid" }
+  { "title": "Satie — Gnossienne nº 3", "file": "morceaux-exercice/satie-gnossienne-3.mid" },
+
+  { "title": "Déliage des doigts nº 1 (généré)", "file": "morceaux-exercice/genere/deliage-01.mid" }
 ]

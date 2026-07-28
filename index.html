@@ -13,19 +13,9 @@
     <header class="topbar">
       <!-- =====================================================================
            Barre commune : présente quelle que soit la fonctionnalité active
-           (retour à l'accueil, nom du mode, paysage, plein écran).
+           (navigation, paysage, plein écran).
            ================================================================== -->
       <div class="appbar">
-        <button id="homeBtn" class="btn home-btn" type="button" hidden
-          aria-label="Revenir à l'accueil" title="Revenir à l'accueil">
-          <svg class="toolbar-icon" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M19 12H5m0 0 6-6m-6 6 6 6" />
-          </svg>
-          <span class="home-btn-label">Accueil</span>
-        </button>
-
-        <span id="featureTitle" class="feature-title">Accueil</span>
-
         <button id="landscapeBtn" class="btn icon-btn landscape-btn" type="button"
           aria-label="Passer en mode paysage" title="Passer en mode paysage">
           <svg class="toolbar-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -50,6 +40,12 @@
           </svg>
         </button>
       </div>
+
+      <!-- Les modes sont accessibles directement depuis la barre. La liste
+           défile horizontalement quand la largeur manque. -->
+      <nav class="mode-nav" aria-label="Modes">
+        <ul id="modeNavList" class="mode-nav-list"></ul>
+      </nav>
 
       <!-- =====================================================================
            Contrôles propres au mode Morceau : bibliothèque, notation, vitesse
@@ -203,6 +199,7 @@
 
     <!-- Scène : l'écran d'accueil ou la fonctionnalité active y est rendue. -->
     <main class="stage" id="stage"></main>
+
     </div>
 
     <!-- @tonejs/midi pour parser les fichiers .mid, + logique applicative -->

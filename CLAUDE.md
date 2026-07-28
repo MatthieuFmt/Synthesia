@@ -30,20 +30,22 @@ Chaque fonctionnalité (mode) est un objet avec cette signature :
 
 ```
 src/main.js                 # bootstrap : enregistre les features, init viewport + navigation
-src/navigation.js           # registre des features, switchTo(), availableFeatures(), accueil
-src/today-panel.js          # panneau « Aujourd'hui » de l'accueil : séances dues et
-                            # cochées ; lit dueToday() de 04, ne calcule aucune règle
-src/training-mode.js        # mode Programme (04) : écrans Aujourd'hui et configuration (DOM)
-src/training-program.js     # règles du Programme (sans DOM) : fréquences, séances dues,
-                            # persistance ; ne tient aucun historique, il lit celui de F3
+src/navigation.js           # registre des features, switchTo(), availableFeatures(),
+                            # accueil rangé par famille + menu des modes de la barre
+src/today-panel.js          # panneau « Ta séance du jour » de l'accueil : blocs et
+                            # coches ; lit planDay() de 04, ne calcule aucune règle
+src/training-mode.js        # mode Programme (04) : écran unique — séance, semaine, durée (DOM)
+src/training-coach.js       # le professeur (sans DOM) : créneaux d'une séance, choix par
+                            # ancienneté, répartition d'un budget en minutes
+src/training-program.js     # réglages du Programme (sans DOM) : budget quotidien, bornes
+                            # de jour, persistance ; l'historique reste celui de F3
 src/song-mode.js            # mode Morceau : piano roll, clavier, notation, sous-mode Travail
 src/song-practice.js        # règles du Travail (06), sans DOM : passages, accords
                             # attendus, tempo, maîtrise, persistance des passages
-src/note-reading-mode.js    # mode Lecture de notes : portée SVG + clavier DOM (1 à 2 octaves)
-src/note-reading-engine.js  # ce qui n'appartient qu'à 02 : groupes de notes par niveau
-                            # et par main, clé de portée, calendrier des mains (sans DOM)
-src/fluency-mode.js         # mode Fluidité (10) : notes défilantes en Canvas, niveau 4
-                            # du parcours de 02 — seul écran de lecture qui défile
+src/note-reading-engine.js  # groupes de notes par niveau et par main, clés (sans DOM)
+src/fluency-mode.js         # unique mode Lecture de notes : une ou deux portées
+                            # défilantes en Canvas, trois vitesses
+src/fluency-engine.js       # série alternée et géométrie des portées, sans DOM
 src/sheet-reading-mode.js   # mode Lecture de partitions (08) : cinq étapes, suite de 02
 src/sheet/exercises.js      # mesures et questions de 08 par étape ; les mesures de
                             # « Valeurs et silences » sont les motifs 4/4 de 05 (sans DOM)
@@ -62,7 +64,8 @@ src/exercises/validate-run.js  # verdict d'une série jouée au clavier MIDI (sa
 src/rhythm-mode.js          # mode Rythme : métronome, reconnaissance, reproduction
 src/rhythm/patterns.js      # figures (durées/silences), motifs par niveau (sans DOM)
 src/rhythm/timing.js        # jugement à l'heure/avance/retard, appariement (sans DOM)
-src/pedal-mode.js           # mode Pédale (09) : écoute, directe, syncopée — trois entrées
+src/pedal-mode.js           # mode Pédale (09) : directe et syncopée, trois niveaux,
+                            # un morceau joué + ligne de pédale et consigne anticipée
 src/pedal/timing.js         # verdicts propre/brouillé/trou/oubliée, fenêtres de
                             # rhythm/timing.js (sans DOM)
 src/metronome.js            # PARTAGÉ (03, 05, 09) : grille de pulsation + décompte, sans DOM
@@ -99,22 +102,18 @@ l'application (88 touches Canvas, étendue d'un exercice en Canvas, une octave d
 `piano-dom.js` **a** été extrait le 27/07/2026, parce que 02 et 07 affichent
 littéralement *le même* clavier : une à deux octaves de `<button>` dont
 l'étendue se déduit d'un groupe de notes. Le préfixe de classes CSS y est un
-paramètre (`nr-`, `ear-`), donc chaque mode garde sa famille de styles et le DOM
-de 02 n'a pas bougé d'un octet — c'est ce qui a permis de rejouer ses harnais
-tels quels comme mesure de non-régression. Même histoire pour
+paramètre (`fl-`, `ear-`, `sr-`), donc chaque mode garde sa famille de styles.
+L'ancien préfixe `nr-` appartenait au mode fixe retiré le 28/07/2026. Même
+histoire pour
 `session-engine.js`, extrait de `note-reading-engine.js` le même jour, sans que
 la surface publique de ce dernier change.
 
 **Le piano roll, lui, n'est toujours pas mutualisé** : le mode Morceau
 et le mode Exercices gardent chacun le leur, pour la raison écrite dans
 [plan/03 § 12](plan/03-technique-doigts.md#le-rouleau-na-pas-été-mutualisé-avec-le-mode-morceau) ;
-même chose pour les portées. Celle de 02 (une note isolée), celle de 05 (une
-ligne) et celle de 08 (`sheet/staff-render.js` : une mesure complète, armure,
-figures, double portée) ne partagent aucune coordonnée — et 02 n'a **pas** été
-migré vers le rendu de 08 : son DOM n'a pas bougé d'un octet, ce qui laisse
-ses harnais valides comme mesure de non-régression. La migration se fera le
-jour où 02 aura besoin de quelque chose que seul `staff-render.js` sait faire,
-pas avant.
+même chose pour les portées. La Lecture de notes défilante en Canvas, celle de
+05 (une ligne SVG) et celle de 08 (`sheet/staff-render.js` : une mesure complète,
+armure, figures, double portée SVG) ne partagent aucune coordonnée.
 
 Deux briques *sont* partagées dès le premier jour, parce qu'un second
 consommateur en avait besoin de la **même** version, pas d'une variante :
@@ -138,11 +137,15 @@ calculer d'avance serait la même erreur que `nearestBeat()`. À retenir aussi :
 04 n'a modifié **aucune** fonctionnalité existante, le format d'évènement figé
 tôt suffisait — et un `featureId` du registre n'est pas toujours celui du
 journal (`song` est satisfait par `song-practice`, cf. `SESSION_FEATURE_IDS`).
+La refonte du 27/07/2026 au soir — le programme est désormais **écrit par
+l'application** pour un budget quotidien, plus composé par l'utilisateur — n'a
+pas davantage demandé de vue nouvelle : la rotation « la moins vue récemment »
+se lit avec `completedSessions(log, { featureIds, to })`, qui existait déjà.
 
 Cinquième cas, avec l'Entraînement de l'oreille (07) : **extraire sans changer
 la surface**. `session-engine.js` et `piano-dom.js` sont sortis de 02 le jour où
-07 en a eu besoin, mais `note-reading-engine.js` garde exactement ses exports
-d'avant et le DOM du clavier de 02 est inchangé. C'est ce qui permet de rejouer
+07 en a eu besoin, mais `note-reading-engine.js` a gardé ses exports jusqu'au
+retrait du mode fixe. C'est ce qui a permis de rejouer
 les harnais d'une fonctionnalité **tels quels** après l'avoir remaniée : si un
 harnais doit être réécrit pour passer, il ne mesure plus la non-régression.
 Quand un mode a besoin de sa propre variante d'un module partagé, on lui donne
@@ -160,19 +163,19 @@ Tous les plans sont dans `plan/`. Le backlog maître est `plan/README.md`.
 
 | # | Statut |
 |---|---|
-| F1 — Navigation | ✅ Implémenté |
+| F1 — Navigation | ✅ Implémenté + menu des modes (barre) et accueil par famille |
 | F2 — Entrée MIDI clavier | ✅ Fondation + notes (01, 03, 05, 08) + pédale CC 64 (09) |
 | F3 — Suivi progression | ✅ Complet : journal, 6 vues, écran Progression, export/effacement, compaction |
 | 01 — Apprentissage morceau | ✅ Lecteur + clavier MIDI ; travail guidé via 06 |
-| 02 — Lecture de notes | ✅ MVP + progression ; altérations faites dans 08 |
+| 02 — Ancienne lecture fixe | Retirée le 28/07/2026 ; historique conservé |
 | 03 — Technique doigts | ✅ MVP + validation MIDI |
-| 04 — Programme entraînement | ✅ Aujourd'hui + configuration ; lit le journal F3 |
+| 04 — Programme entraînement | ✅ Séance composée pour un budget quotidien (20 min par défaut) ; lit le journal F3 |
 | 05 — Rythme | ✅ 3 familles × 3 entrées (tap, piano, MIDI) |
 | 06 — Travail intelligent morceau | ✅ 5 outils : passages, mains, boucle, attente, tempo |
 | 07 — Oreille | ✅ 3 familles × 3 niveaux ; mélodie hors MVP |
 | 08 — Lecture partitions | ✅ 5 étapes : mesures, valeurs/silences, altérations, empilements, double portée |
-| 09 — Pédale | ✅ Écoute + directe + syncopée, 3 entrées ; famille Application → plus tard |
-| 10 — Fluidité | ✅ Notes défilantes (Canvas), 3 vitesses ; altérations/double portée → plus tard |
+| 09 — Pédale | ✅ Directe + syncopée, 3 entrées, 3 niveaux, morceau joué et geste annoncé à l'avance ; famille Application → plus tard |
+| 10 — Lecture de notes | ✅ 1 ou 2 portées défilantes (Canvas), 3 vitesses ; altérations → plus tard |
 
 ## Contraintes matérielles (CRITIQUE)
 
@@ -184,7 +187,7 @@ L'app tourne sur une **vieille tablette Android** avec un petit écran et peu de
 - **Pas de framework lourd**. Pas de React, Vue, Svelte, etc. Vanilla JS uniquement.
 - **Pas de build step**. Pas de webpack, vite, etc. Modules ES natifs chargés directement par le navigateur.
 - **Pas de bibliothèque externe superflue**. Actuellement les seules dépendances sont Tone.js et @tonejs/midi (CDN), strictement nécessaires à l'audio et au parsing MIDI.
-- **Canvas, pas de DOM pour le rendu principal**. Le piano roll et le clavier sont dessinés sur un seul `<canvas>` — c'est le cas du mode Morceau, du mode Exercices et de la **Fluidité** (les notes qui défilent vers la ligne d'arrivée). Ne pas introduire de rendu DOM pour la partie temps réel *qui défile*. Deux exceptions assumées, parce que rien n'y défile : la **Lecture de notes** (une note fixe, un clic) et le **Rythme** (une portée fixe, une pulsation) utilisent une portée SVG statique et des `<button>` — cibles tactiles plus grandes, et zéro boucle d'animation. Le Rythme va plus loin : ce qui bouge (le point de pulsation, les changements de phase) est **planifié à l'avance sur le Transport et rendu par `Tone.Draw`**, donc aucun `requestAnimationFrame` du tout. À privilégier quand les changements visuels sont peu nombreux et connus d'avance.
+- **Canvas, pas de DOM pour le rendu principal**. Le piano roll et le clavier sont dessinés sur un seul `<canvas>` — c'est le cas du mode Morceau, du mode Exercices et de la **Lecture de notes** (les portées qui défilent vers la ligne d'arrivée). Ne pas introduire de rendu DOM pour la partie temps réel *qui défile*. Le **Rythme** reste une exception assumée : sa portée fixe utilise un SVG et des `<button>`, et ce qui bouge est planifié à l'avance sur le Transport puis rendu par `Tone.Draw`.
 - **`requestAnimationFrame` avec throttling**. Ne pas dépasser 30 FPS sur profil bas. Toujours annuler les rAF dans `stop()`.
 - **Éviter les allocations dans la boucle de rendu**. Pré-calculer les géométries, réutiliser les tableaux typés (`Int16Array` pour WHITE_INDEX_BY_MIDI).
 - **Pas d'animations CSS lourdes**. Les transitions sont limitées à `background .15s ease`.

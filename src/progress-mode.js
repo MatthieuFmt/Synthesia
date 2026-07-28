@@ -31,6 +31,7 @@ const FEATURE_LABEL = {
   song: "Morceau",
   "song-practice": "Travail d'un morceau",
   "note-reading": "Lecture de notes",
+  fluency: "Lecture de notes",
   "sheet-reading": "Lecture de partitions",
   technique: "Exercices techniques",
   rhythm: "Rythme",
@@ -151,7 +152,7 @@ function renderHistory(log) {
 function renderConfusions(log) {
   const box = section("Souvent confondues");
   const entries = confusedTargets(log, {
-    featureIds: ["note-reading", "sheet-reading", "ear-training"],
+    featureIds: ["note-reading", "fluency", "sheet-reading", "ear-training"],
     keyOf: (target) =>
       target.midi !== undefined
         ? `${target.clef ?? "ear"}:${target.midi}`
@@ -243,7 +244,7 @@ function renderRuns(log) {
 function renderHands(log) {
   const box = section("Par main");
   const summary = handSummary(log, {
-    featureIds: ["note-reading", "sheet-reading"],
+    featureIds: ["note-reading", "fluency", "sheet-reading"],
   });
 
   const hasData = ["left", "right"].some((hand) => summary[hand].attempts > 0);

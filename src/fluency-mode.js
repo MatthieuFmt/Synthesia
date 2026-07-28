@@ -1,11 +1,10 @@
 // ============================================================================
-//  Mode Fluidité — le niveau 4 de la Lecture de notes (plan/02 § 3)
+//  Mode Lecture de notes — lecture continue sur portée défilante
 //
 //  Des notes défilent sur une portée vers une zone cible : jouer chacune avant
-//  qu'elle ne sorte. La Lecture de notes (02) apprend la correspondance
-//  portée-clavier sans pression de temps ; ce mode la rend fluide — vitesse
-//  réglable, série continue, score de précision, exactement le « second
-//  niveau » que 02 réservait pour plus tard.
+//  qu'elle ne sorte. L'ancien exercice à note fixe a été retiré : ce mode est
+//  désormais l'unique Lecture de notes — vitesse réglable, série continue et
+//  score de précision.
 //
 //  C'est un écran qui défile : donc un Canvas, pas de DOM (CLAUDE.md), avec la
 //  boucle bridée par le profil de l'appareil. Le temps n'avance que lorsque les
@@ -24,15 +23,20 @@
 import { createAudio } from "./audio.js";
 import { PERFORMANCE_PROFILE } from "./perf.js";
 import { CLEF_GLYPH, noteDegreeName, octaveOf, pitchClass, SHARP_PCS, staffStep } from "./music.js";
-import { CLEF_BY_HAND, notePool } from "./note-reading-engine.js";
-import { pickWeighted } from "./session-engine.js";
+import {
+  drawSeries,
+  layoutStaffs,
+  noteArrivalTime,
+  NOTES_PER_SESSION,
+} from "./fluency-engine.js";
+import { CLEF_BY_HAND } from "./note-reading-engine.js";
 import { createPianoKeyboard } from "./piano-dom.js";
 import { midiInput } from "./midi-input.js";
 import { createProgressStore } from "./progress/store.js";
 import { lastSessionContext, priorWeights } from "./progress/review.js";
 
 // Une session : une série continue de notes, puis le bilan.
-export const NOTES_PER_SESSION = 30;
+export { NOTES_PER_SESSION };
 
 // Temps de lecture : une note met ce temps à traverser l'écran jusqu'à la
 // cible. La vitesse (notes par minute) règle la densité, pas ce temps : lire
@@ -52,6 +56,7 @@ const DIFFICULTY_CHOICES = [
 const HAND_CHOICES = [
   { id: "right", label: "Main droite" },
   { id: "left", label: "Main gauche" },
+  { id: "both", label: "Les deux mains" },
 ];
 
 const SPEED_CHOICES = [
@@ -61,14 +66,15 @@ const SPEED_CHOICES = [
 ];
 
 const CLEF_LABEL = { treble: "clé de sol", bass: "clé de fa" };
+const HAND_LABEL = { right: "Main droite", left: "Main gauche" };
 
 // ----------------------------------------------------------------------------
 //  Fiche de la fonctionnalité (registre de la navigation)
 // ----------------------------------------------------------------------------
 export const fluencyFeature = {
   id: "fluency",
-  title: "Fluidité",
-  description: "Lire des notes qui défilent : jouer chacune avant qu'elle ne sorte.",
+  title: "Lecture de notes",
+  description: "Lire une ou deux portées qui défilent et jouer chaque note à son arrivée.",
   status: "available",
   start,
   stop,
@@ -117,11 +123,11 @@ function renderSetup() {
 
   const root = el("div", "fl fl--setup");
   root.append(
-    el("h1", "fl-heading", "Fluidité"),
+    el("h1", "fl-heading", "Lecture de notes"),
     el(
       "p",
       "fl-lede",
-      `${NOTES_PER_SESSION} notes défilent vers la ligne bleue : joue chacune avant qu'elle ne la dépasse. À travailler après la Lecture de notes.`
+      `${NOTES_PER_SESSION} notes défilent vers la ligne bleue : joue chacune avant qu'elle ne la dépasse.`
     ),
     renderChoiceGroup("Niveau", DIFFICULTY_CHOICES, "difficulty"),
     renderChoiceGroup("Main travaillée", HAND_CHOICES, "hand"),
@@ -163,36 +169,6 @@ function renderChoiceGroup(legendText, choices, settingKey) {
 }
 
 // ----------------------------------------------------------------------------
-//  Tirage de la série
-//
-//  Les mêmes groupes de notes que 02, la même pondération héritée du journal :
-//  ce qui a été raté — ou manqué ici même — revient plus souvent.
-// ----------------------------------------------------------------------------
-function drawSeries({ difficulty, hand, priorWeights: prior, random = Math.random }) {
-  const clef = CLEF_BY_HAND[hand];
-  const pool = notePool(difficulty, hand);
-  const notes = [];
-  let previous = null;
-
-  for (let i = 0; i < NOTES_PER_SESSION; i++) {
-    const others = previous !== null ? pool.filter((midi) => midi !== previous) : pool;
-    const midi = pickWeighted(
-      random,
-      others.length > 0 ? others : pool,
-      (candidate) => prior?.get(`${clef}:${candidate}`) ?? 1
-    );
-    previous = midi;
-    notes.push({
-      midi,
-      status: "pending", // "pending" | "correct" | "missed"
-      wrongPresses: 0,
-      resolvedAt: null,
-    });
-  }
-  return { clef, pool, notes };
-}
-
-// ----------------------------------------------------------------------------
 //  Démarrage d'une exécution
 // ----------------------------------------------------------------------------
 function beginRun() {
@@ -203,10 +179,15 @@ function beginRun() {
   const interval = 60 / speedChoice.notesPerMinute;
 
   const journal = state.progress.log();
+  const readingJournal = journal.filter(
+    (event) => event.featureId === fluencyFeature.id || event.featureId === "note-reading"
+  );
   const series = drawSeries({
     difficulty,
     hand,
-    priorWeights: priorWeights(journal, { featureId: fluencyFeature.id }),
+    // L'ancien mode fixe et le nouveau mode défilant entraînent les mêmes
+    // cibles : leurs erreurs passées restent utiles après la fusion.
+    priorWeights: priorWeights(readingJournal),
   });
 
   state.run = {
@@ -215,7 +196,7 @@ function beginRun() {
     notesPerMinute: speedChoice.notesPerMinute,
     // La première note atteint la cible après le temps de traversée : c'est
     // l'élan, aucun décompte séparé n'est nécessaire.
-    timeOf: (index) => LOOKAHEAD_S + index * interval,
+    timeOf: (index) => noteArrivalTime(index, interval, LOOKAHEAD_S),
     elapsed: 0,
     lastFrameAt: null,
     lastDrawAt: 0,
@@ -261,12 +242,17 @@ function renderRun() {
   const meta = el(
     "span",
     "fl-meta",
-    `${CLEF_LABEL[state.run.clef]} · ${state.run.notesPerMinute} notes/min`
+    `${runClefLabel(state.run)} · ${state.run.notesPerMinute} notes/min`
   );
   status.append(progress, streak, meta);
 
   const canvas = el("canvas", "fl-canvas");
-  canvas.setAttribute("aria-label", "Notes qui défilent sur la portée");
+  canvas.setAttribute(
+    "aria-label",
+    state.run.hands.length > 1
+      ? "Notes qui défilent sur les portées en clés de sol et de fa"
+      : "Notes qui défilent sur la portée"
+  );
 
   // Consigne du départ : la ligne bleue ne s'explique pas d'elle-même. Elle
   // s'efface à la première note résolue — après, elle n'apprendrait plus rien
@@ -286,7 +272,7 @@ function renderRun() {
     signal: listeners.signal,
     onPress: pressKey,
   });
-  state.piano.setPool(state.run.pool);
+  setPianoForExpectedNote();
 
   const actions = el("div", "fl-actions");
   const quit = el("button", "btn fl-secondary", "Réglages");
@@ -325,15 +311,12 @@ function resizeCanvas() {
   ui.canvas.width = Math.round(cssWidth * dpr);
   ui.canvas.height = Math.round(cssHeight * dpr);
 
-  const LG = 14;
-  const top = Math.round(cssHeight / 2 - LG * 2);
+  const staffGeometry = layoutStaffs(cssHeight, state.run.hands);
   ui.geometry = {
     dpr,
     width: cssWidth,
     height: cssHeight,
-    LG,
-    top,
-    bottom: top + LG * 4,
+    ...staffGeometry,
     targetX: 118,                       // après la clé : la « ligne d'arrivée »
     pxPerSecond: (cssWidth - 118) / LOOKAHEAD_S,
   };
@@ -383,28 +366,55 @@ function cancelLoop() {
 // ----------------------------------------------------------------------------
 const INK = "#1b1b1b";
 const PAPER = "#f6f1e3";
-const DONE = "#9a917e";
 const GOOD = "#1f9d55";
 const BAD = "#c0392b";
 const TARGET = "rgba(58, 130, 246, .45)";
 
+function drawClef(ctx, clef, staff, LG) {
+  ctx.fillStyle = INK;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "alphabetic";
+  if (clef === "treble") {
+    ctx.font = `${Math.round(LG * 4 * 1.7)}px serif`;
+    ctx.fillText(CLEF_GLYPH.treble, 12, staff.bottom + LG * 0.6);
+  } else {
+    const size = Math.round(LG / 0.2162);
+    ctx.font = `${size}px serif`;
+    ctx.fillText(CLEF_GLYPH.bass, 12, Math.round(staff.top + LG + size * 0.4469));
+  }
+}
+
 function draw() {
   const { ctx, geometry } = state.ui;
   const run = state.run;
-  const { dpr, width, height, LG, top, bottom, targetX, pxPerSecond } = geometry;
+  const {
+    dpr,
+    width,
+    height,
+    LG,
+    staffs,
+    staffEntries,
+    staffList,
+    targetTop,
+    targetBottom,
+    targetX,
+    pxPerSecond,
+  } = geometry;
 
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.fillStyle = PAPER;
   ctx.fillRect(0, 0, width, height);
 
-  // Lignes de la portée.
+  // Lignes des portées.
   ctx.strokeStyle = INK;
   ctx.lineWidth = 1.4;
   ctx.beginPath();
-  for (let i = 0; i < 5; i++) {
-    const y = top + i * LG + 0.5;
-    ctx.moveTo(8, y);
-    ctx.lineTo(width - 8, y);
+  for (const staff of staffList) {
+    for (let i = 0; i < 5; i++) {
+      const y = staff.top + i * LG + 0.5;
+      ctx.moveTo(8, y);
+      ctx.lineTo(width - 8, y);
+    }
   }
   ctx.stroke();
 
@@ -412,21 +422,13 @@ function draw() {
   ctx.strokeStyle = TARGET;
   ctx.lineWidth = 3;
   ctx.beginPath();
-  ctx.moveTo(targetX, top - LG * 1.8);
-  ctx.lineTo(targetX, bottom + LG * 1.8);
+  ctx.moveTo(targetX, targetTop);
+  ctx.lineTo(targetX, targetBottom);
   ctx.stroke();
 
-  // Clé, posée comme en Lecture de notes (mêmes proportions de glyphe).
-  ctx.fillStyle = INK;
-  ctx.textAlign = "left";
-  ctx.textBaseline = "alphabetic";
-  if (run.clef === "treble") {
-    ctx.font = `${Math.round(LG * 4 * 1.7)}px serif`;
-    ctx.fillText(CLEF_GLYPH.treble, 12, bottom + LG * 0.6);
-  } else {
-    const size = Math.round(LG / 0.2162);
-    ctx.font = `${size}px serif`;
-    ctx.fillText(CLEF_GLYPH.bass, 12, Math.round(top + LG + size * 0.4469));
+  // Une clé par portée, avec les mêmes proportions que les autres modes.
+  for (const [clef, staff] of staffEntries) {
+    drawClef(ctx, clef, staff, LG);
   }
 
   // Les notes. Tout est pré-calculé : la boucle ne fait que dessiner.
@@ -438,8 +440,9 @@ function draw() {
     if (x < -headRx * 2) continue;
     if (x > width + headRx * 2) break;
 
-    const step = staffStep(note.midi, run.clef);
-    const y = bottom - step * (LG / 2);
+    const staff = staffs[note.clef];
+    const step = staffStep(note.midi, note.clef);
+    const y = staff.bottom - step * (LG / 2);
     const color = note.status === "correct" ? GOOD : note.status === "missed" ? BAD : INK;
 
     // Lignes supplémentaires.
@@ -449,13 +452,13 @@ function draw() {
     const half = headRx + 6;
     if (step < 0) {
       for (let k = -2; k >= step; k -= 2) {
-        const ly = bottom - k * (LG / 2) + 0.5;
+        const ly = staff.bottom - k * (LG / 2) + 0.5;
         ctx.moveTo(x - half, ly);
         ctx.lineTo(x + half, ly);
       }
     } else if (step > 8) {
       for (let k = 10; k <= step; k += 2) {
-        const ly = bottom - k * (LG / 2) + 0.5;
+        const ly = staff.bottom - k * (LG / 2) + 0.5;
         ctx.moveTo(x - half, ly);
         ctx.lineTo(x + half, ly);
       }
@@ -483,6 +486,19 @@ function draw() {
 // ----------------------------------------------------------------------------
 function expectedIndex() {
   return state.run.notes.findIndex((note) => note.status === "pending");
+}
+
+function setPianoForExpectedNote() {
+  const index = expectedIndex();
+  if (index < 0 || !state.piano) return;
+  const note = state.run.notes[index];
+  state.piano.setPool(state.run.pools[note.hand]);
+}
+
+function runClefLabel(run) {
+  return run.hands.length > 1
+    ? "clés de sol et de fa"
+    : CLEF_LABEL[CLEF_BY_HAND[run.hands[0]]];
 }
 
 function pressKey(midi) {
@@ -514,7 +530,7 @@ function pressKey(midi) {
 
   state.practice?.record({
     type: "answer",
-    target: { midi: note.midi, clef: run.clef, hand: state.settings.hand },
+    target: { midi: note.midi, clef: note.clef, hand: note.hand },
     outcome: "wrong",
     given: { midi },
   });
@@ -545,7 +561,7 @@ function resolveNote(index, status) {
 
   state.practice?.record({
     type: "answer",
-    target: { midi: note.midi, clef: run.clef, hand: state.settings.hand },
+    target: { midi: note.midi, clef: note.clef, hand: note.hand },
     outcome: status === "correct" ? "correct" : "missed",
   });
 
@@ -559,6 +575,10 @@ function resolveNote(index, status) {
     setTimeout(() => {
       if (state && !state.stopped && state.run === run) renderSummary();
     }, 650);
+  } else {
+    // Le clavier tactile garde de grandes touches : quand la prochaine note
+    // change de main, son octave remplace celle de la main précédente.
+    setPianoForExpectedNote();
   }
 }
 
@@ -602,7 +622,7 @@ function renderSummary() {
   const root = el("div", "fl fl--summary");
   root.appendChild(el("h1", "fl-heading", "Série terminée"));
   root.appendChild(
-    el("p", "fl-lede", `${CLEF_LABEL[run.clef]} · ${run.notesPerMinute} notes/min`)
+    el("p", "fl-lede", `${runClefLabel(run)} · ${run.notesPerMinute} notes/min`)
   );
 
   const stats = el("ul", "fl-stats");
@@ -618,19 +638,27 @@ function renderSummary() {
   const troubled = run.notes
     .map((note) => ({ note, faults: note.wrongPresses + (note.status === "missed" ? 1 : 0) }))
     .filter((entry) => entry.faults > 0);
-  const byMidi = new Map();
+  const byTarget = new Map();
   for (const { note, faults } of troubled) {
-    byMidi.set(note.midi, (byMidi.get(note.midi) ?? 0) + faults);
+    const key = `${note.clef}:${note.midi}`;
+    const previous = byTarget.get(key);
+    byTarget.set(key, {
+      note,
+      faults: (previous?.faults ?? 0) + faults,
+    });
   }
-  const toReview = [...byMidi.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3);
+  const toReview = [...byTarget.values()]
+    .sort((a, b) => b.faults - a.faults)
+    .slice(0, 3);
 
   if (toReview.length > 0) {
     root.appendChild(el("h2", "fl-subheading", "À revoir"));
     const list = el("ul", "fl-review");
-    for (const [midi, faults] of toReview) {
+    for (const { note, faults } of toReview) {
+      const hand = run.hands.length > 1 ? ` · ${HAND_LABEL[note.hand]}` : "";
       list.appendChild(
         el("li", "fl-review-item",
-          `${noteDegreeName(midi)}${octaveOf(midi)} — ${faults} ${faults > 1 ? "fautes" : "faute"}`)
+          `${noteDegreeName(note.midi)}${octaveOf(note.midi)}${hand} — ${faults} ${faults > 1 ? "fautes" : "faute"}`)
       );
     }
     root.appendChild(list);

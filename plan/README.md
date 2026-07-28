@@ -22,7 +22,7 @@ pour avancer, pas avant.
 
 | Nº | Fondation | État actuel | Plan détaillé |
 | --- | --- | --- | --- |
-| F1 | Navigation entre les fonctionnalités | Première boucle en place | [F1-navigation.md](F1-navigation.md) |
+| F1 | Navigation entre les fonctionnalités | Boucle + menu des modes, accueil rangé par famille | [F1-navigation.md](F1-navigation.md) |
 | F2 | Entrée clavier MIDI (reconnaissance des touches jouées) | En place, consommée par 01, 03 et 05 | [F2-entree-midi.md](F2-entree-midi.md) |
 | F3 | Suivi de progression | Complet : journal, six vues, écran, export/effacement | [F3-suivi-progression.md](F3-suivi-progression.md) |
 
@@ -31,15 +31,15 @@ pour avancer, pas avant.
 | Nº | Fonctionnalité | État actuel | Plan détaillé |
 | --- | --- | --- | --- |
 | 01 | Apprentissage d'un morceau | Lecteur + clavier MIDI ; travail guidé via 06 | [01-apprentissage-morceau.md](01-apprentissage-morceau.md) |
-| 02 | Lecture de notes | MVP complet + progression enregistrée | [02-lecture-notes.md](02-lecture-notes.md) |
+| 02 | Ancienne lecture de notes | Retirée, historique fusionné dans 10 | [02-lecture-notes.md](02-lecture-notes.md) |
 | 03 | Exercices techniques et agilité des doigts | MVP complet, avec validation MIDI | [03-technique-doigts.md](03-technique-doigts.md) |
-| 04 | Programme d'entraînement | Boucle complète — lit le journal de F3 | [04-programme-entrainement.md](04-programme-entrainement.md) |
+| 04 | Programme d'entraînement | Séance composée pour un budget quotidien — lit le journal de F3 | [04-programme-entrainement.md](04-programme-entrainement.md) |
 | 05 | Entraînement rythmique | Trois familles, trois entrées | [05-entrainement-rythmique.md](05-entrainement-rythmique.md) |
 | 06 | Travail intelligent d'un morceau | Cinq outils en place — sous-mode de 01 | [06-travail-intelligent-morceau.md](06-travail-intelligent-morceau.md) |
 | 07 | Entraînement de l'oreille | Trois familles sur quatre ; mélodie hors MVP | [07-entrainement-oreille.md](07-entrainement-oreille.md) |
 | 08 | Lecture de partitions | Cinq étapes en place — suite de 02 | [08-lecture-partitions.md](08-lecture-partitions.md) |
-| 09 | Exercices de pédale | Écoute, directe et syncopée ; Application à venir | [09-pedale.md](09-pedale.md) |
-| 10 | Fluidité | Notes défilantes — le niveau 4 de 02 | [10-fluidite.md](10-fluidite.md) |
+| 09 | Exercices de pédale | Directe et syncopée, trois niveaux ; Application à venir | [09-pedale.md](09-pedale.md) |
+| 10 | Lecture de notes | Une ou deux portées défilantes, trois vitesses | [10-fluidite.md](10-fluidite.md) |
 
 Trois fonctionnalités prolongent une fonctionnalité existante plutôt que d'en
 ouvrir une nouvelle : **06** répond aux décisions laissées ouvertes par
@@ -144,6 +144,9 @@ Voir [le plan détaillé du mode Morceau](01-apprentissage-morceau.md).
 
 ### Feature 02 — Lecture de notes
 
+> Mode retiré le 28/07/2026 : son historique est conservé et le mode 10,
+> renommé « Lecture de notes », est désormais l'unique accès.
+
 - [x] Définir le principe de l'exercice.
 - [x] Définir les difficultés Débutant, Intermédiaire et Difficile.
 - [x] Définir les choix Main droite, Main gauche et Les deux.
@@ -195,21 +198,24 @@ Voir [le plan détaillé des Exercices techniques](03-technique-doigts.md).
 
 ### Feature 04 — Programme d'entraînement
 
-- [x] Définir le principe du programme (fonctionnalités, fréquence, durée).
-- [x] Définir le calcul des séances dues du jour.
+- [x] Définir le principe du programme.
+  (**refondu le 27/07/2026 au soir** : l'utilisateur ne compose plus rien, il
+  donne un budget — 20 min par défaut — et l'application écrit la séance)
+- [x] Définir le calcul de ce qui reste à faire aujourd'hui.
 - [x] Ajouter l'accès au Programme d'entraînement depuis la navigation.
   (première carte de l'accueil : c'est lui qui dit par quoi commencer)
-- [x] Implémenter la configuration du programme.
-  (inclusion, fréquence, nombre de séances par période, durée ; valeurs par
-  défaut proposées plutôt qu'un formulaire vide)
-- [x] Implémenter l'écran Aujourd'hui et le démarrage d'une séance planifiée.
-  (états À faire / Fait / Quota atteint, et « Refaire » quand tout est fait)
+- [x] ~~Implémenter la configuration du programme.~~ Supprimée à la refonte :
+  c'était exactement le travail que l'utilisateur voulait déléguer. Il ne
+  reste que six boutons de durée.
+- [x] Implémenter la séance du jour et le démarrage d'un bloc.
+  (blocs numérotés, « Commencer » puis « Continuer », « Refaire » une fois
+  fait — pratiquer plus que prévu n'est jamais empêché)
 - [x] Enregistrer une séance comme terminée à la fin naturelle de la fonctionnalité.
   (rien n'a été ajouté : c'est le `session-end` en `done` que les
   fonctionnalités écrivaient déjà dans le journal de F3)
-- [x] Tester les trois types de fréquence et le passage de semaine/mois.
-  (avec une horloge injectée — voir
-  [04 § 16](04-programme-entrainement.md#16-validation-effectuée-27-juillet-2026))
+- [x] Tester tous les budgets, la rotation des créneaux et sa stabilité dans
+  la journée. (avec une horloge injectée — voir
+  [04 § 16](04-programme-entrainement.md#16-validation-effectuée-27-juillet-2026-refonte-du-soir))
 
 Voir [le plan détaillé du Programme d'entraînement](04-programme-entrainement.md).
 
@@ -306,20 +312,25 @@ Voir [le plan détaillé de la Lecture de partitions](08-lecture-partitions.md).
 - [x] Implémenter la pédale de substitution (clavier / écran).
   (barre d'espace et bouton à l'écran, annoncés comme un remplacement)
 - [x] Implémenter les exercices de pédale directe et syncopée.
-  (l'application joue le Do–Fa–Sol–Do de 03 ; ce qui sonne tient réellement
-  par la pédale — lever étouffe, oublier s'entend)
+  (l'application joue une petite pièce en Do — basse, accord, mélodie ; ce qui
+  sonne tient réellement par la pédale — lever étouffe, oublier s'entend)
 - [x] Implémenter la mesure du changement de pédale.
   (quatre verdicts « propre / brouillé / trou / oubliée », fenêtres en
   fraction de temps de `rhythm/timing.js` —
   [09 § 18](09-pedale.md#18-validation-effectuée-27-juillet-2026))
+- [x] Implémenter les trois niveaux de difficulté, et dire **quand** agir.
+  (la difficulté est l'écart entre deux changements ; la ligne de pédale et la
+  consigne annoncent le geste un temps à l'avance — sans elles l'exercice était
+  incompréhensible : [09 § 19](09-pedale.md#19-refonte-du-27-juillet-2026-au-soir))
+- [x] Retirer la famille Écoute : quatre démonstrations sans exercice derrière.
 - [ ] Implémenter la famille Application (un passage réel, avec les indices
   de pédale déjà affichés par le mode Morceau) — après le reste, comme prévu.
 
 Voir [le plan détaillé des Exercices de pédale](09-pedale.md).
 
-### Feature 10 — Fluidité
+### Feature 10 — Lecture de notes
 
-- [x] Définir la frontière avec la Lecture de notes et la Lecture de partitions.
+- [x] Remplacer l'ancien mode Lecture de notes à note fixe.
 - [x] Faire défiler des notes vers une cible, à vitesse réglable.
   (Canvas bridé par le profil de l'appareil ; la traversée dure toujours cinq
   secondes, la vitesse règle la densité — lire vite, c'est lire plus de notes)
@@ -327,9 +338,11 @@ Voir [le plan détaillé des Exercices de pédale](09-pedale.md).
   (`missed` au journal, le mot déjà employé par 05 ; elle revient plus souvent
   ensuite, comme une note ratée)
 - [x] Produire un bilan : premier coup, précision, meilleure série, à revoir.
-- [ ] Ajouter les altérations et la double portée défilantes.
+- [x] Ajouter « Les deux mains » avec deux portées défilantes et des arrivées
+  alternées, jamais simultanées entre clé de sol et clé de fa.
+- [ ] Ajouter les altérations défilantes.
 
-Voir [le plan détaillé de la Fluidité](10-fluidite.md).
+Voir [le plan détaillé de la Lecture de notes](10-fluidite.md).
 
 ## Ordre de réalisation recommandé
 
@@ -538,12 +551,27 @@ Voir [le plan détaillé de la Fluidité](10-fluidite.md).
     une note à revoir. C'est aussi le premier écran de lecture en **Canvas** :
     les portées de 02, 05 et 08 restent en SVG parce que rien n'y bouge.
 20. ~~Afficher l'ordre du jour dès l'ouverture de l'application.~~ **Fait**
-    (27/07/2026) : le panneau « Aujourd'hui » de l'accueil
-    (`src/today-panel.js`) montre les séances dues et coche en vert celles qui
-    sont faites, sans qu'il faille ouvrir le Programme. Il appelle le
-    `dueToday()` de 04 — aucune règle n'est dupliquée, seul l'affichage lui
-    appartient. Voir
-    [04 § 8](04-programme-entrainement.md#le-même-ordre-du-jour-sur-laccueil--27072026).
+    (27/07/2026) : le panneau de l'accueil (`src/today-panel.js`) montre la
+    séance du jour et coche en vert ce qui est fait, sans qu'il faille ouvrir
+    le Programme. Il appelle le `planDay()` de 04 — aucune règle n'est
+    dupliquée, seul l'affichage lui appartient. Voir
+    [04 § 8](04-programme-entrainement.md#8-la-séance-du-jour-sur-laccueil-et-dans-le-mode).
+21. ~~Faire écrire le programme par l'application, pas par l'utilisateur.~~
+    **Fait** (27/07/2026, soir) : `src/training-coach.js` compose la séance —
+    échauffement, lecture, morceau, oreille — pour le temps annoncé, choisit
+    dans chaque créneau la fonctionnalité la moins vue récemment, et supprime
+    les créneaux les moins prioritaires quand le budget est court. L'ancien
+    écran de configuration a disparu. Voir
+    [04 § 5](04-programme-entrainement.md#5-la-séance-et-son-seul-réglage).
+22. ~~Rendre la navigation praticable à dix modes.~~ **Fait** (27/07/2026,
+    soir) : menu des modes dans la barre commune, disponible depuis n'importe
+    quel écran, et cartes de l'accueil rangées en quatre familles. Voir
+    [F1 § 13](F1-navigation.md#13-le-menu-des-modes-et-laccueil-rangé--27072026).
+23. ~~Fusionner Lecture de notes et Fluidité, puis permettre les deux mains.~~
+    **Fait** (28/07/2026) : l'ancien écran fixe est retiré, Fluidité devient
+    l'unique « Lecture de notes », et deux portées défilent ensemble avec une
+    seule chronologie alternée — aucune arrivée simultanée entre les deux clés.
+    Voir [10 § 10](10-fluidite.md#10-fusion-et-double-portée-28-juillet-2026).
 
 ### Pourquoi cet ordre
 
