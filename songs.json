@@ -49,5 +49,9 @@
 
   { "title": "Exercice — Sauts et déplacements (moyen)", "file": "morceaux-exercice/genere/sauts-moyen-01.mid" },
   { "title": "Exercice — Sauts et déplacements (difficile)", "file": "morceaux-exercice/genere/sauts-difficile-01.mid" },
-  { "title": "Exercice — Sauts et déplacements (très difficile)", "file": "morceaux-exercice/genere/sauts-tres-difficile-01.mid" }
+  { "title": "Exercice — Sauts et déplacements (très difficile)", "file": "morceaux-exercice/genere/sauts-tres-difficile-01.mid" },
+
+  { "title": "Exercice — Doubles notes (moyen)", "file": "morceaux-exercice/genere/doubles-moyen-01.mid" },
+  { "title": "Exercice — Doubles notes (difficile)", "file": "morceaux-exercice/genere/doubles-difficile-01.mid" },
+  { "title": "Exercice — Doubles notes (très difficile)", "file": "morceaux-exercice/genere/doubles-tres-difficile-01.mid" }
 ]

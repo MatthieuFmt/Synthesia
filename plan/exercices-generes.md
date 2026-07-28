@@ -229,7 +229,11 @@ leur niveau.
 
 ### Vague 2 — ce qui manque le plus à un autodidacte (12 fichiers)
 
-- [ ] **C1 Doubles notes** — les trois niveaux.
+- [x] **C1 Doubles notes** — les trois niveaux. **Fait le 28/07/2026** : trois
+      fichiers, vérifiés et chargés dans le mode Morceau. Fiches ci-dessous.
+      Route fichier seulement : le § 5 ne lui demande pas de doigté au
+      catalogue, et un doigté de tierces (1-3 / 2-4) ne se note pas dans le
+      format d'`exercises/catalog.js`, qui n'a qu'un doigt par note.
 - [ ] **C2 Octaves et accords plaqués** — les trois niveaux.
 - [ ] **D1 Indépendance rythmique** — les trois niveaux.
 - [ ] **E4 Pédale (CC 64)** — les trois niveaux ; débloque la famille
@@ -436,6 +440,78 @@ Le croisement est vérifié, pas seulement écrit : dix notes de la main gauche
 sonnent réellement **au-dessus** de l'accord que la droite tient. Il reste
 assez bref pour que la gauche garde la hauteur moyenne la plus basse — sans
 quoi la séparation des mains du mode Morceau les intervertirait.
+
+#### `doubles-moyen-01.mid`
+
+| | |
+| --- | --- |
+| Famille · niveau | C1 Doubles notes · **moyen** |
+| Tonalité · tempo | do majeur · 80 à la noire |
+| Forme | 16 mesures, 48 s, 244 notes |
+| Objectif | Deux notes qui partent et s'arrêtent ensemble : sixtes conjointes en croches, une main à la fois, l'autre tenant une note. |
+| Structure | A (7 mes.) **sixtes conjointes à la droite**, la gauche tenant une basse par mesure · B (7 mes.) les **mêmes sixtes à la gauche**, la droite tenant une note — ce sont les 4e et 5e doigts qui décident, les plus faibles · charnière (2 mes.) |
+| Mesuré | débit 3/s · ambitus d'une main 21 · écart 9 · saut 2 |
+| Tolérance | écart porté de 7 à 9 — *la sixte entre les deux voix est la matière même de la famille (§ 5, C1)* |
+| Critère | Deux exécutions propres au tempo cible, sur deux jours distincts. |
+
+Vérifié dans le fichier : 56 doubles notes par main, d'écart 8 ou 9 demi-tons
+— les sixtes majeures et mineures de la gamme, comptées **en degrés** et non
+en demi-tons, ce qui est ce qu'un pianiste lit. **Aucun instant** où les deux
+mains jouent des doubles notes ensemble : le niveau moyen les prend une à la
+fois, comme sa ligne du § 5 le demande.
+
+#### `doubles-difficile-01.mid`
+
+| | |
+| --- | --- |
+| Famille · niveau | C1 Doubles notes · **difficile** |
+| Tonalité · tempo | do majeur · 100 à la noire |
+| Forme | 19 mesures, 46 s, 384 notes |
+| Objectif | La gamme en tierces legato, doigtés 1-3 puis 2-4, à chaque main, puis en doubles : le relâchement commun devient audible. |
+| Structure | A (6 mes.) **gamme en tierces legato** à la droite, chaque paire tenue jusqu'à la suivante · B (6 mes.) les mêmes tierces à la gauche · C (6 mes.) les tierces **en doubles-croches**, deux fois plus vite · charnière |
+| Mesuré | débit 7/s · ambitus d'une main 17 · écart 7 · saut 2 |
+| Tolérance | aucune — une tierce tient dans la quinte du § 4 |
+| Critère | Deux exécutions propres au tempo cible, sur deux jours distincts. |
+
+L'écart de 7 mesuré n'est pas une tierce : c'est l'accord de la charnière
+finale, do-mi-sol. Les 180 doubles notes du fichier font toutes 3 ou 4
+demi-tons.
+
+#### `doubles-tres-difficile-01.mid`
+
+| | |
+| --- | --- |
+| Famille · niveau | C1 Doubles notes · **très difficile** |
+| Tonalité · tempo | do majeur · 120 à la noire |
+| Forme | 24 mesures, 48 s, 517 notes |
+| Objectif | Tierces sur deux octaves, tierces chromatiques en doubles, puis les doubles notes aux deux mains ensemble. |
+| Structure | A (7 mes.) **tierces sur deux octaves** à la droite, l'écart gardé constant en traversant · B (6 mes.) **tierces chromatiques** en doubles-croches — quatre demi-tons fixes, plus aucune touche blanche pour guider · C (7 mes.) doubles notes **aux deux mains**, quatre doigts qui décident au même instant · charnières et cadence |
+| Mesuré | débit 8/s · ambitus d'une main 28 · écart 7 · saut 2 |
+| Tolérance | aucune |
+| Critère | Deux exécutions propres au tempo cible, sur deux jours distincts. |
+
+La section C est vérifiée, pas seulement écrite : **56 instants** où les deux
+mains attaquent chacune une double note, ce qu'aucun des deux niveaux
+inférieurs ne fait (zéro chez eux). L'ambitus de 28 dépasse ce que le § 4
+autorise ailleurs, mais le très difficile n'y a pas de plafond d'ambitus.
+
+### Ce que la vérification n'a pas su voir, et le trou qu'elle a trouvé
+
+Les 517 notes du niveau le plus dur se relâchent deux par deux **exactement
+ensemble** — c'est l'objet de la famille, et le fichier le tient : zéro paire
+désynchronisée sur les trois niveaux. Mais rien dans l'application ne
+*juge* ce relâchement commun : le sous-mode Travail vérifie les attaques, pas
+les fins. C'est écrit correctement pour l'oreille et pour l'affichage, pas
+mesuré — le § 7 l'avait annoncé, il reste vrai.
+
+Le premier jet a en revanche été **refusé par le générateur**, et pour une
+raison qu'aucune relecture n'aurait donnée : une course répétée quatre fois
+faisait 60 paires là où la section n'en tenait que 56, et les quatre paires
+de trop sonnaient par-dessus la note tenue de la **même main** en section
+suivante — écart de 14 demi-tons, impossible à jouer. `poserDoubles` coupe
+désormais sur `finTick` au lieu de poser toutes les paires reçues. Une
+famille dont la matière est justement l'écart entre deux voix n'aurait rien
+remarqué à la lecture ; c'est le refus qui l'a dit.
 
 ## 10. Décisions tranchées avant la vague 1 — 28/07/2026
 

@@ -837,6 +837,241 @@ function arpegesTresDifficile({ tonalite }) {
   return { notes: carnet.notes, duree: t + MESURE };
 }
 
+// ---- Doubles notes -------------------------------------------------------
+//
+//  Deux voix parallèles dans la même main, séparées d'un écart constant
+//  **en degrés** : deux degrés font une tierce, cinq une sixte. Les compter
+//  ainsi et non en demi-tons donne les tierces et sixtes de la gamme, majeures
+//  ou mineures selon le degré — ce que joue réellement un pianiste.
+
+function courseDoubles({ tonique, mode = "majeur", octaves = 1, ecartDegres = 2, depart = 0 }) {
+  const bas = courseGamme({ tonique, mode, octaves, depart });
+  const haut = courseGamme({ tonique, mode, octaves, depart: depart + ecartDegres });
+  return bas.map((hauteur, i) => [hauteur, haut[i]]);
+}
+
+// Les mêmes doubles notes en chromatique : l'écart est alors constant en
+// demi-tons, puisqu'aucune gamme ne les porte.
+function courseDoublesChromatiques({ depart, demiTons = 12, ecart = 4 }) {
+  const paires = [];
+  for (let d = 0; d <= demiTons; d++) paires.push([depart + d, depart + d + ecart]);
+  for (let d = demiTons - 1; d >= 0; d--) paires.push([depart + d, depart + d + ecart]);
+  return paires;
+}
+
+// Pose une suite de doubles notes dans une seule main. `legato` fait durer
+// chaque paire jusqu'à la suivante : les deux voix se relâchent alors
+// exactement ensemble, ce que la famille C1 demande d'écrire même si rien ne
+// le juge (§ 7).
+//
+// `finTick` **coupe** la suite : les paires qui commenceraient après la fin de
+// la section ne sont pas posées. Sans cette coupe, une course répétée un peu
+// trop de fois débordait sur la section suivante et sonnait par-dessus la note
+// tenue de la même main — ce que la vérification a vu comme un écart de
+// quatorze demi-tons.
+function poserDoubles(carnet, { paires, tick, pas, main = "droite", finTick = null, legato = false }) {
+  const duree = legato ? pas : Math.max(40, pas - Math.round(pas * 0.12));
+  const combien = finTick === null
+    ? paires.length
+    : Math.min(paires.length, Math.max(1, Math.floor((finTick - tick) / pas)));
+  for (let i = 0; i < combien; i++) {
+    const quand = tick + i * pas;
+    const dernier = i === combien - 1;
+    const tenue = dernier && finTick ? Math.max(duree, finTick - quand - 40) : duree;
+    const velocite = i % 4 === 0 ? VEL_APPUI : VEL_COURANTE;
+    for (const hauteur of paires[i]) {
+      carnet.poser(quand, tenue, hauteur, velocite, main);
+    }
+  }
+  return finTick ?? tick + combien * pas;
+}
+
+// ============================================================================
+//  Famille C1 — Doubles notes
+//
+//  Ce qu'elle travaille : **deux voix dans une main, attaquées ensemble et
+//  relâchées ensemble** (plan § 5, C1). La difficulté n'est pas de trouver les
+//  deux notes, c'est de les faire partir et s'arrêter au même instant — deux
+//  doigts de force inégale sur une seule intention.
+//
+//    moyen          — sixtes conjointes en croches, une main à la fois ;
+//    difficile      — la gamme en tierces legato, doigtés 1-3 / 2-4 ;
+//    très difficile — tierces sur deux octaves, tierces chromatiques, et les
+//                     doubles notes aux **deux** mains ensemble.
+//
+//  L'écart entre les deux voix est la matière de la famille : le niveau moyen
+//  desserre donc ce seul axe, la sixte dépassant la quinte du § 4.
+// ============================================================================
+
+function doublesMoyen({ tonalite, gamme }) {
+  const carnet = creerCarnet();
+  const { tonique, mode } = tonalite;
+  let t = 0;
+
+  // A — sixtes conjointes à la **main droite**, la gauche tenant la basse.
+  const sixtesDroite = courseDoubles({ tonique, mode, octaves: 1, ecartDegres: 5 });
+  const finA = 7 * MESURE;
+  poserDoubles(carnet, {
+    paires: repeter(sixtesDroite, 4),
+    tick: t,
+    pas: CROCHE,
+    main: "droite",
+    finTick: finA,
+  });
+  for (let mesure = 0; mesure < 7; mesure++) {
+    carnet.poser(t + mesure * MESURE, MESURE - 60, gamme(mesure % 4) - 12, VEL_TENUE, "gauche");
+  }
+  t = finA;
+
+  // B — les mêmes sixtes à la **main gauche** : les deux mains y passent, une
+  // seule à la fois. C'est le quatrième et le cinquième doigt de la gauche qui
+  // décident, et ce sont les plus faibles.
+  const sixtesGauche = courseDoubles({ tonique: tonique - 12, mode, octaves: 1, ecartDegres: 5 });
+  const finB = t + 7 * MESURE;
+  poserDoubles(carnet, {
+    paires: repeter(sixtesGauche, 4),
+    tick: t,
+    pas: CROCHE,
+    main: "gauche",
+    finTick: finB,
+  });
+  for (let mesure = 0; mesure < 7; mesure++) {
+    carnet.poser(t + mesure * MESURE, MESURE - 60, gamme(mesure % 4 + 7), VEL_TENUE, "droite");
+  }
+  t = finB;
+
+  t = poserCharniere(carnet, { tick: t, tonique, duree: 2 * MESURE - 60 });
+  return { notes: carnet.notes, duree: t + MESURE };
+}
+
+function doublesDifficile({ tonalite, gamme }) {
+  const carnet = creerCarnet();
+  const { tonique, mode } = tonalite;
+  let t = 0;
+
+  // A — la gamme en **tierces legato** à la droite : chaque paire dure jusqu'à
+  // la suivante, les deux voix se relâchant ensemble. Doigtés 1-3 puis 2-4.
+  const tiercesDroite = courseDoubles({ tonique, mode, octaves: 1, ecartDegres: 2 });
+  const finA = 6 * MESURE;
+  poserDoubles(carnet, {
+    paires: repeter(tiercesDroite, 3),
+    tick: t,
+    pas: CROCHE,
+    main: "droite",
+    legato: true,
+    finTick: finA,
+  });
+  for (let mesure = 0; mesure < 6; mesure++) {
+    carnet.poser(t + mesure * MESURE, MESURE - 60, gamme(mesure % 4) - 12, VEL_TENUE, "gauche");
+  }
+  t = finA;
+
+  // B — les mêmes tierces à la gauche.
+  const tiercesGauche = courseDoubles({ tonique: tonique - 12, mode, octaves: 1, ecartDegres: 2 });
+  const finB = t + 6 * MESURE;
+  poserDoubles(carnet, {
+    paires: repeter(tiercesGauche, 3),
+    tick: t,
+    pas: CROCHE,
+    main: "gauche",
+    legato: true,
+    finTick: finB,
+  });
+  for (let mesure = 0; mesure < 6; mesure++) {
+    carnet.poser(t + mesure * MESURE, MESURE - 60, gamme(mesure % 4 + 7), VEL_TENUE, "droite");
+  }
+  t = finB;
+
+  // C — les mêmes tierces en doubles : deux fois plus vite, la simultanéité
+  // devient audible dès qu'elle manque.
+  const finC = t + 6 * MESURE;
+  poserDoubles(carnet, {
+    paires: repeter(tiercesDroite, 6),
+    tick: t,
+    pas: DOUBLE,
+    main: "droite",
+    legato: true,
+    finTick: finC,
+  });
+  for (let mesure = 0; mesure < 6; mesure++) {
+    carnet.poser(t + mesure * MESURE, MESURE - 60, gamme(mesure % 4) - 12, VEL_TENUE, "gauche");
+  }
+  t = finC;
+
+  t = poserCharniere(carnet, { tick: t, tonique });
+  return { notes: carnet.notes, duree: t };
+}
+
+function doublesTresDifficile({ tonalite, gamme }) {
+  const carnet = creerCarnet();
+  const { tonique, mode } = tonalite;
+  let t = 0;
+
+  // A — tierces sur **deux octaves**, à la droite. La main doit garder l'écart
+  // constant en traversant, passage du pouce compris.
+  const tierces2Oct = courseDoubles({ tonique, mode, octaves: 2, ecartDegres: 2 });
+  const finA = 7 * MESURE;
+  poserDoubles(carnet, {
+    paires: repeter(tierces2Oct, 3),
+    tick: t,
+    pas: CROCHE,
+    main: "droite",
+    legato: true,
+    finTick: finA,
+  });
+  for (let mesure = 0; mesure < 7; mesure++) {
+    carnet.poser(t + mesure * MESURE, MESURE - 60, gamme(mesure % 4) - 24, VEL_TENUE, "gauche");
+  }
+  t = finA;
+
+  t = poserCharniere(carnet, { tick: t, tonique });
+
+  // B — **tierces chromatiques** : l'écart reste de quatre demi-tons, mais
+  // aucune touche blanche ne guide plus la main.
+  const chromatiques = courseDoublesChromatiques({ depart: tonique, demiTons: 12, ecart: 4 });
+  const finB = t + 6 * MESURE;
+  poserDoubles(carnet, {
+    paires: repeter(chromatiques, 3),
+    tick: t,
+    pas: DOUBLE,
+    main: "droite",
+    legato: true,
+    finTick: finB,
+  });
+  for (let mesure = 0; mesure < 6; mesure++) {
+    carnet.poser(t + mesure * MESURE, MESURE - 60, gamme(mesure % 4) - 24, VEL_TENUE, "gauche");
+  }
+  t = finB;
+
+  t = poserCharniere(carnet, { tick: t, tonique });
+
+  // C — doubles notes **aux deux mains** : quatre doigts décident au même
+  // instant, deux par main, et rien ne les rattrape.
+  const tiercesGauche = courseDoubles({ tonique: tonique - 12, mode, octaves: 1, ecartDegres: 2 });
+  const tiercesDroite = courseDoubles({ tonique, mode, octaves: 1, ecartDegres: 2 });
+  const finC = t + 7 * MESURE;
+  poserDoubles(carnet, {
+    paires: repeter(tiercesDroite, 4),
+    tick: t,
+    pas: CROCHE,
+    main: "droite",
+    legato: true,
+    finTick: finC,
+  });
+  poserDoubles(carnet, {
+    paires: repeter(tiercesGauche, 4),
+    tick: t,
+    pas: CROCHE,
+    main: "gauche",
+    legato: true,
+    finTick: finC,
+  });
+  t = finC;
+
+  t = poserCharniere(carnet, { tick: t, tonique, duree: 2 * MESURE - 60 });
+  return { notes: carnet.notes, duree: t + MESURE };
+}
+
 // ============================================================================
 //  Famille B3 — Sauts et déplacements
 //
@@ -1161,6 +1396,37 @@ const CATALOGUE = [
           sautMax: 36,
           pourquoi: "les trois octaves et le croisement sont l'objet même de la famille (§ 5, B3)",
         },
+      },
+    },
+  },
+  {
+    famille: "c1-doubles",
+    fichier: "doubles",
+    titre: "Doubles notes",
+    niveaux: {
+      moyen: {
+        tonalite: "do",
+        composer: doublesMoyen,
+        objectif:
+          "Deux notes qui partent et s'arrêtent ensemble : sixtes conjointes en croches, une main à la fois, l'autre tenant une note.",
+        // L'écart entre les deux voix est la matière de la famille : une sixte
+        // fait huit ou neuf demi-tons, la quinte du § 4 l'interdirait.
+        tolerances: {
+          ecartMax: 9,
+          pourquoi: "la sixte entre les deux voix est la matière même de la famille (§ 5, C1)",
+        },
+      },
+      difficile: {
+        tonalite: "do",
+        composer: doublesDifficile,
+        objectif:
+          "La gamme en tierces legato, doigtés 1-3 puis 2-4, à chaque main, puis en doubles : le relâchement commun devient audible.",
+      },
+      "tres-difficile": {
+        tonalite: "do",
+        composer: doublesTresDifficile,
+        objectif:
+          "Tierces sur deux octaves, tierces chromatiques en doubles, puis les doubles notes aux deux mains ensemble.",
       },
     },
   },
