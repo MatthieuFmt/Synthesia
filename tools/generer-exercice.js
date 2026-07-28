@@ -837,6 +837,205 @@ function arpegesTresDifficile({ tonalite }) {
   return { notes: carnet.notes, duree: t + MESURE };
 }
 
+// ============================================================================
+//  Famille B3 — Sauts et déplacements
+//
+//  Ce qu'elle travaille : **viser sans regarder**, et le geste qui part avant
+//  le temps (plan § 5, B3). Une note lointaine ne se joue pas au moment où on
+//  la joue : la main doit être partie pendant que la précédente sonne encore.
+//
+//  C'est la famille dont **l'axe des sauts du § 4 est le sujet, pas la
+//  contrainte** : les plafonds génériques y sont remplacés par ceux de sa
+//  propre ligne — une octave, deux, puis trois avec croisement de mains. Les
+//  tolérances qui le disent sont déclarées au catalogue, comme partout.
+//
+//  Les sauts sont écrits en **croches** et non en noires : au-delà d'un temps,
+//  le vérificateur cesse à juste titre de compter un déplacement comme un saut
+//  (« la main a eu le temps de viser »), et l'exercice ne mesurerait plus rien.
+//  C'est aussi vrai musicalement — c'est la brièveté qui oblige à anticiper.
+// ============================================================================
+
+// Une mélodie diatonique simple pour la main qui n'exerce pas le saut : elle
+// doit occuper l'oreille sans ajouter de difficulté. Degrés d'une gamme.
+const MELODIE_SIMPLE = [0, 2, 4, 2, 3, 1, 0, 1];
+
+// Pose une basse et son accord en alternance de croches. `surLeTemps` dit
+// lequel des deux tombe sur le temps : la basse (oom-pah ordinaire) ou
+// l'accord (contretemps, où c'est la basse qui syncope).
+function poserBasseAccord(carnet, { tick, basse, accord, mesures = 1, surLeTemps = "basse", souffle = true }) {
+  for (let mesure = 0; mesure < mesures; mesure++) {
+    const derniere = mesure === mesures - 1;
+    for (let i = 0; i < 8; i++) {
+      // Une croche tue avant le changement d'harmonie : la main a le temps de
+      // se replacer, et l'oreille entend la respiration.
+      if (souffle && derniere && i === 7) continue;
+      const surTemps = i % 2 === 0;
+      const cestLaBasse = surTemps === (surLeTemps === "basse");
+      const quand = tick + mesure * MESURE + i * CROCHE;
+      const velocite = cestLaBasse ? VEL_APPUI : VEL_COURANTE;
+      if (cestLaBasse) {
+        carnet.poser(quand, CROCHE - 25, basse, velocite, "gauche");
+      } else {
+        for (const hauteur of accord) {
+          carnet.poser(quand, CROCHE - 25, hauteur, velocite, "gauche");
+        }
+      }
+    }
+  }
+  return tick + mesures * MESURE;
+}
+
+function poserMelodie(carnet, { tick, gamme, mesures = 1, depart = 0, pas = TEMPS }) {
+  const parMesure = MESURE / pas;
+  for (let mesure = 0; mesure < mesures; mesure++) {
+    for (let i = 0; i < parMesure; i++) {
+      const degre = depart + MELODIE_SIMPLE[(mesure * parMesure + i) % MELODIE_SIMPLE.length];
+      const velocite = i === 0 ? VEL_APPUI : VEL_COURANTE;
+      carnet.poser(
+        tick + mesure * MESURE + i * pas,
+        pas - 30,
+        gamme(degre),
+        velocite,
+        "droite"
+      );
+    }
+  }
+  return tick + mesures * MESURE;
+}
+
+function sautsMoyen({ tonalite, gamme }) {
+  const carnet = creerCarnet();
+  const { tonique } = tonalite;
+  let t = 0;
+
+  // A — la basse-accord classique sur I-IV-V-I. La basse est toujours une
+  // **octave** sous le bas de son accord : c'est le saut de la ligne B3.
+  const harmonie = [
+    { basse: tonique - 24, accord: [tonique - 12, tonique - 8] },      // do2 → do3-mi3
+    { basse: tonique - 19, accord: [tonique - 7, tonique - 3] },       // fa2 → fa3-la3
+    { basse: tonique - 17, accord: [tonique - 5, tonique - 1] },       // sol2 → sol3-si3
+    { basse: tonique - 24, accord: [tonique - 12, tonique - 8] },      // do2 → do3-mi3
+  ];
+  for (const { basse, accord } of harmonie) {
+    poserBasseAccord(carnet, { tick: t, basse, accord, mesures: 2 });
+    poserMelodie(carnet, { tick: t, gamme, mesures: 2 });
+    t += 2 * MESURE;
+  }
+
+  // B — la cible bouge : la basse monte degré par degré, et l'accord la suit
+  // une octave plus haut. On ne peut plus viser de mémoire.
+  const CIBLES = [0, 1, 2, 3, 4, 0];
+  for (const degre of CIBLES) {
+    const basse = gamme(degre) - 24;
+    poserBasseAccord(carnet, {
+      tick: t,
+      basse,
+      accord: [basse + 12, basse + 16],
+      mesures: 1,
+    });
+    // La droite tient : c'est la gauche qu'on regarde, pas elle.
+    carnet.poser(t, MESURE - 60, gamme(degre + 7), VEL_TENUE, "droite");
+    t += MESURE;
+  }
+
+  t = poserCharniere(carnet, { tick: t, tonique, duree: 2 * MESURE - 60 });
+  return { notes: carnet.notes, duree: t + MESURE };
+}
+
+function sautsDifficile({ tonalite, gamme }) {
+  const carnet = creerCarnet();
+  const { tonique } = tonalite;
+  let t = 0;
+
+  // A — **deux octaves**, et la basse **à contretemps** : c'est l'accord qui
+  // tombe sur le temps, la basse arrive après. Le geste doit partir pendant
+  // que l'accord sonne encore.
+  const harmonie = [
+    { basse: tonique - 24, accord: [tonique, tonique + 4, tonique + 7] },
+    { basse: tonique - 19, accord: [tonique + 5, tonique + 9, tonique + 12] },
+    { basse: tonique - 17, accord: [tonique + 2, tonique + 7, tonique + 11] },
+    { basse: tonique - 24, accord: [tonique, tonique + 4, tonique + 7] },
+  ];
+  for (const { basse, accord } of harmonie) {
+    poserBasseAccord(carnet, { tick: t, basse, accord, mesures: 2, surLeTemps: "accord" });
+    poserMelodie(carnet, { tick: t, gamme, mesures: 2, depart: 7, pas: CROCHE });
+    t += 2 * MESURE;
+  }
+
+  // B — cible mobile, toujours à deux octaves.
+  for (let mesure = 0; mesure < 8; mesure++) {
+    const degre = mesure % 5;
+    const basse = gamme(degre) - 24;
+    poserBasseAccord(carnet, {
+      tick: t,
+      basse,
+      accord: [basse + 24, basse + 28],
+      mesures: 1,
+      surLeTemps: "accord",
+    });
+    carnet.poser(t, MESURE - 60, gamme(degre + 7), VEL_TENUE, "droite");
+    t += MESURE;
+  }
+
+  t = poserCharniere(carnet, { tick: t, tonique });
+  t = poserCharniere(carnet, { tick: t, tonique, duree: 2 * MESURE - 60 });
+  return { notes: carnet.notes, duree: t + MESURE };
+}
+
+function sautsTresDifficile({ tonalite, gamme }) {
+  const carnet = creerCarnet();
+  const { tonique } = tonalite;
+  let t = 0;
+
+  // A — **trois octaves aux deux mains**, en sens opposé : la gauche part du
+  // grave vers le médium-aigu, la droite de l'aigu vers le médium. Les deux
+  // visent en même temps, et aucune ne peut se guider sur l'autre.
+  //
+  // La dernière croche de chaque mesure est tue : la main a un temps pour se
+  // replacer avant la cible suivante, sans quoi le changement de mesure
+  // deviendrait un saut plus large que l'exercice lui-même.
+  for (let mesure = 0; mesure < 10; mesure++) {
+    const degre = mesure % 4;
+    const basse = gamme(degre) - 24;         // do2 et voisins
+    const haut = basse + 36;                 // trois octaves plus haut
+    const hautDroite = gamme(degre + 7) + 12; // et le trajet inverse à droite
+    const basDroite = hautDroite - 36;
+    for (let i = 0; i < 7; i++) {
+      const quand = t + i * CROCHE;
+      const surTemps = i % 2 === 0;
+      const velocite = surTemps ? VEL_APPUI : VEL_COURANTE;
+      carnet.poser(quand, CROCHE - 25, surTemps ? basse : haut, velocite, "gauche");
+      carnet.poser(quand, CROCHE - 25, surTemps ? hautDroite : basDroite, velocite, "droite");
+    }
+    t += MESURE;
+  }
+
+  t = poserCharniere(carnet, { tick: t, tonique });
+
+  // B — **croisement de mains** : la droite tient un accord au médium, la
+  // gauche passe par-dessus pour jouer trois octaves au-dessus de sa basse —
+  // donc au-dessus de la droite. Elle revient au grave un temps sur deux, ce
+  // qui garde le croisement réel sans que la gauche cesse d'être la basse.
+  for (let mesure = 0; mesure < 10; mesure++) {
+    const degre = mesure % 4;
+    const basse = gamme(degre) - 12;   // do3
+    const parDessus = basse + 36;      // do6, bien au-dessus de la droite
+    for (let i = 0; i < 3; i++) {
+      const quand = t + i * CROCHE * 2;
+      const surTemps = i % 2 === 0;
+      carnet.poser(quand, CROCHE * 2 - 40, surTemps ? basse : parDessus,
+        surTemps ? VEL_APPUI : VEL_COURANTE, "gauche");
+    }
+    for (const ecart of [0, 4, 7]) {
+      carnet.poser(t, MESURE - 60, gamme(degre) + ecart, VEL_TENUE, "droite");
+    }
+    t += MESURE;
+  }
+
+  t = poserCharniere(carnet, { tick: t, tonique, duree: 2 * MESURE - 60 });
+  return { notes: carnet.notes, duree: t + MESURE };
+}
+
 // ---- Le catalogue de production ----------------------------------------
 //
 //  Une entrée par famille et par niveau. `objectif` et `critere` alimentent la
@@ -925,6 +1124,46 @@ const CATALOGUE = [
       },
     },
   },
+  {
+    famille: "b3-sauts",
+    fichier: "sauts",
+    titre: "Sauts et déplacements",
+    niveaux: {
+      // Les trois niveaux desserrent le même axe, et c'est assumé : le saut
+      // n'est pas la difficulté annexe de cette famille, il en est l'objet.
+      // Les valeurs viennent de la ligne B3 du § 5, pas du tableau du § 4.
+      moyen: {
+        tonalite: "do",
+        composer: sautsMoyen,
+        objectif:
+          "Viser une octave plus bas sans regarder : basse-accord à la main gauche, d'abord sur une harmonie connue puis sur une cible qui bouge.",
+        tolerances: {
+          sautMax: 12,
+          pourquoi: "le saut d'une octave est l'objet même de la famille (§ 5, B3)",
+        },
+      },
+      difficile: {
+        tonalite: "do",
+        composer: sautsDifficile,
+        objectif:
+          "Deux octaves, et la basse à contretemps : le geste doit partir pendant que l'accord sonne encore.",
+        tolerances: {
+          sautMax: 28,
+          pourquoi: "le saut de deux octaves est l'objet même de la famille (§ 5, B3)",
+        },
+      },
+      "tres-difficile": {
+        tonalite: "do",
+        composer: sautsTresDifficile,
+        objectif:
+          "Trois octaves aux deux mains en sens opposé, puis croisement : la gauche passe au-dessus de la droite.",
+        tolerances: {
+          sautMax: 36,
+          pourquoi: "les trois octaves et le croisement sont l'objet même de la famille (§ 5, B3)",
+        },
+      },
+    },
+  },
 ];
 
 // Critère de réussite : celui que le sous-mode Travail applique déjà, repris
@@ -961,6 +1200,10 @@ function verifier(notes, duree, niveau, tolerances = null) {
   };
   const signaler = (axe, valeur, texte) => {
     const limite = plafond(axe);
+    if (limite !== null && valeur > limite && tolerances?.[axe] !== undefined) {
+      problemes.push(`${texte} — et même au-delà de la tolérance de ${limite}`);
+      return;
+    }
     if (limite === null || valeur <= limite) {
       if (tolerances?.[axe] !== undefined && valeur > niveau[axe]) {
         tolere.push(`${texte} — toléré jusqu'à ${limite} (${tolerances.pourquoi ?? "sans raison écrite"})`);
@@ -1051,19 +1294,33 @@ function verifier(notes, duree, niveau, tolerances = null) {
   // le temps de se déplacer, ce n'est plus un saut mais un changement de
   // position — l'affaire de la famille B3, pas un axe de difficulté ici. Sans
   // cette règle, toute charnière entre deux sections serait refusée.
+  //
+  //  Un accord compte comme **une position**, pas comme sa note la plus
+  //  haute : la main qui quitte un accord part de celle de ses notes qui est
+  //  la plus proche de la cible. On mesure donc la distance minimale entre
+  //  deux groupes d'attaques successifs — sans quoi une basse-accord serait
+  //  créditée d'un saut bien plus large que le geste réel.
   let sautMax = 0;
   let sautOu = 0;
   for (const main of ["droite", "gauche"]) {
-    const propres = notes
-      .filter((note) => note.main === main && note.duree < MESURE / 2)
-      .sort((a, b) => a.tick - b.tick);
-    for (let i = 1; i < propres.length; i++) {
-      if (propres[i].tick === propres[i - 1].tick) continue; // accord, pas un saut
-      if (propres[i].tick - propres[i - 1].tick >= TEMPS) continue; // le temps de viser
-      const saut = Math.abs(propres[i].hauteur - propres[i - 1].hauteur);
+    const parInstant = new Map();
+    for (const note of notes) {
+      if (note.main !== main || note.duree >= MESURE / 2) continue;
+      if (!parInstant.has(note.tick)) parInstant.set(note.tick, []);
+      parInstant.get(note.tick).push(note.hauteur);
+    }
+    const instants = [...parInstant.keys()].sort((a, b) => a - b);
+    for (let i = 1; i < instants.length; i++) {
+      if (instants[i] - instants[i - 1] >= TEMPS) continue; // le temps de viser
+      let saut = Infinity;
+      for (const avant of parInstant.get(instants[i - 1])) {
+        for (const apres of parInstant.get(instants[i])) {
+          saut = Math.min(saut, Math.abs(apres - avant));
+        }
+      }
       if (saut > sautMax) {
         sautMax = saut;
-        sautOu = propres[i].tick;
+        sautOu = instants[i];
       }
     }
   }

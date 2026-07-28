@@ -219,7 +219,13 @@ d'avoir été produit **et** joué dans l'application.
 - [x] **B2 Arpèges et accords brisés** — les trois niveaux. **Fait le
       28/07/2026** : trois fichiers, vérifiés et chargés dans le mode Morceau.
       Fiches ci-dessous. Reste sa version catalogue, comme pour B1.
-- [ ] **B3 Sauts et déplacements** — les trois niveaux.
+- [x] **B3 Sauts et déplacements** — les trois niveaux. **Fait le 28/07/2026** :
+      trois fichiers, vérifiés et chargés dans le mode Morceau. Fiches
+      ci-dessous. Route fichier seulement, comme sa ligne l'indique.
+
+**La vague 1 est complète** : quatre familles, douze fichiers, tous produits
+par `tools/generer-exercice.js` et refusés d'office s'ils ne tiennent pas
+leur niveau.
 
 ### Vague 2 — ce qui manque le plus à un autodidacte (12 fichiers)
 
@@ -384,6 +390,53 @@ C'est le premier exercice du dossier à atteindre exactement les quatre
 octaves de la ligne B2, et son saut de 16 demi-tons est la dixième que le
 § 5 réclame — « arpèges brisés dépassant l'octave ».
 
+#### `sauts-moyen-01.mid`
+
+| | |
+| --- | --- |
+| Famille · niveau | B3 Sauts et déplacements · **moyen** |
+| Tonalité · tempo | do majeur · 80 à la noire |
+| Forme | 16 mesures, 48 s, 192 notes |
+| Objectif | Viser une octave plus bas sans regarder : basse-accord à la main gauche, d'abord sur une harmonie connue puis sur une cible qui bouge. |
+| Structure | A (8 mes.) basse-accord sur I-IV-V-I, la basse toujours une **octave** sous le bas de son accord · B (6 mes.) la **cible bouge** : la basse monte degré par degré, l'accord la suit — on ne peut plus viser de mémoire |
+| Mesuré | débit 3/s · ambitus d'une main 23 · écart 7 · saut 12 |
+| Tolérance | saut porté de 4 à 12 — *le saut d'une octave est l'objet même de la famille* |
+| Critère | Deux exécutions propres au tempo cible, sur deux jours distincts. |
+
+#### `sauts-difficile-01.mid`
+
+| | |
+| --- | --- |
+| Famille · niveau | B3 Sauts et déplacements · **difficile** |
+| Tonalité · tempo | do majeur · 100 à la noire |
+| Forme | 19 mesures, 46 s, 296 notes |
+| Objectif | Deux octaves, et la basse à contretemps : le geste doit partir pendant que l'accord sonne encore. |
+| Structure | A (8 mes.) basse-accord à **deux octaves**, l'accord sur le temps et la basse **à contretemps**, mélodie à la main droite · B (8 mes.) cible mobile, toujours à deux octaves |
+| Mesuré | débit 4/s · ambitus d'une main 36 · écart 9 · saut 24 |
+| Tolérance | saut porté de 12 à 28 — *le saut de deux octaves est l'objet même de la famille* |
+| Critère | Deux exécutions propres au tempo cible, sur deux jours distincts. |
+
+Inverser l'ordre habituel — l'accord sur le temps, la basse après — est ce qui
+force l'anticipation : le bras doit être en route pendant que l'accord sonne.
+
+#### `sauts-tres-difficile-01.mid`
+
+| | |
+| --- | --- |
+| Famille · niveau | B3 Sauts et déplacements · **très difficile** |
+| Tonalité · tempo | do majeur · 120 à la noire |
+| Forme | 23 mesures, 46 s, 212 notes |
+| Objectif | Trois octaves aux deux mains en sens opposé, puis croisement : la gauche passe au-dessus de la droite. |
+| Structure | A (10 mes.) **trois octaves aux deux mains**, en sens opposé — la gauche do2↔do5, la droite do6↔do3 · B (10 mes.) **croisement** : la droite tient un accord au médium, la gauche passe par-dessus jouer trois octaves au-dessus de sa basse |
+| Mesuré | débit 4/s · ambitus d'une main 53 · écart 7 · saut 36 |
+| Tolérance | saut porté de 24 à 36 — *les trois octaves et le croisement sont l'objet même de la famille* |
+| Critère | Deux exécutions propres au tempo cible, sur deux jours distincts. |
+
+Le croisement est vérifié, pas seulement écrit : dix notes de la main gauche
+sonnent réellement **au-dessus** de l'accord que la droite tient. Il reste
+assez bref pour que la gauche garde la hauteur moyenne la plus basse — sans
+quoi la séparation des mains du mode Morceau les intervertirait.
+
 ## 10. Décisions tranchées avant la vague 1 — 28/07/2026
 
 1. ~~**Combien d'exercices par famille et par niveau ?**~~ **Un seul**,
@@ -467,6 +520,37 @@ générateur. Trois garde-fous la rendent honnête plutôt que commode :
   raison — jamais silencieuse ;
 - elle est **recopiée dans la fiche** du § 9, ligne « Tolérance ».
 
-Une seule tolérance existe à ce jour : `arpeges-moyen-01`, saut porté de 4 à
-5. Le jour où une famille en réclamerait plusieurs, ou une très large, c'est
-que son niveau est mal choisi — pas que le § 4 est trop strict.
+La première fut `arpeges-moyen-01`, saut porté de 4 à 5.
+
+### Un axe peut être le sujet d'une famille, pas sa contrainte (28/07/2026)
+
+B3 a poussé le mécanisme plus loin, et il vaut mieux le dire que le laisser
+passer : **ses trois niveaux desserrent tous le même axe**, celui des sauts,
+et de beaucoup — jusqu'à trois octaves.
+
+Ce n'est pas le signe d'un niveau mal choisi. C'est que pour cette famille,
+l'axe des sauts n'est pas une difficulté annexe à contenir : **c'est ce
+qu'elle enseigne**. Sa ligne du § 5 le gradue elle-même — une octave, deux,
+puis trois avec croisement de mains — et ce sont ces valeurs-là qui font
+autorité, pas la colonne générique du § 4.
+
+La règle générale se formule donc ainsi : *le tableau du § 4 plafonne les
+axes qu'une famille subit ; l'axe qu'une famille travaille est gradué par sa
+propre ligne du § 5.* Une famille n'a le droit de desserrer que l'axe nommé
+dans sa colonne « ce qu'elle travaille » — B3 ne pourrait pas desserrer son
+débit, et A1 ne pourrait pas desserrer ses sauts.
+
+Deux autres familles à venir tomberont dans le même cas : **B4 Extensions et
+écarts** desserrera l'écart dans une main, et **A2 Égalité** le débit.
+
+### Une troisième correction de mesure : l'accord est une position
+
+Toujours avec B3. Le calcul du saut comparait la note **la plus haute** d'un
+accord à la cible suivante, alors que la main quitte l'accord par celle de
+ses notes qui est la plus proche. Une basse-accord se voyait donc créditer un
+saut d'un tiers plus large que le geste réel.
+
+Le vérificateur groupe désormais les attaques par instant et mesure la
+distance **minimale** entre deux groupes successifs. Les onze exercices déjà
+produits repassent sans changer d'une note : aucun d'eux n'enchaîne un accord
+et un saut à moins d'un temps.
