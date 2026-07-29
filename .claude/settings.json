@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node \"C:\\\\Users\\\\matt1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\d--Documents-dev-Synthesia\\\\81f022f0-4257-47c9-b042-28f04c5af854\\\\scratchpad\\\\verify-fluency-walk.mjs\")",
+      "Bash(node \"C:\\\\Users\\\\matt1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\d--Documents-dev-Synthesia\\\\81f022f0-4257-47c9-b042-28f04c5af854\\\\scratchpad\\\\eyeball-contour.mjs\")",
+      "Bash(node --check \"d:/Documents/dev/Synthesia/src/fluency-engine.js\")",
+      "Bash(git -C \"d:/Documents/dev/Synthesia\" status --short)"
+    ]
+  }
+}

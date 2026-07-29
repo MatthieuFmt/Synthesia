@@ -12,6 +12,85 @@ import { pickWeighted } from "./session-engine.js";
 
 export const NOTES_PER_SESSION = 30;
 
+// Distance en DEGRÉS DE PORTÉE (l'index dans le pool, pas des demi-tons MIDI :
+// Mi-Fa et Si-Do ne valent qu'un demi-ton quand les autres degrés en valent
+// deux, donc marcher sur l'index est ce qui correspond à « la note voisine sur
+// la portée »). magnitude 1 = pas (2de), 2 = saut (3ce), au-delà = grand
+// intervalle. Progression pédagogique « pas d'abord, sauts ensuite, grands
+// intervalles progressivement » — plan/10-fluidite.md § 12.
+export const DELTA_TABLES = {
+  beginner: [
+    { magnitude: 1, weight: 0.75 },
+    { magnitude: 2, weight: 0.25 },
+  ],
+  intermediate: [
+    { magnitude: 1, weight: 0.50 },
+    { magnitude: 2, weight: 0.25 },
+    { magnitude: 3, weight: 0.15 },
+    { magnitude: 4, weight: 0.07 },
+    { magnitude: 5, weight: 0.03 },
+  ],
+  advanced: [
+    { magnitude: 1, weight: 0.35 },
+    { magnitude: 2, weight: 0.25 },
+    { magnitude: 3, weight: 0.15 },
+    { magnitude: 4, weight: 0.12 },
+    { magnitude: 5, weight: 0.08 },
+    { magnitude: 6, weight: 0.05 },
+  ],
+};
+
+// Une note du pool pas encore jouée par la main courante dans la séance vaut
+// dix fois son poids normal : sans ce bonus, la marche pas/saut visite trop
+// peu les extrémités du pool. Il retombe à 1 dès qu'une note a été vue une
+// fois — la marche redevient alors purement pédagogique.
+const NOVELTY_BOOST = 10;
+
+// Réflexion aux bornes du pool : une marche qui sortirait de [0, length-1]
+// rebondit dessus, comme une main qui ne peut pas dépasser la dernière note
+// écrite sur la portée.
+function reflectIndex(index, length) {
+  if (length <= 1) return 0;
+  const period = 2 * (length - 1);
+  const folded = ((index % period) + period) % period;
+  return folded <= length - 1 ? folded : period - folded;
+}
+
+// Tire l'index suivant à partir de l'index courant : parmi les index
+// atteignables par un pas, un saut ou un grand intervalle (table du niveau,
+// dans les deux sens), pondérés par la table, la nouveauté et les erreurs
+// passées. `previousIndex` à `null` (première note de cette main dans la
+// séance) retombe sur un tirage pondéré par les seules erreurs passées, sur
+// tout le pool — comportement inchangé pour ce cas.
+function pickNextIndex(random, pool, previousIndex, deltaTable, seen, weightOf) {
+  if (previousIndex === null) {
+    return pickWeighted(random, pool.map((_, index) => index), weightOf);
+  }
+
+  const candidates = new Map();
+  for (const { magnitude, weight } of deltaTable) {
+    for (const sign of [1, -1]) {
+      const target = reflectIndex(previousIndex + sign * magnitude, pool.length);
+      // Près d'un bord, la réflexion peut ramener exactement sur la note
+      // précédente : ce candidat est écarté, jamais choisi puis « corrigé ».
+      if (target === previousIndex) continue;
+      const novelty = seen.has(target) ? 1 : NOVELTY_BOOST;
+      candidates.set(target, (candidates.get(target) ?? 0) + weight * novelty * weightOf(target));
+    }
+  }
+
+  // Filet de sécurité : inatteignable avec les pools actuels (5 notes au
+  // minimum), gardé si un pool plus court apparaissait un jour.
+  if (candidates.size === 0) {
+    for (let index = 0; index < pool.length; index++) {
+      if (index !== previousIndex) candidates.set(index, 1);
+    }
+  }
+
+  const [index] = pickWeighted(random, [...candidates.entries()], ([, w]) => w);
+  return index;
+}
+
 export function drawSeries({
   difficulty,
   hand,
@@ -23,8 +102,10 @@ export function drawSeries({
   const pools = Object.fromEntries(
     hands.map((currentHand) => [currentHand, notePool(difficulty, currentHand)])
   );
+  const deltaTable = DELTA_TABLES[difficulty];
   const notes = [];
-  const previousByHand = new Map();
+  const previousIndexByHand = new Map();
+  const seenByHand = new Map(hands.map((currentHand) => [currentHand, new Set()]));
 
   // En mode deux mains, les deux portées sont alimentées à parts égales. Une
   // seule chronologie alterne leurs arrivées : deux notes de clés différentes
@@ -38,16 +119,23 @@ export function drawSeries({
       hands.length > 1 ? hands[(firstHandIndex + i) % hands.length] : hands[0];
     const clef = CLEF_BY_HAND[currentHand];
     const pool = pools[currentHand];
-    const previous = previousByHand.get(currentHand) ?? null;
-    const others = previous !== null ? pool.filter((midi) => midi !== previous) : pool;
-    const midi = pickWeighted(
+    const previousIndex = previousIndexByHand.get(currentHand) ?? null;
+    const seen = seenByHand.get(currentHand);
+
+    const index = pickNextIndex(
       random,
-      others.length > 0 ? others : pool,
-      (candidate) => prior?.get(`${clef}:${candidate}`) ?? 1
+      pool,
+      previousIndex,
+      deltaTable,
+      seen,
+      (candidateIndex) => prior?.get(`${clef}:${pool[candidateIndex]}`) ?? 1
     );
-    previousByHand.set(currentHand, midi);
+
+    previousIndexByHand.set(currentHand, index);
+    seen.add(index);
+
     notes.push({
-      midi,
+      midi: pool[index],
       hand: currentHand,
       clef,
       status: "pending", // "pending" | "correct" | "missed"

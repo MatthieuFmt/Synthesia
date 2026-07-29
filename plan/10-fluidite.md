@@ -1,7 +1,9 @@
 # Feature 10 — Lecture de notes
 
 > Statut : **implémentée**, puis devenue l'unique mode Lecture de notes le
-> 28/07/2026. L'ancien exercice à note fixe de 02 a été retiré.
+> 28/07/2026. L'ancien exercice à note fixe de 02 a été retiré. La suite de
+> notes est devenue une marche mélodique bornée (pas/sauts/intervalles) le
+> même jour, pour un vrai intérêt pédagogique — § 12.
 
 [Retour à la checklist générale](README.md)
 
@@ -12,6 +14,7 @@
 - [x] Juger une note manquée sans punir.
 - [x] Produire un bilan : premier coup, précision, meilleure série, à revoir.
 - [x] Ajouter le choix Les deux mains et la double portée défilante.
+- [x] Rendre la suite de notes mélodiquement cohérente (pas/sauts/intervalles).
 - [ ] Ajouter les altérations défilantes.
 
 ## 1. Problème utilisateur
@@ -157,7 +160,119 @@ La validation Chromium n'a pas pu être rejouée dans l'environnement isolé du
 28/07/2026 : Chrome et Edge arrêtent leur processus GPU avant le chargement de
 la page. Le rendu et le jeu sur la tablette réelle restent donc à vérifier.
 
-## 11. Suites possibles
+## 12. Marche mélodique bornée (28 juillet 2026)
+
+Jusqu'ici, `drawSeries()` tirait chaque note **indépendamment** au hasard dans
+le pool de la main courante, pondérée seulement par les erreurs passées, avec
+pour unique contrainte de ne jamais répéter la note précédente. Deux notes
+consécutives pouvaient donc être n'importe où dans le pool — un grand saut
+aussi probable qu'une note voisine. Ce n'était pas un exercice de lecture
+fluide au sens pédagogique, seulement un tirage aléatoire chronométré : c'est
+ce qui rendait l'exercice « trop simple et sans intérêt éducatif » quel que
+soit le niveau choisi, la largeur des pools n'y étant pour rien.
+
+Deux principes bien établis de la pédagogie du piano guident la nouvelle
+version :
+
+- **notes-repères** : un élève retient une ou deux notes-ancres par portée
+  (Sol en clé de sol, Fa en clé de fa) plutôt que de recompter les lignes à
+  chaque note ;
+- **lecture par intervalles** : la vraie compétence de fluidité, c'est
+  reconnaître la *forme* du mouvement par rapport à la note précédente — un
+  pas (2de, note voisine), un saut (3ce, une ligne sautée), un grand
+  intervalle — plutôt que ré-identifier une position absolue à chaque note. La
+  musique réelle est très majoritairement faite de pas et de petits sauts ;
+  les pédagogues enseignent explicitement pas d'abord, sauts ensuite, grands
+  intervalles progressivement.
+
+Sources : [Sightreading 101: Intervallic Reading](https://dawnspiano.blogspot.com/2019/04/sightreading-101-intervallic-reading.html),
+[The Landmark System](https://standrewspianotuition.co.uk/natural-piano/the-landmark-system),
+[How to Read Music Using Intervals and Landmark Notes](https://www.musicandtheory.com/how-to-read-music-using-intervals-and-landmark-notes-vs-mnemonics/),
+[Teaching Steps, Skips, and Intervals](https://www.pianowithlauren.com/teaching-intervals-beginner-piano-students/),
+[Intervallic Inchworms](https://www.teachpianotoday.com/2018/01/15/learning-to-read-skips-with-intervallic-inchworms/).
+
+### Marche sur l'index du pool
+
+Les pools de `note-reading-engine.js` sont triés par degré diatonique
+croissant : l'index dans le tableau **est** le degré de portée (marcher sur
+l'index, pas sur la valeur MIDI, est nécessaire — Mi-Fa et Si-Do ne valent
+qu'un demi-ton quand les autres degrés en valent deux). `drawSeries()` choisit
+désormais chaque note suivante par un pas de `± magnitude` sur cet index, avec
+réflexion aux bornes du pool (une marche qui sortirait rebondit, comme une
+main qui ne peut pas dépasser la dernière note écrite). La table
+pas/saut/grand-intervalle dépend du niveau :
+
+| Niveau | pas (2de) | saut (3ce) | 4te | 5te | 6te | 7te |
+| --- | --- | --- | --- | --- | --- | --- |
+| Débutant | 75 % | 25 % | — | — | — | — |
+| Intermédiaire | 50 % | 25 % | 15 % | 7 % | 3 % | — |
+| Difficile | 35 % | 25 % | 15 % | 12 % | 8 % | 5 % |
+
+Le Débutant s'arrête au saut : sur un pool de 5 notes (Do4→Sol4), le plus
+grand écart possible est déjà une 5te — un « grand intervalle » n'a pas de
+sens sur un exercice 5-doigts en degrés conjoints.
+
+La pondération des erreurs passées (`priorWeights`) s'applique désormais
+**parmi les index atteignables** depuis la note courante plutôt que sur tout
+le pool : une note ratée revient toujours plus souvent, sans casser la
+cohérence mélodique du pas suivant.
+
+### Couverture du pool
+
+Une marche bornée pas/saut visite structurellement moins les extrémités du
+pool qu'un tirage uniforme. Un bonus de poids (`NOVELTY_BOOST = 10`) s'ajoute
+à une note du pool pas encore jouée par la main courante dans la séance ; il
+retombe à 1 dès qu'elle a été vue une fois, et la marche redevient purement
+pas/saut/grand-intervalle.
+
+Ce qui n'a pas changé : la chronologie unique alternée du mode Les deux
+mains, la règle « jamais deux fois la même note d'affilée », la forme de
+retour de `drawSeries()` (`{ hands, pools, notes }`), les pools eux-mêmes, et
+`fluency-mode.js` (qui ne lit que cette même forme de données — aucune
+modification nécessaire).
+
+### Validation (28 juillet 2026)
+
+Harnais Node ad hoc, sans navigateur, sur les 9 combinaisons niveau × main
+plus le mode Les deux mains :
+
+- **45 000 sessions de 30 notes** (9 combinaisons × 5000) : 0 sortie de pool,
+  0 répétition immédiate de la même note sur une même main ;
+- **distribution des deltas** mesurée sur 174 000 transitions consécutives par
+  niveau (une main) : Intermédiaire et Difficile à moins de 3 points des poids
+  nominaux du tableau ci-dessus ; Débutant à 78,5 % de pas au lieu de 75 %
+  attendus — écart analysé et attendu : sur un pool à seulement 5 notes, près
+  des bords, une des deux directions d'un saut retombe parfois sur la note
+  précédente et est écartée, ce qui gonfle mécaniquement la part des pas de
+  quelques points. Effet structurel des petits pools, pas une erreur, et il va
+  dans le sens pédagogique voulu (encore plus de mouvement conjoint pour un
+  débutant) ;
+- **couverture du pool sur 30 notes, une main** : 100 % en Débutant, ≥ 98 % en
+  Intermédiaire, ≥ 94 % en Difficile (contre ~89 % avec l'ancien tirage
+  indépendant, mesuré pour comparaison) ; en Les deux mains / Difficile
+  (≈15 tirages pour 15 notes par main, le cas le plus contraint), couverture
+  minimale de 65,8 % — non-régression confirmée face au plancher mathématique
+  d'un tirage uniforme dans ce cas (~65 %) ;
+- **pondération des erreurs toujours active** : une cible avec un poids hérité
+  ×~4 (comme après plusieurs erreurs passées) sort 2,84× plus souvent qu'une
+  cible neutre, sur 4000 sessions ;
+- **mode Les deux mains** : 150 calendriers (50 par niveau), toujours un écart
+  d'au plus une note entre les deux mains sur la session ;
+- **forme de retour** de `drawSeries()` et de chaque `note` identique à avant
+  (vérifié par `Object.keys()`), confirmant que `fluency-mode.js` n'a rien à
+  changer.
+
+Vérification visuelle (contour mélodique plutôt que nuage de points) : les 20
+premières notes d'une session imprimées comme un mini piano-roll ASCII, pour
+chaque niveau. Le Débutant dessine un mouvement presque entièrement conjoint,
+l'Intermédiaire alterne de courtes phrases par degrés et quelques sauts,
+et le Difficile produit de vrais dessins mélodiques — par exemple une broderie
+descendante (13-14-13-11-10-9) en fin de série. `fluency-mode.js` n'ayant pas
+changé, aucun nouveau passage par Chrome headless n'était nécessaire : le
+rendu Canvas et la correspondance portée-clavier restent ceux déjà validés en
+§ 9-10.
+
+## 13. Suites possibles
 
 - Altérations défilantes (le dessin du dièse est déjà en place).
 - Vitesse qui s'adapte au score, plutôt que choisie — à condition qu'elle ne
