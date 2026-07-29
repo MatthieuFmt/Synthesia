@@ -35,6 +35,8 @@ import {
 } from "./metronome.js";
 import {
   availableFamilies,
+  DIFFICULTIES,
+  difficultiesOfFamily,
   exerciseById,
   exercisesOfFamily,
   familyById,
@@ -134,7 +136,10 @@ let listeners = null;
 
 function createModeState() {
   const firstFamily = availableFamilies()[0];
-  const firstExercise = exercisesOfFamily(firstFamily.id)[0];
+  // On entre toujours par le Débutant : c'est le seul niveau dont on soit sûr
+  // qu'il ne suppose rien d'acquis.
+  const firstExercise =
+    exercisesOfFamily(firstFamily.id, "beginner")[0] ?? exercisesOfFamily(firstFamily.id)[0];
 
   return {
     stopped: false,
@@ -241,6 +246,7 @@ function renderSetup() {
   );
 
   root.appendChild(renderFamilyChoice());
+  root.appendChild(renderDifficultyChoice());
   root.appendChild(renderExerciseChoice());
   root.appendChild(renderHandChoice(exercise));
   root.appendChild(renderNumberChoice(
@@ -299,7 +305,10 @@ function renderFamilyChoice() {
     onClick(button, () => {
       // Changer de famille sélectionne son premier exercice, et reprend ses
       // valeurs par défaut : un tempo d'arpège n'a pas de sens sur un accord.
-      selectExercise(exercisesOfFamily(family.id)[0].id);
+      // Le niveau courant est gardé s'il existe dans la nouvelle famille —
+      // changer de sujet ne doit pas renvoyer l'utilisateur au Débutant.
+      const kept = exercisesOfFamily(family.id, currentExercise().difficulty)[0];
+      selectExercise((kept ?? exercisesOfFamily(family.id)[0]).id);
     });
     row.appendChild(button);
   }
@@ -321,18 +330,64 @@ function renderFamilyChoice() {
 
 function familiesToCome() {
   const available = new Set(availableFamilies().map((family) => family.id));
-  return [
-    familyById("scales"),
-    familyById("coordination"),
-    familyById("rhythm"),
-  ].filter((family) => family && !available.has(family.id));
+  return [familyById("coordination"), familyById("rhythm")].filter(
+    (family) => family && !available.has(family.id)
+  );
 }
 
-// Le choix de l'exercice n'apparaît que si sa famille en contient plusieurs :
-// une liste d'un seul élément n'est pas un choix.
+// ----------------------------------------------------------------------------
+//  Niveau
+//
+//  La famille dit *quoi* travailler, le niveau *à quel degré*. Un niveau change
+//  le geste — une note tenue pendant que les autres jouent, un accent déplacé,
+//  un passage de pouce, un mouvement contraire — et non la seule vitesse : le
+//  tempo reste un réglage séparé (plan/03 § 5).
+//
+//  Le niveau courant est **déduit** de l'exercice, comme la famille : deux
+//  sources de vérité pour la même information finiraient par diverger.
+// ----------------------------------------------------------------------------
+function renderDifficultyChoice() {
+  const group = el("fieldset", "ex-choice");
+  group.appendChild(el("legend", "ex-choice-legend", "Niveau"));
+  const row = el("div", "ex-choice-row");
+
+  const familyId = currentExercise().family;
+  const filled = difficultiesOfFamily(familyId);
+
+  for (const difficulty of DIFFICULTIES) {
+    const button = el("button", "ex-choice-btn", difficulty.label);
+    button.type = "button";
+
+    // Un niveau que la famille n'a pas encore reste visible et désactivé, comme
+    // les familles à venir : on montre où va la famille sans y envoyer.
+    const available = filled.has(difficulty.id);
+    button.disabled = !available;
+    if (!available) {
+      button.title = "Bientôt";
+      button.appendChild(el("span", "ex-choice-soon", "Bientôt"));
+    }
+
+    const selected = difficulty.id === currentExercise().difficulty;
+    button.setAttribute("aria-pressed", String(selected));
+    if (selected) button.classList.add("is-selected");
+
+    if (available) {
+      onClick(button, () => {
+        selectExercise(exercisesOfFamily(familyId, difficulty.id)[0].id);
+      });
+    }
+    row.appendChild(button);
+  }
+
+  group.appendChild(row);
+  return group;
+}
+
+// Le choix de l'exercice n'apparaît que si la paire famille + niveau en
+// contient plusieurs : une liste d'un seul élément n'est pas un choix.
 function renderExerciseChoice() {
-  const family = familyById(currentExercise().family);
-  const exercises = exercisesOfFamily(family.id);
+  const exercise = currentExercise();
+  const exercises = exercisesOfFamily(exercise.family, exercise.difficulty);
   const group = el("fieldset", "ex-choice");
   group.appendChild(el("legend", "ex-choice-legend", "Exercice"));
 

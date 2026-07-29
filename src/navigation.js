@@ -46,6 +46,7 @@ let stage = null;
 
 // Navigation de la barre : montée une fois pour toutes depuis le registre.
 let modeNavList = null;
+let songBackButton = null;
 
 // Panneaux de l'accueil (« Aujourd'hui » et MIDI). L'accueil est reconstruit à
 // chaque retour : les panneaux doivent être libérés, sinon chaque visite
@@ -59,8 +60,10 @@ export function initNavigation(features) {
   registry = features;
   stage = document.getElementById("stage");
   modeNavList = document.getElementById("modeNavList");
+  songBackButton = document.getElementById("songBackBtn");
 
   renderModeNavigation();
+  songBackButton.addEventListener("click", () => switchTo(null));
 
   // Recharger la page ramène toujours à l'accueil (aucun routing par URL
   // n'a été décidé, cf. F1 § Décisions ouvertes).
@@ -178,6 +181,10 @@ function renderModeNavigation() {
 }
 
 function updateModeNavigation() {
+  const songIsCurrent = currentFeature?.id === "song";
+  document.querySelector(".topbar")?.classList.toggle("song-open", songIsCurrent);
+  songBackButton.hidden = !songIsCurrent;
+
   for (const node of modeNavList.querySelectorAll(".mode-nav-item")) {
     const isCurrent = currentFeature
       ? node.dataset.featureId === currentFeature.id

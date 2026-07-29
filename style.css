@@ -116,6 +116,26 @@ body {
   font-weight: 600;
 }
 
+/* Dans le mode Morceau, les commandes de lecture remplacent la navigation
+   générale. Le bouton flèche permet de revenir à l'accueil. */
+.topbar.song-open .mode-nav {
+  display: none;
+}
+
+.song-back-btn[hidden] {
+  display: none;
+}
+
+.back-icon {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .mode-controls {
   display: flex;
   align-items: center;
@@ -129,6 +149,15 @@ body {
 
 .mode-controls[hidden] {
   display: none;
+}
+
+.song-main-controls {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 1 1 100%;
+  width: 100%;
+  min-width: 0;
 }
 
 .topbar h1 {
@@ -2321,6 +2350,31 @@ body.force-landscape .landscape-btn { display: inline-flex; }
   .mode-nav-item { min-height: 30px; padding: 0 8px; font-size: 12px; }
   .mode-controls { gap: 6px; padding-left: 6px; }
 
+  /* En mode Morceau, navigation masquée et commandes essentielles sur un seul
+     rang. Un défilement horizontal conserve chaque entrée sur les écrans les
+     plus étroits au lieu de la repousser sous le Canvas. */
+  .topbar.song-open:not(.practice-open) {
+    flex-wrap: nowrap;
+  }
+  .topbar.song-open .mode-controls {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .topbar.song-open .song-main-controls {
+    gap: 6px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+  }
+  .topbar.song-open .controls {
+    flex: 0 0 auto;
+  }
+  .topbar.song-open .transport {
+    flex: 1 0 150px;
+    min-width: 150px;
+  }
+
   .home { padding: 18px 14px 28px; gap: 18px; }
 
   .midi { margin-top: 16px; padding: 10px 12px; }
@@ -2425,6 +2479,7 @@ body.force-landscape .landscape-btn { display: inline-flex; }
   .transport { margin-top: 0; gap: 6px; min-width: 0; flex: 1 1 200px; }
   .play-btn { width: 32px; height: 30px; flex: 0 0 32px; }
   .fullscreen-btn { width: 30px; height: 30px; flex: 0 0 30px; }
+  .song-back-btn { width: 30px; height: 30px; flex: 0 0 30px; }
   .time-label { font-size: 12px; min-width: 60px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .seek { min-width: 0; }
 

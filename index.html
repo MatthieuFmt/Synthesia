@@ -39,6 +39,19 @@
             <path d="M8 3H3v5M16 3h5v5M21 16v5h-5M8 21H3v-5" />
           </svg>
         </button>
+
+        <button
+          id="songBackBtn"
+          class="btn icon-btn song-back-btn"
+          type="button"
+          aria-label="Retour à l’accueil"
+          title="Retour à l’accueil"
+          hidden
+        >
+          <svg class="back-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M19 12H5M11 6l-6 6 6 6" />
+          </svg>
+        </button>
       </div>
 
       <!-- Les modes sont accessibles directement depuis la barre. La liste
@@ -53,77 +66,81 @@
            actif, masqués dès son arrêt.
            ================================================================== -->
       <div id="songControls" class="mode-controls" hidden>
-        <div class="controls">
-          <select id="songSelect" class="song-select">
-            <option value="">Bibliothèque de morceaux…</option>
-          </select>
+        <!-- Les commandes essentielles du morceau restent dans une même ligne,
+             y compris sur petit écran. -->
+        <div class="song-main-controls">
+          <div class="controls">
+            <select id="songSelect" class="song-select">
+              <option value="">Bibliothèque de morceaux…</option>
+            </select>
 
-          <label class="toggle annotation-toggle" title="Afficher la notation">
-            <input
-              type="checkbox"
-              id="notationToggle"
-              class="visually-hidden"
-              aria-label="Afficher la notation"
-            />
-            <svg class="toolbar-icon" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M9 18V5l10-2v13" />
-              <circle cx="6" cy="18" r="3" />
-              <circle cx="16" cy="16" r="3" />
-            </svg>
-          </label>
+            <label class="toggle annotation-toggle" title="Afficher la notation">
+              <input
+                type="checkbox"
+                id="notationToggle"
+                class="visually-hidden"
+                aria-label="Afficher la notation"
+              />
+              <svg class="toolbar-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M9 18V5l10-2v13" />
+                <circle cx="6" cy="18" r="3" />
+                <circle cx="16" cy="16" r="3" />
+              </svg>
+            </label>
 
-          <label class="speed" title="Vitesse de lecture">
-            <svg class="toolbar-icon" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M3.34 19a10 10 0 1 1 17.32 0M12 15l4-4" />
-            </svg>
+            <label class="speed" title="Vitesse de lecture">
+              <svg class="toolbar-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M3.34 19a10 10 0 1 1 17.32 0M12 15l4-4" />
+              </svg>
+              <input
+                type="range"
+                id="speedRange"
+                class="speed-range"
+                aria-label="Vitesse de lecture"
+                min="0.25"
+                max="2"
+                step="0.05"
+                value="1"
+              />
+              <span id="speedValue" class="speed-value">1×</span>
+            </label>
+
+            <!-- Entrée du sous-mode Travail (feature 06). Le mode Morceau reste
+                 un lecteur tant que ce bouton n'est pas activé. -->
+            <button
+              id="practiceToggle"
+              class="btn practice-toggle"
+              type="button"
+              aria-pressed="false"
+              aria-label="Travailler un passage"
+              title="Travailler un passage"
+            >
+              <svg class="toolbar-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M17 2l4 4-4 4" />
+                <path d="M3 11v-1a4 4 0 0 1 4-4h14" />
+                <path d="M7 22l-4-4 4-4" />
+                <path d="M21 13v1a4 4 0 0 1-4 4H3" />
+              </svg>
+              <span class="practice-toggle-label">Travail</span>
+            </button>
+          </div>
+
+          <!-- Barre de transport : lecture / curseur de position -->
+          <div class="transport">
+            <button id="playBtn" class="btn play-btn" aria-label="Lecture / Pause">
+              ▶
+            </button>
+            <span id="timeLabel" class="time-label">0:00 / 0:00</span>
             <input
+              id="seek"
+              class="seek"
               type="range"
-              id="speedRange"
-              class="speed-range"
-              aria-label="Vitesse de lecture"
-              min="0.25"
-              max="2"
-              step="0.05"
-              value="1"
+              min="0"
+              max="0"
+              step="0.01"
+              value="0"
             />
-            <span id="speedValue" class="speed-value">1×</span>
-          </label>
-
-          <!-- Entrée du sous-mode Travail (feature 06). Le mode Morceau reste
-               un lecteur tant que ce bouton n'est pas activé. -->
-          <button
-            id="practiceToggle"
-            class="btn practice-toggle"
-            type="button"
-            aria-pressed="false"
-            aria-label="Travailler un passage"
-            title="Travailler un passage"
-          >
-            <svg class="toolbar-icon" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M17 2l4 4-4 4" />
-              <path d="M3 11v-1a4 4 0 0 1 4-4h14" />
-              <path d="M7 22l-4-4 4-4" />
-              <path d="M21 13v1a4 4 0 0 1-4 4H3" />
-            </svg>
-            <span class="practice-toggle-label">Travail</span>
-          </button>
-        </div>
-
-        <!-- Barre de transport : lecture / curseur de position -->
-        <div class="transport">
-          <button id="playBtn" class="btn play-btn" aria-label="Lecture / Pause">
-            ▶
-          </button>
-          <span id="timeLabel" class="time-label">0:00 / 0:00</span>
-          <input
-            id="seek"
-            class="seek"
-            type="range"
-            min="0"
-            max="0"
-            step="0.01"
-            value="0"
-          />
+          </div>
         </div>
 
         <!-- =================================================================
