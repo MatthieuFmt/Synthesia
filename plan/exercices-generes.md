@@ -249,8 +249,15 @@ leur niveau.
       trois fichiers, vérifiés et chargés dans le mode Morceau. Fiches
       ci-dessous. Aucune tolérance : le rapport des mains n'est pas un axe que
       le vérificateur mesure.
-- [ ] **E4 Pédale (CC 64)** — les trois niveaux ; débloque la famille
-      Application de 09.
+- [x] **E4 Pédale (CC 64)** — les trois niveaux. **Fait le 30/07/2026** : les
+      **premiers fichiers pédalés du projet**, vérifiés en rejouant la logique
+      d'`extractPedalIntervals()` du mode Morceau, et les repères de pédale
+      contrôlés en capture d'écran. Fiches ci-dessous. Le blocage de la famille
+      Application de [09](09-pedale.md) est levé — le matériel existe ; la
+      famille reste à coder.
+
+**La vague 2 est complète** : quatre familles, douze fichiers — C1 Doubles
+notes, C2 Octaves, D1 Indépendance rythmique, E4 Pédale.
 
 ### Vague 3 — le reste du catalogue (33 fichiers)
 
@@ -699,6 +706,87 @@ une charnière**. Sans elle, la reprise de la course au début de la section
 suivante formait un saut de septième — la couture d'une suite répétée, la même
 leçon que le trémolo. La charnière contient la tonique, donc la distance à la
 note précédente y est nulle.
+
+#### `pedale-moyen-01.mid`
+
+| | |
+| --- | --- |
+| Famille · niveau | E4 Pédale · **moyen** |
+| Tonalité · tempo | do majeur · 80 à la noire |
+| Forme | 16 mesures, 48 s, 118 notes, **30 évènements CC 64** |
+| Objectif | Pédale directe, un changement par mesure : le pied descend avec l'accord. |
+| Structure | A (8 mes.) cadence I-IV-V-I, **pédale directe** — le pied descend avec la basse et se lève juste avant la mesure suivante · B (6 mes.) la même, mélodie tenue · charnière (2 mes.) |
+| Mesuré | débit 2/s · ambitus d'une main 19 · écart 7 · saut 0 |
+| Tolérance | aucune |
+| Critère | Deux exécutions propres au tempo cible, sur deux jours distincts. |
+
+**15 intervalles de pédale**, retrouvés un par un par la logique du mode
+Morceau : 8 pour A, 6 pour B, 1 pour la charnière. Tenues de 2,90 s — une mesure
+à 80 moins le souffle — et 5,86 s pour la charnière de deux mesures.
+
+#### `pedale-difficile-01.mid`
+
+| | |
+| --- | --- |
+| Famille · niveau | E4 Pédale · **difficile** |
+| Tonalité · tempo | do majeur · 100 à la noire |
+| Forme | 19 mesures, 46 s, 262 notes, **118 évènements CC 64** |
+| Objectif | Pédale syncopée, un changement par temps : le pied se lève sur l'accord suivant et se réenfonce juste après. |
+| Structure | A (6 mes.) une harmonie par temps, **pédale syncopée** · B (6 mes.) une note de mélodie s'ajoute à contretemps — le pied ne doit pas la suivre · C (5 mes.) un changement par demi-mesure · charnière (2 mes.) |
+| Mesuré | débit 4/s · ambitus d'une main 23 · écart 7 · saut 5 |
+| Tolérance | aucune |
+| Critère | Deux exécutions propres au tempo cible, sur deux jours distincts. |
+
+**59 intervalles** : 24 + 24 + 10 + 1, exactement ce que la partition écrit. La
+plus courte tenue fait 0,52 s — le temps moins le retard du réenfoncement.
+
+#### `pedale-tres-difficile-01.mid`
+
+| | |
+| --- | --- |
+| Famille · niveau | E4 Pédale · **très difficile** |
+| Tonalité · tempo | do majeur · 120 à la noire |
+| Forme | 23 mesures, 46 s, 326 notes, **162 évènements CC 64** |
+| Objectif | Harmonie chromatique, où deux accords voisins n'ont aucune note commune, et des tenues de deux mesures à nettoyer. |
+| Structure | A (7 mes.) syncopée sur **harmonie chromatique**, un changement par temps · charnière · B (8 mes.) **tenues de deux mesures à nettoyer** · C (6 mes.) chromatique et syncopée à la **croche** — deux fois plus rapide que A · charnière (2 mes.) |
+| Mesuré | débit 4/s · ambitus d'une main 19 · écart 7 · saut 7 |
+| Tolérance | aucune |
+| Critère | Deux exécutions propres au tempo cible, sur deux jours distincts. |
+
+**81 intervalles** : 28 + 4 + 48 + 1. La plus courte tenue fait 0,21 s — une
+croche à 120 moins le retard —, la plus longue 3,91 s, soit les deux mesures de
+la section B. C'est l'harmonie chromatique qui fait la difficulté : deux accords
+voisins n'ayant aucune note commune, rien ne rattrape une pédale mal levée.
+
+### E4 a demandé trois choses au générateur, et en a appris une quatrième
+
+1. **Le carnet porte la pédale.** `creerCarnet()` a un tableau `pedales` et une
+   méthode `pedale(tick, enfoncee)`, tout-ou-rien comme `midi-input.js` à la
+   lecture. Un composeur retourne désormais `{ notes, duree, pedales }`.
+2. **`pisteNotes()` écrit le CC 64**, sur la piste de la main gauche — celle qui
+   porte l'harmonie que le pied suit. Les rangs d'ordonnancement à un même tick
+   sont devenus explicites : note-off, levé, enfoncé, note-on. C'est cet ordre
+   qui rend la pédale directe correcte, le pied descendant *avec* l'accord.
+3. **`verifierPedale()`** refuse une pédalisation incohérente : deux enfoncés de
+   suite, un premier évènement qui est un levé, un dernier qui est un enfoncé
+   (la pédale resterait baissée jusqu'à la fin), un évènement après la fin, une
+   tenue de plus de quatre mesures. Il a attrapé trois fichiers sur trois au
+   premier jet.
+
+Et la quatrième, qu'aucun de ces contrôles n'aurait vue : **ce qui est écrit
+n'était pas ce qui était lu**. Aux jointures de section, le levé de la
+précédente et l'enfoncé de la suivante tombaient au même tick.
+`extractPedalIntervals()` du mode Morceau regroupe les évènements de même temps
+— pour qu'un relâchement et un nouvel appui simultanés ne fassent pas une
+coupure visuelle — et ne fermait donc pas l'intervalle : il en dessinait
+**trois de moins** que la partition n'en écrivait. Un tick de décalage à
+l'enfoncement suffit, et les comptes tombent juste : 15, 59, 81.
+
+C'est la première fois qu'un contrôle du générateur ne suffisait pas : il
+fallait rejouer la lecture de l'application sur le fichier produit. La leçon
+vaut pour toute famille qui écrira des données que l'application interprète —
+il ne suffit pas qu'un fichier soit correct, il faut qu'il soit **lu** comme il
+est écrit.
 
 ## 10. Décisions tranchées avant la vague 1 — 28/07/2026
 

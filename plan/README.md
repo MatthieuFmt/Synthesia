@@ -38,7 +38,7 @@ pour avancer, pas avant.
 | 06 | Travail intelligent d'un morceau | Cinq outils en place — sous-mode de 01 | [06-travail-intelligent-morceau.md](06-travail-intelligent-morceau.md) |
 | 07 | Entraînement de l'oreille | Trois familles sur quatre ; mélodie hors MVP | [07-entrainement-oreille.md](07-entrainement-oreille.md) |
 | 08 | Lecture de partitions | Cinq étapes en place — suite de 02 | [08-lecture-partitions.md](08-lecture-partitions.md) |
-| 09 | Exercices de pédale | Directe et syncopée, trois niveaux ; Application à venir | [09-pedale.md](09-pedale.md) |
+| 09 | Exercices de pédale | Directe et syncopée, trois niveaux ; Application débloquée, à coder | [09-pedale.md](09-pedale.md) |
 | 10 | Lecture de notes | Une ou deux portées défilantes, trois vitesses | [10-fluidite.md](10-fluidite.md) |
 
 Trois fonctionnalités prolongent une fonctionnalité existante plutôt que d'en
@@ -58,7 +58,7 @@ exercice, à trois niveaux.
 
 | Sujet | État actuel | Plan détaillé |
 | --- | --- | --- |
-| Exercices générés (fichiers MIDI, mode Morceau) | Catalogue de 19 familles écrit ; 7 familles produites sur 19 | [exercices-generes.md](exercices-generes.md) |
+| Exercices générés (fichiers MIDI, mode Morceau) | Catalogue de 19 familles écrit ; vagues 1 et 2 faites — 8 familles sur 19 | [exercices-generes.md](exercices-generes.md) |
 | Catalogue d'exercices (mode Exercices) | **Complet** : 99 exercices, 11 familles × 3 niveaux × 3 | [exercices-catalogue.md](exercices-catalogue.md) |
 | Fichiers MIDI du dépôt | 26 fichiers Mutopia, licences vérifiées | [morceaux-exercice/README.md](../morceaux-exercice/README.md) |
 

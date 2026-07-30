@@ -61,5 +61,9 @@
 
   { "title": "Exercice — Indépendance rythmique (moyen)", "file": "morceaux-exercice/genere/rythme-moyen-01.mid" },
   { "title": "Exercice — Indépendance rythmique (difficile)", "file": "morceaux-exercice/genere/rythme-difficile-01.mid" },
-  { "title": "Exercice — Indépendance rythmique (très difficile)", "file": "morceaux-exercice/genere/rythme-tres-difficile-01.mid" }
+  { "title": "Exercice — Indépendance rythmique (très difficile)", "file": "morceaux-exercice/genere/rythme-tres-difficile-01.mid" },
+
+  { "title": "Exercice — Pédale (moyen)", "file": "morceaux-exercice/genere/pedale-moyen-01.mid" },
+  { "title": "Exercice — Pédale (difficile)", "file": "morceaux-exercice/genere/pedale-difficile-01.mid" },
+  { "title": "Exercice — Pédale (très difficile)", "file": "morceaux-exercice/genere/pedale-tres-difficile-01.mid" }
 ]

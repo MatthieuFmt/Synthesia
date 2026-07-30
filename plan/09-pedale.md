@@ -33,7 +33,11 @@
   « ni *Ped.* ni ligne » de la section 15 est renversée)
 - [x] Retirer la famille Écoute, qui ne servait pas.
 - [ ] Implémenter la famille Application (passage réel) — après le reste,
-  comme prévu en section 5.
+  comme prévu en section 5. **Son blocage matériel est levé** depuis le
+  30/07/2026 : la famille E4 des
+  [exercices générés](exercices-generes.md) fournit trois fichiers réellement
+  pédalés, les premiers du projet, dont le mode Morceau relit et dessine la
+  pédalisation. Il ne manque plus que le code de la famille.
 
 ## 1. Problème utilisateur
 
@@ -256,7 +260,9 @@ src/
 ### Étape E — Application
 
 - [ ] Réutiliser les intervalles de pédale d'un morceau importé
-  (`extractPedalIntervals`) comme exercice guidé.
+  (`extractPedalIntervals`) comme exercice guidé. **Le matériel existe** :
+  `genere/pedale-{moyen,difficile,tres-difficile}-01.mid`, 15, 59 et 81
+  intervalles de pédale, du changement par mesure au changement par croche.
 - [ ] Comparer la pédale jouée à celle du fichier sans imposer une seule
   interprétation valable.
 
