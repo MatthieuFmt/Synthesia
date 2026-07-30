@@ -480,10 +480,33 @@ ouvert avant d'ouvrir autre chose : **45 exercices, 5 familles complètes sur
       sera encore moins ici.
 - [ ] Mettre à jour le tableau des familles du [§ 4 de 03](03-technique-doigts.md#4-familles-dexercices),
       qui annonce encore six familles dont trois hors MVP.
-- [ ] Vérifier que le [Programme d'entraînement](04-programme-entrainement.md)
-      fait bien tourner les familles : son créneau technique choisit
-      « le moins vu récemment », et il aura onze familles à faire tourner au
-      lieu de quatre.
+- [x] **Vérifier que le matériel est atteignable.** Fait le 30/07/2026, et
+      c'était **le vrai risque de ce chantier** — celui que la vague 3 aurait
+      aggravé au lieu de le corriger.
+
+      Le Programme (04) choisit une *fonctionnalité* — « Exercices, 5 min » —,
+      jamais un exercice. Et le mode Exercices rouvrait le **dernier** exercice
+      pratiqué. Bout à bout : l'application proposait, jour après jour,
+      indéfiniment, **un exercice sur quatre-vingt-dix-neuf**. C'est très
+      exactement le reproche fait à Hanon au § 3, retourné contre nous par le
+      seul fait d'avoir grossi le catalogue.
+
+      Correction : `leastRecentlyPracticed()` dans `progress/views.js` — la
+      septième vue de F3, écrite le jour où quelqu'un l'a demandée, comme le
+      veut la règle du projet. Le mode garde la **famille et le niveau** de la
+      dernière séance (on ne change pas de sujet sans le vouloir) et propose,
+      dedans, l'exercice le moins récemment travaillé. Celui qu'on n'a jamais
+      fait passe en premier.
+
+      Vérifié dans le navigateur sur quatre séances simulées : trois exercices
+      différents en trois jours, puis la rotation reboucle.
+
+      Ce qui **ne** change **pas** : le tempo, la main, le métronome et la
+      démonstration viennent toujours de la dernière séance — ce sont des
+      préférences, pas un contenu à faire tourner. Et le mode Morceau continue
+      de rouvrir le dernier morceau : on *répète* une pièce pendant des
+      semaines, on *fait tourner* des exercices. La distinction est le cœur de
+      la correction.
 
 ## 9. Vérification — ce qu'un harnais doit refuser
 

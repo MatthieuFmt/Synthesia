@@ -42,6 +42,7 @@ import {
   FAMILIES,
   supportsHand,
 } from "./exercises/catalog.js";
+import { leastRecentlyPracticed } from "./progress/views.js";
 import {
   clampRepetitions,
   generateExercise,
@@ -1621,16 +1622,40 @@ function start(host) {
 
 // Reprend les réglages de la dernière séance, comme la Lecture de notes
 // (plan/02 étape D). Un réglage devenu invalide est ignoré plutôt que corrigé.
+//
+// **Sauf l'exercice lui-même**, depuis le 30/07/2026. Rouvrir le dernier était
+// juste tant qu'une famille n'en contenait qu'un ; à trois exercices par niveau
+// et onze familles, cela revenait à en proposer **un sur quatre-vingt-dix-neuf**,
+// tous les jours, indéfiniment. On garde donc la famille et le niveau — on ne
+// change pas de sujet sans le vouloir — et on propose, dedans, celui qui n'a pas
+// été travaillé depuis le plus longtemps. Celui qu'on n'a jamais fait passe en
+// premier.
+//
+// Le reste des réglages — tempo, main, métronome, démonstration — vient bien de
+// la dernière séance : ce sont des préférences, pas un contenu à faire tourner.
 function restoreSettings() {
   const last = lastSessionContext(state.progress.log(), exerciseFeature.id);
   if (!last) return;
 
-  const exercise = exerciseById(last.exerciseId);
-  if (!exercise) return;
+  const dernier = exerciseById(last.exerciseId);
+  if (!dernier) return;
+
+  const voisins = exercisesOfFamily(dernier.family, dernier.difficulty);
+  const propose = leastRecentlyPracticed(state.progress.log(), {
+    candidates: voisins.map((candidat) => candidat.id),
+    featureIds: [exerciseFeature.id],
+  });
+  const exercise = exerciseById(propose) ?? dernier;
   state.settings.exerciseId = exercise.id;
-  state.settings.tempo = clampTempo(last.tempo ?? exercise.defaultTempo);
+  // Le tempo et le nombre de répétitions de l'exercice **proposé** priment sur
+  // ceux de la séance passée quand on change d'exercice : un trille ne se
+  // travaille pas au tempo d'un accord.
+  const memeExercice = exercise.id === last.exerciseId;
+  state.settings.tempo = clampTempo(
+    memeExercice ? last.tempo ?? exercise.defaultTempo : exercise.defaultTempo
+  );
   state.settings.repetitions = clampRepetitions(
-    last.repetitions ?? exercise.defaultRepetitions
+    memeExercice ? last.repetitions ?? exercise.defaultRepetitions : exercise.defaultRepetitions
   );
   if (supportsHand(exercise, last.handMode)) state.settings.hand = last.handMode;
   if (typeof last.metronome === "boolean") state.settings.metronome = last.metronome;

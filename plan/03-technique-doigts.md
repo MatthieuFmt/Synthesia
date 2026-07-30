@@ -36,6 +36,11 @@
   (**99 exercices le 30/07/2026**, aucune famille vide, vérifiés par
   `tools/verifier-catalogue.js` — détail dans
   [exercices-catalogue.md](exercices-catalogue.md))
+- [x] Faire tourner les exercices d'une séance à l'autre.
+  (le mode rouvrait le **dernier** exercice pratiqué : avec 99 au catalogue, il
+  en proposait un seul indéfiniment. Il garde désormais la famille et le niveau
+  et propose, dedans, le moins récemment travaillé —
+  `leastRecentlyPracticed()` de `progress/views.js`, vérifié sur quatre séances)
 
 ## 1. Objectif
 

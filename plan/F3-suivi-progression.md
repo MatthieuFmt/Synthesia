@@ -123,7 +123,7 @@ Si F3 n'existe pas encore au moment où 04 est construit, 04 peut démarrer avec
 son journal minimal, à condition que son format soit celui d'un évènement F3 —
 sinon la reprise coûtera une migration.
 
-## 6. Les six vues attendues
+## 6. Les vues attendues
 
 Reprise directe des besoins exprimés :
 
@@ -141,6 +141,26 @@ Règle transversale, déjà posée ailleurs dans le dossier : **un élément n'e
 ([02 § 5](02-lecture-notes.md#5-règles-pédagogiques-du-mvp)). Et aucune
 métrique n'est affichée si l'entrée correspondante n'a pas été mesurée
 ([03 § 9](03-technique-doigts.md#9-retour-et-bilan)).
+
+### Une septième, écrite le 30/07/2026 : *ce qui n'a pas été travaillé depuis le plus longtemps*
+
+`leastRecentlyPracticed(log, { candidates, featureIds, clefDe })` et son pendant
+`practicedAt()`. Elle n'était pas prévue par ce plan, et c'est **volontaire** :
+la règle du projet est d'écrire une vue le jour où quelqu'un la demande, pas
+d'avance. Ce jour est arrivé quand le catalogue du mode Exercices est passé de
+huit à quatre-vingt-dix-neuf entrées — jusque-là, « quel exercice proposer ? »
+n'était pas une question.
+
+Ce qu'elle corrige est un vrai défaut, pas un raffinement : le mode Exercices
+rouvrait le **dernier** exercice pratiqué, et le Programme choisit une
+fonctionnalité et non un exercice. Bout à bout, l'application proposait le même
+exercice tous les jours, indéfiniment.
+
+Elle est générique par construction : `clefDe` dit comment reconnaître un
+candidat dans le contexte d'une séance. Les exercices s'identifient par
+`exerciseId` ; un morceau s'identifierait par son fichier. Un candidat jamais
+travaillé passe avant tous les autres — découvrir ce qu'on n'a jamais fait vaut
+mieux que revoir ce qu'on a fait il y a longtemps.
 
 ## 7. Modèle de données — **figé le 25/07/2026**
 
