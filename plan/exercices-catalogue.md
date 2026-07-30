@@ -250,20 +250,43 @@ Aucune de ces trois n'est un exercice, et les trois bloquaient des exercices.
 Les cinq familles qui contiennent déjà quelque chose. On finit ce qui est
 ouvert avant d'ouvrir autre chose.
 
-- [ ] **1. Déliement** — 3/9 → 9/9 (6 à écrire)
-  - [ ] Débutant : ~~Un doigt tient, les autres jouent~~ (fait) ·
-        Deux doigts tiennent · Le 5 tient, la main descend
-  - [ ] Intermédiaire : ~~Trois doigts tiennent, 4 et 5 travaillent~~ (fait) ·
-        Marche de tenues (séquence par degré) · Le 3 tient, 1-2 et 4-5 alternent
-  - [ ] Difficile : ~~Tenues et mouvement contraire~~ (fait) ·
-        Deux tenues et battement du 4-5 · Une touche noire sous le 4
-- [ ] **4. Gammes** — 3/9 → 9/9 (6 à écrire)
-  - [ ] Débutant : Tétracorde sans passage (1-2-3-4) · Le passage du pouce seul,
-        en boucle · ~~Gamme sur une octave~~ (fait)
-  - [ ] Intermédiaire : ~~Gamme sur deux octaves~~ (fait) ·
-        Gamme par groupes de quatre avec arrêt (Cortot) · Gamme en rythme pointé
-  - [ ] Difficile : ~~Gamme en mouvement contraire~~ (fait) ·
-        Gamme sur trois octaves · Gamme en doubles-croches par quatre
+- [x] **1. Déliement** — **9/9, fait le 30/07/2026**
+  - [x] Débutant : Un doigt tient, les autres jouent · Deux doigts tiennent,
+        trois jouent · Le petit doigt tient, la main redescend
+  - [x] Intermédiaire : Trois doigts tiennent, 4 et 5 travaillent ·
+        Marche de tenues · Le majeur tient, les autres l'encadrent
+  - [x] Difficile : Tenues et mouvement contraire · Deux tenues et battement
+        du 4-5 · Une touche noire sous le 4 (fa♯ en Do, do♯ en Sol — le premier
+        usage des degrés altérés de M1)
+- [x] **4. Gammes** — **9/9, fait le 30/07/2026**
+  - [x] Débutant : Tétracorde sans passage de pouce · Le passage du pouce, seul ·
+        Gamme sur une octave
+  - [x] Intermédiaire : Gamme sur deux octaves · Gamme par groupes de quatre
+        avec arrêt (Cortot) · Gamme en rythme pointé
+  - [x] Difficile : Gamme en mouvement contraire · Gamme sur trois octaves ·
+        Gamme chromatique sur une octave
+
+  Trois choses apprises en écrivant cette famille :
+
+  1. **Le passage du pouce n'est pas au même endroit dans les deux mains** — à
+     droite entre le 3ᵉ et le 4ᵉ degré (mi-fa en Do), à gauche entre le 5ᵉ et le
+     6ᵉ (sol-la). L'exercice qui l'isole est donc le **premier usage de M2** :
+     deux motifs distincts, un par main. Sans `patternByHand` il aurait fallu
+     mentir sur l'une des deux.
+  2. **Trois octaves aux deux mains couvrent quatre octaves de clavier** (do2 à
+     do6). Le plafond d'ambitus du harnais, écrit à 36 demi-tons « par prudence »,
+     l'aurait refusé — à tort : 29 touches blanches sur 800 px font 27 px
+     chacune, largement de quoi porter un chiffre. Le plafond est passé à 48, avec
+     le calcul écrit dans le harnais. Contrairement au plan des exercices générés,
+     l'ambitus se mesure ici **en total et non par main** : ce rouleau dessine les
+     deux mains sur un seul clavier qui ne défile pas.
+  3. **La gamme chromatique est main droite seulement**, et c'est délibéré : son
+     doigté de main gauche ne place pas le 2 aux mêmes endroits, et l'écrire sans
+     l'avoir essayé au clavier serait inventer. C'est aussi le premier exercice à
+     pas d'un quart de temps, donc celui qui a fait apparaître le doigté **à
+     côté** de la note (§ 7, D1) — vérifié en capture d'écran à la taille de la
+     tablette, où le rectangle tombe à 11 px et où l'ancien code n'écrivait plus
+     rien du tout.
 - [ ] **5. Arpèges** — 1/9 → 9/9 (8 à écrire)
   - [ ] Débutant : Accord brisé sur place (Do-Mi-Sol-Mi) ·
         ~~Arpège de Do majeur~~ (fait) · Arpège de Fa et de Sol

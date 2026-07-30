@@ -42,10 +42,21 @@ const HANDS = ["right", "left"];
 // L'exigence E2 du plan : trois niveaux, trois exercices par niveau.
 const EXERCISES_PER_LEVEL = 3;
 
-// Le rouleau dessine son clavier sans défilement latéral. Au-delà de trois
-// octaves les touches deviennent trop étroites pour porter un chiffre, et le
-// doigté est la raison d'être de ce mode.
-const MAX_AMBITUS = 36;
+// Le rouleau dessine son clavier sans défilement latéral : toute l'étendue de
+// l'exercice tient à l'écran, les deux mains sur le même clavier. C'est donc
+// l'étendue **totale** qu'il faut plafonner, et non celle d'une main — le
+// contraire de ce que mesure `generer-exercice.js`, où les fichiers MIDI sont
+// joués dans un rouleau de 88 touches qui défile.
+//
+// Quatre octaves font 29 touches blanches. Sur la tablette visée, en paysage,
+// le rouleau fait environ 800 px de large : 27 px par blanche, de quoi écrire un
+// chiffre de 12 px. À cinq octaves on tombe à 22 px, et à six à 18 px — c'est là
+// que le doigté cesse d'être lisible, donc là que l'exercice cesse d'avoir un
+// sens dans ce mode.
+//
+// Conséquence concrète : une gamme sur trois octaves aux deux mains couvre
+// exactement quatre octaves de clavier (do2 à do6), et passe tout juste.
+const MAX_AMBITUS = 48;
 
 // En dessous d'un huitième de temps, le rectangle d'une note est plus court que
 // son propre chiffre, même écrit à côté.
