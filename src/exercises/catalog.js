@@ -102,7 +102,10 @@ export const FAMILIES = [
   {
     id: "extension",
     label: "Extension",
-    goal: "Écarter, passer un doigt par-dessus, changer de doigt sur une tenue",
+    // La substitution — changer de doigt sur une touche enfoncée — était prévue
+    // ici et n'y est pas : le format ne sait pas l'écrire (une note porte un
+    // doigt, pas deux). Le but ne la promet donc plus.
+    goal: "Écarter la main, et passer un doigt par-dessus le pouce",
     status: "available",
   },
   {
@@ -2164,6 +2167,1214 @@ export const EXERCISES = [
     fingering: {
       right: [1, 2, 3, 5, 3, 2, 1],
       left: [1, 2, 3, 5, 3, 2, 1],
+    },
+  },
+  // ==========================================================================
+  //  Doubles notes — deux voix qui partent et s'arrêtent ensemble
+  //
+  //  Le sujet n'est pas de jouer deux notes : c'est de les **relâcher** au même
+  //  instant. Rien dans l'application ne le mesure — la validation MIDI regarde
+  //  les départs, pas les fins —, mais l'écriture est exacte et l'oreille
+  //  entend le décalage aussitôt.
+  //
+  //  Un ton par exercice : le doigté des tierces se refait entièrement d'une
+  //  tonalité à l'autre, et proposer Sol et Fa sans les avoir vérifiés serait
+  //  inventer.
+  // ==========================================================================
+  {
+    id: "double-thirds-five-notes",
+    family: "double-notes",
+    title: "Tierces sur cinq notes",
+    goal: "Deux notes ensemble, sans que l'une arrive avant l'autre",
+    instruction:
+      "Les deux notes partent ensemble et s'arrêtent ensemble. Écoute la note du bas : c'est presque toujours elle qui est en retard.",
+    difficulty: "beginner",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 56,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 4,
+    pattern: [
+      [0, 2], [1, 3], [2, 4], [1, 3],
+      [0, 2], [1, 3], [2, 4], [1, 3],
+      [0, 2], [1, 3], [2, 4], [1, 3],
+      [0, 2], [1, 3], [2, 4], [1, 3],
+    ],
+    fingering: {
+      right: [
+        [1, 3], [2, 4], [3, 5], [2, 4],
+        [1, 3], [2, 4], [3, 5], [2, 4],
+        [1, 3], [2, 4], [3, 5], [2, 4],
+        [1, 3], [2, 4], [3, 5], [2, 4],
+      ],
+      left: [
+        [3, 1], [4, 2], [5, 3], [4, 2],
+        [3, 1], [4, 2], [5, 3], [4, 2],
+        [3, 1], [4, 2], [5, 3], [4, 2],
+        [3, 1], [4, 2], [5, 3], [4, 2],
+      ],
+    },
+  },
+  {
+    id: "double-sixths-five-notes",
+    family: "double-notes",
+    title: "Sixtes sur cinq notes",
+    goal: "L'écart de sixte entre le pouce et le petit doigt, tenu",
+    instruction:
+      "La main reste ouverte à la sixte du début à la fin. Ce sont les deux doigts des bords qui travaillent — les plus éloignés l'un de l'autre.",
+    difficulty: "beginner",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 54,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 4,
+    pattern: [
+      [0, 5], [1, 6], [2, 7], [1, 6],
+      [0, 5], [1, 6], [2, 7], [1, 6],
+      [0, 5], [1, 6], [2, 7], [1, 6],
+      [0, 5], [1, 6], [2, 7], [1, 6],
+    ],
+    fingering: {
+      right: [
+        [1, 5], [1, 5], [1, 5], [1, 5],
+        [1, 5], [1, 5], [1, 5], [1, 5],
+        [1, 5], [1, 5], [1, 5], [1, 5],
+        [1, 5], [1, 5], [1, 5], [1, 5],
+      ],
+      left: [
+        [5, 1], [5, 1], [5, 1], [5, 1],
+        [5, 1], [5, 1], [5, 1], [5, 1],
+        [5, 1], [5, 1], [5, 1], [5, 1],
+        [5, 1], [5, 1], [5, 1], [5, 1],
+      ],
+    },
+  },
+  {
+    id: "double-thirds-and-sixths",
+    family: "double-notes",
+    title: "Tierces et sixtes alternées",
+    goal: "Ouvrir et refermer la main sans que le son change",
+    instruction:
+      "Tierce, sixte, tierce, sixte : la main s'ouvre et se referme à chaque fois. Les deux notes doivent sonner ensemble aussi bien serrées qu'écartées.",
+    difficulty: "beginner",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 52,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 4,
+    pattern: [
+      [0, 2], [0, 5], [1, 3], [1, 6],
+      [2, 4], [2, 7], [1, 3], [1, 6],
+      [0, 2], [0, 5], [1, 3], [1, 6],
+      [2, 4], [2, 7], [1, 3], [1, 6],
+    ],
+    fingering: {
+      right: [
+        [1, 3], [1, 5], [1, 3], [1, 5],
+        [1, 3], [1, 5], [1, 3], [1, 5],
+        [1, 3], [1, 5], [1, 3], [1, 5],
+        [1, 3], [1, 5], [1, 3], [1, 5],
+      ],
+      left: [
+        [3, 1], [5, 1], [3, 1], [5, 1],
+        [3, 1], [5, 1], [3, 1], [5, 1],
+        [3, 1], [5, 1], [3, 1], [5, 1],
+        [3, 1], [5, 1], [3, 1], [5, 1],
+      ],
+    },
+  },
+  {
+    id: "double-thirds-scale-octave",
+    family: "double-notes",
+    title: "Gamme en tierces sur une octave",
+    goal: "Le doigté 1-3 / 2-4 en alternance, sur toute l'octave",
+    instruction:
+      "Un pas sur deux emploie 1-3, l'autre 2-4. Ce sont les paires 2-4 qui décrochent : ralentis jusqu'à ce qu'elles sonnent comme les 1-3.",
+    difficulty: "intermediate",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C"],
+    defaultTempo: 52,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 4,
+    // L'alternance stricte 1-3 / 2-4 : c'est le doigté qu'on apprend d'abord,
+    // avant les substitutions que le répertoire demandera plus tard.
+    pattern: [
+      [0, 2], [1, 3], [2, 4], [3, 5], [4, 6], [5, 7], [6, 8], [7, 9],
+      [6, 8], [5, 7], [4, 6], [3, 5], [2, 4], [1, 3],
+      { degrees: [0, 2], beats: 1 },
+    ],
+    fingering: {
+      right: [
+        [1, 3], [2, 4], [1, 3], [2, 4], [1, 3], [2, 4], [1, 3], [2, 4],
+        [1, 3], [2, 4], [1, 3], [2, 4], [1, 3], [2, 4],
+        [1, 3],
+      ],
+      left: [
+        [3, 1], [4, 2], [3, 1], [4, 2], [3, 1], [4, 2], [3, 1], [4, 2],
+        [3, 1], [4, 2], [3, 1], [4, 2], [3, 1], [4, 2],
+        [3, 1],
+      ],
+    },
+  },
+  {
+    id: "double-sixths-scale-octave",
+    family: "double-notes",
+    title: "Gamme en sixtes",
+    goal: "La main ouverte à la sixte, déplacée sur une octave entière",
+    instruction:
+      "Huit sixtes en montant. La main garde son écart et se déplace : elle ne s'étire pas d'une paire à l'autre.",
+    difficulty: "intermediate",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C"],
+    defaultTempo: 50,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 4,
+    pattern: [
+      [0, 5], [1, 6], [2, 7], [3, 8], [4, 9], [5, 10], [6, 11], [7, 12],
+      [6, 11], [5, 10], [4, 9], [3, 8], [2, 7], [1, 6],
+      { degrees: [0, 5], beats: 1 },
+    ],
+    fingering: {
+      right: [
+        [1, 5], [1, 5], [1, 5], [1, 5], [1, 5], [1, 5], [1, 5], [1, 5],
+        [1, 5], [1, 5], [1, 5], [1, 5], [1, 5], [1, 5],
+        [1, 5],
+      ],
+      left: [
+        [5, 1], [5, 1], [5, 1], [5, 1], [5, 1], [5, 1], [5, 1], [5, 1],
+        [5, 1], [5, 1], [5, 1], [5, 1], [5, 1], [5, 1],
+        [5, 1],
+      ],
+    },
+  },
+  {
+    id: "double-thirds-broken",
+    family: "double-notes",
+    title: "Tierces brisées",
+    goal: "Entendre séparément les deux notes qu'on jouera ensemble",
+    instruction:
+      "La note du bas, celle du haut, puis les deux. Si les deux ensemble ne sonnent pas comme les deux séparées, c'est qu'un doigt appuie plus fort.",
+    difficulty: "intermediate",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 54,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 4,
+    // Le brisé sert de contrôle au plaqué, comme l'accord plaqué sert de contrôle
+    // à l'arpège : c'est le même procédé de vérification, appliqué à la paire.
+    pattern: [
+      0, 2, [0, 2], { degrees: [], beats: 0.5 },
+      1, 3, [1, 3], { degrees: [], beats: 0.5 },
+      2, 4, [2, 4], { degrees: [], beats: 0.5 },
+      1, 3, [1, 3], { degrees: [], beats: 0.5 },
+    ],
+    fingering: {
+      right: [
+        1, 3, [1, 3], null,
+        2, 4, [2, 4], null,
+        3, 5, [3, 5], null,
+        2, 4, [2, 4], null,
+      ],
+      left: [
+        3, 1, [3, 1], null,
+        4, 2, [4, 2], null,
+        5, 3, [5, 3], null,
+        4, 2, [4, 2], null,
+      ],
+    },
+  },
+  {
+    id: "double-thirds-two-octaves",
+    family: "double-notes",
+    title: "Tierces sur deux octaves",
+    goal: "Tenir l'alternance 1-3 / 2-4 sur vingt-huit paires d'affilée",
+    instruction:
+      "Deux octaves sans reprendre son souffle. Ce n'est pas plus difficile qu'une octave — c'est plus long, et c'est là que la main se crispe.",
+    difficulty: "advanced",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C"],
+    defaultTempo: 54,
+    defaultRepetitions: 3,
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 4,
+    pattern: [
+      [0, 2], [1, 3], [2, 4], [3, 5], [4, 6], [5, 7], [6, 8], [7, 9],
+      [8, 10], [9, 11], [10, 12], [11, 13], [12, 14], [13, 15], [14, 16],
+      [13, 15], [12, 14], [11, 13], [10, 12], [9, 11], [8, 10], [7, 9],
+      [6, 8], [5, 7], [4, 6], [3, 5], [2, 4], [1, 3],
+      { degrees: [0, 2], beats: 2 },
+    ],
+    fingering: {
+      right: [
+        [1, 3], [2, 4], [1, 3], [2, 4], [1, 3], [2, 4], [1, 3], [2, 4],
+        [1, 3], [2, 4], [1, 3], [2, 4], [1, 3], [2, 4], [1, 3],
+        [2, 4], [1, 3], [2, 4], [1, 3], [2, 4], [1, 3], [2, 4],
+        [1, 3], [2, 4], [1, 3], [2, 4], [1, 3], [2, 4],
+        [1, 3],
+      ],
+      left: [
+        [3, 1], [4, 2], [3, 1], [4, 2], [3, 1], [4, 2], [3, 1], [4, 2],
+        [3, 1], [4, 2], [3, 1], [4, 2], [3, 1], [4, 2], [3, 1],
+        [4, 2], [3, 1], [4, 2], [3, 1], [4, 2], [3, 1], [4, 2],
+        [3, 1], [4, 2], [3, 1], [4, 2], [3, 1], [4, 2],
+        [3, 1],
+      ],
+    },
+  },
+  {
+    id: "double-thirds-chromatic",
+    family: "double-notes",
+    title: "Tierces chromatiques",
+    goal: "Le principe du doigté : 1-3 quand la note du bas est blanche, 2-4 quand elle est noire",
+    instruction:
+      "Regarde la note du bas : blanche, c'est 1-3 ; noire, c'est 2-4. C'est la seule règle, et elle décide de tout le passage.",
+    difficulty: "advanced",
+    supportedHands: ["right", "left", "both"],
+    // Parallèle et non contraire : un motif chromatique ne se met pas en miroir
+    // diatonique (§ 6, M1), et le harnais le refuserait.
+    bothMode: "parallel",
+    supportedKeys: ["C"],
+    defaultTempo: 46,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 4,
+    // Tierces mineures chromatiques, montant par demi-tons. Le doigté suit le
+    // principe blanc/noir des traités ; il **reste à essayer au clavier**, comme
+    // tout doigté de ce catalogue — le harnais vérifie qu'il est cohérent, pas
+    // qu'il est jouable (plan § 9).
+    pattern: [
+      [0, "2b"], ["0#", 2], [1, 3], ["1#", "3#"], [2, 4], [3, "5b"],
+      ["3#", 5], [4, "6b"], ["4#", 6], [5, 7], ["5#", "7#"], [6, 8],
+      { degrees: [7, "9b"], beats: 2 },
+    ],
+    // Chaque paire fait exactement trois demi-tons. C'est vérifié, pas supposé :
+    // le premier jet écrivait `["5#", "7b"]` — la♯ et si, une seconde mineure —
+    // au lieu de `["5#", "7#"]`. Dans un tableau de treize paires d'altérations,
+    // une erreur d'un demi-ton ne se voit pas à la relecture.
+    interval: 3,
+    fingering: {
+      right: [
+        [1, 3], [2, 4], [1, 3], [2, 4], [1, 3], [1, 3],
+        [2, 4], [1, 3], [2, 4], [1, 3], [2, 4], [1, 3],
+        [1, 3],
+      ],
+      left: [
+        [3, 1], [4, 2], [3, 1], [4, 2], [3, 1], [3, 1],
+        [4, 2], [3, 1], [4, 2], [3, 1], [4, 2], [3, 1],
+        [3, 1],
+      ],
+    },
+  },
+  {
+    id: "double-notes-both-hands-different",
+    family: "double-notes",
+    title: "Tierces à droite, sixtes à gauche",
+    goal: "Quatre doigts qui décident au même instant, deux écarts différents",
+    instruction:
+      "La droite joue des tierces, la gauche des sixtes. Deux écarts, quatre doigts, un seul instant : c'est le plus exigeant de la famille.",
+    difficulty: "advanced",
+    // Les deux mains n'ont pas le même écart : deux motifs, donc `patternByHand`.
+    supportedHands: ["right", "left", "both"],
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 48,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 4,
+    patternByHand: {
+      right: [
+        [0, 2], [1, 3], [2, 4], [1, 3],
+        [0, 2], [1, 3], [2, 4], [1, 3],
+        [0, 2], [1, 3], [2, 4], [1, 3],
+        [0, 2], [1, 3], [2, 4], [1, 3],
+      ],
+      left: [
+        [0, 5], [1, 6], [2, 7], [1, 6],
+        [0, 5], [1, 6], [2, 7], [1, 6],
+        [0, 5], [1, 6], [2, 7], [1, 6],
+        [0, 5], [1, 6], [2, 7], [1, 6],
+      ],
+    },
+    fingering: {
+      right: [
+        [1, 3], [2, 4], [3, 5], [2, 4],
+        [1, 3], [2, 4], [3, 5], [2, 4],
+        [1, 3], [2, 4], [3, 5], [2, 4],
+        [1, 3], [2, 4], [3, 5], [2, 4],
+      ],
+      left: [
+        [5, 1], [5, 1], [5, 1], [5, 1],
+        [5, 1], [5, 1], [5, 1], [5, 1],
+        [5, 1], [5, 1], [5, 1], [5, 1],
+        [5, 1], [5, 1], [5, 1], [5, 1],
+      ],
+    },
+  },
+  // ==========================================================================
+  //  Octaves — le poignet, pas le bras
+  //
+  //  Le niveau Débutant de cette famille ne joue **pas** d'octaves : il joue des
+  //  sixtes puis des septièmes. Aucun professeur ne met un débutant à l'octave,
+  //  et une main d'enfant n'y arrive pas. Ici, « Débutant » veut dire *première
+  //  étape du travail d'octave* — le niveau gradue le sujet de la famille, pas
+  //  une difficulté abstraite (plan § 5).
+  // ==========================================================================
+  {
+    id: "octave-sixth-then-seventh",
+    family: "octaves",
+    title: "Sixte puis septième, poignet souple",
+    goal: "Ouvrir la main progressivement, avant l'octave",
+    instruction:
+      "Sixte, septième, sixte, septième. La main s'ouvre du bout des doigts, pas en tirant sur le poignet — et elle se referme entre chaque.",
+    difficulty: "beginner",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 50,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 1,
+    restBeats: 4,
+    pattern: [
+      [0, 5], [0, 6], [0, 5], [0, 6],
+      [0, 5], [0, 6], [0, 5], [0, 6],
+    ],
+    fingering: {
+      right: [[1, 5], [1, 5], [1, 5], [1, 5], [1, 5], [1, 5], [1, 5], [1, 5]],
+      left: [[5, 1], [5, 1], [5, 1], [5, 1], [5, 1], [5, 1], [5, 1], [5, 1]],
+    },
+  },
+  {
+    id: "octave-held",
+    interval: 12, // toutes les paires font une octave juste — vérifié note par note
+    family: "octaves",
+    title: "L'octave posée, tenue",
+    goal: "Sentir l'octave sans avoir à la répéter vite",
+    instruction:
+      "Une octave par deux temps, tenue. Cherche la position où la main est ouverte sans être tirée : c'est celle-là qu'il faudra retrouver vite plus tard.",
+    difficulty: "beginner",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 50,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 2,
+    restBeats: 4,
+    pattern: [[0, 7], [1, 8], [2, 9], [1, 8]],
+    fingering: {
+      right: [[1, 5], [1, 5], [1, 5], [1, 5]],
+      left: [[5, 1], [5, 1], [5, 1], [5, 1]],
+    },
+  },
+  {
+    id: "octave-alternating-hands",
+    interval: 12, // toutes les paires font une octave juste — vérifié note par note
+    family: "octaves",
+    title: "Octaves alternées entre les mains",
+    goal: "Travailler l'octave sans fatiguer une seule main",
+    instruction:
+      "Une main, puis l'autre. Chaque main a un temps de repos entre deux octaves — c'est ce qui permet de travailler longtemps sans se raidir.",
+    difficulty: "beginner",
+    // Chaque main joue quand l'autre se tait : deux motifs complémentaires.
+    supportedHands: ["right", "left", "both"],
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 52,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 1,
+    restBeats: 4,
+    patternByHand: {
+      right: [
+        [0, 7], { degrees: [], beats: 1 }, [1, 8], { degrees: [], beats: 1 },
+        [2, 9], { degrees: [], beats: 1 }, [1, 8], { degrees: [], beats: 1 },
+      ],
+      left: [
+        { degrees: [], beats: 1 }, [0, 7], { degrees: [], beats: 1 }, [1, 8],
+        { degrees: [], beats: 1 }, [2, 9], { degrees: [], beats: 1 }, [1, 8],
+      ],
+    },
+    fingering: {
+      right: [[1, 5], null, [1, 5], null, [1, 5], null, [1, 5], null],
+      left: [null, [5, 1], null, [5, 1], null, [5, 1], null, [5, 1]],
+    },
+  },
+  {
+    id: "octave-five-notes",
+    interval: 12, // toutes les paires font une octave juste — vérifié note par note
+    family: "octaves",
+    title: "Octaves sur cinq notes",
+    goal: "Déplacer l'octave sans la refermer entre deux",
+    instruction:
+      "Cinq octaves en montant, cinq en descendant. La main garde son écart : elle se déplace du poignet, elle ne se rouvre pas à chaque note.",
+    difficulty: "intermediate",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 54,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 4,
+    pattern: [
+      [0, 7], [1, 8], [2, 9], [3, 10], [4, 11], [3, 10], [2, 9], [1, 8],
+      [0, 7], [1, 8], [2, 9], [3, 10], [4, 11], [3, 10], [2, 9], [1, 8],
+    ],
+    fingering: {
+      right: [
+        [1, 5], [1, 5], [1, 5], [1, 5], [1, 5], [1, 5], [1, 5], [1, 5],
+        [1, 5], [1, 5], [1, 5], [1, 5], [1, 5], [1, 5], [1, 5], [1, 5],
+      ],
+      left: [
+        [5, 1], [5, 1], [5, 1], [5, 1], [5, 1], [5, 1], [5, 1], [5, 1],
+        [5, 1], [5, 1], [5, 1], [5, 1], [5, 1], [5, 1], [5, 1], [5, 1],
+      ],
+    },
+  },
+  {
+    id: "octave-staccato",
+    interval: 12, // toutes les paires font une octave juste — vérifié note par note
+    family: "octaves",
+    title: "Octaves piquées",
+    goal: "L'octave lâchée aussitôt jouée, par le poignet seul",
+    instruction:
+      "L'octave ne sonne qu'un huitième de temps. Le poignet rebondit, l'avant-bras ne pousse pas : c'est ce qui permet d'en jouer cent d'affilée.",
+    difficulty: "intermediate",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 56,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 4,
+    // Les octaves sur les degrés de l'accord et non de la gamme : le déplacement
+    // est plus large, et le rebond du poignet doit donc emmener la main.
+    pattern: [
+      { degrees: [0, 7], holdBeats: 0.125 }, { degrees: [2, 9], holdBeats: 0.125 },
+      { degrees: [4, 11], holdBeats: 0.125 }, { degrees: [2, 9], holdBeats: 0.125 },
+      { degrees: [0, 7], holdBeats: 0.125 }, { degrees: [2, 9], holdBeats: 0.125 },
+      { degrees: [4, 11], holdBeats: 0.125 }, { degrees: [2, 9], holdBeats: 0.125 },
+      { degrees: [0, 7], holdBeats: 0.125 }, { degrees: [2, 9], holdBeats: 0.125 },
+      { degrees: [4, 11], holdBeats: 0.125 }, { degrees: [2, 9], holdBeats: 0.125 },
+      { degrees: [0, 7], holdBeats: 0.125 }, { degrees: [2, 9], holdBeats: 0.125 },
+      { degrees: [4, 11], holdBeats: 0.125 }, { degrees: [2, 9], holdBeats: 0.125 },
+    ],
+    fingering: {
+      right: [
+        [1, 5], [1, 5], [1, 5], [1, 5], [1, 5], [1, 5], [1, 5], [1, 5],
+        [1, 5], [1, 5], [1, 5], [1, 5], [1, 5], [1, 5], [1, 5], [1, 5],
+      ],
+      left: [
+        [5, 1], [5, 1], [5, 1], [5, 1], [5, 1], [5, 1], [5, 1], [5, 1],
+        [5, 1], [5, 1], [5, 1], [5, 1], [5, 1], [5, 1], [5, 1], [5, 1],
+      ],
+    },
+  },
+  {
+    id: "octave-and-sixth",
+    family: "octaves",
+    title: "Octave et sixte alternées",
+    goal: "Ouvrir et refermer la main à chaque temps",
+    instruction:
+      "Octave, sixte, octave, sixte. La main ne reste jamais dans la même ouverture — et les deux notes doivent sonner ensemble dans les deux.",
+    difficulty: "intermediate",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 52,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 4,
+    pattern: [
+      [0, 7], [0, 5], [1, 8], [1, 6], [2, 9], [2, 7], [1, 8], [1, 6],
+      [0, 7], [0, 5], [1, 8], [1, 6], [2, 9], [2, 7], [1, 8], [1, 6],
+    ],
+    fingering: {
+      right: [
+        [1, 5], [1, 5], [1, 5], [1, 5], [1, 5], [1, 5], [1, 5], [1, 5],
+        [1, 5], [1, 5], [1, 5], [1, 5], [1, 5], [1, 5], [1, 5], [1, 5],
+      ],
+      left: [
+        [5, 1], [5, 1], [5, 1], [5, 1], [5, 1], [5, 1], [5, 1], [5, 1],
+        [5, 1], [5, 1], [5, 1], [5, 1], [5, 1], [5, 1], [5, 1], [5, 1],
+      ],
+    },
+  },
+  {
+    id: "octave-chromatic",
+    interval: 12, // toutes les paires font une octave juste — vérifié note par note
+    family: "octaves",
+    title: "Octaves chromatiques",
+    goal: "Le 5 sur les blanches, le 4 sur les noires — tout le sujet des octaves",
+    instruction:
+      "Sur les touches noires, c'est le quatrième doigt qui prend la note du haut, pas le cinquième. Ce changement est ce qui rend les octaves chromatiques jouables.",
+    difficulty: "advanced",
+    supportedHands: ["right", "left", "both"],
+    // Parallèle obligatoirement : un motif chromatique ne se met pas en miroir
+    // diatonique (§ 6, M1).
+    bothMode: "parallel",
+    supportedKeys: ["C"],
+    defaultTempo: 50,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 4,
+    // Le doigté 5-4 sur les noires est *la* raison pour laquelle les degrés
+    // altérés ont été ajoutés au générateur (M1) : sans eux, cet exercice — le
+    // plus utile de la famille — était impossible à écrire.
+    pattern: [
+      [0, 7], ["0#", "7#"], [1, 8], ["1#", "8#"], [2, 9], [3, 10],
+      ["3#", "10#"], [4, 11], ["4#", "11#"], [5, 12], ["5#", "12#"], [6, 13],
+      { degrees: [7, 14], beats: 2 },
+    ],
+    fingering: {
+      right: [
+        [1, 5], [1, 4], [1, 5], [1, 4], [1, 5], [1, 5],
+        [1, 4], [1, 5], [1, 4], [1, 5], [1, 4], [1, 5],
+        [1, 5],
+      ],
+      left: [
+        [5, 1], [4, 1], [5, 1], [4, 1], [5, 1], [5, 1],
+        [4, 1], [5, 1], [4, 1], [5, 1], [4, 1], [5, 1],
+        [5, 1],
+      ],
+    },
+  },
+  {
+    id: "octave-broken",
+    family: "octaves",
+    title: "Octaves brisées",
+    goal: "Alterner les deux notes de l'octave, sans refermer la main",
+    instruction:
+      "La note du bas, celle du haut, l'une après l'autre. La main reste ouverte tout du long : c'est le poignet qui bascule d'un côté puis de l'autre.",
+    difficulty: "advanced",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 54,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.25,
+    restBeats: 4,
+    // L'octave brisée est ce qui permet de survivre à un long passage d'octaves :
+    // le poignet bascule au lieu de porter tout le poids à chaque fois.
+    pattern: [
+      0, 7, 0, 7, 1, 8, 1, 8, 2, 9, 2, 9, 1, 8, 1, 8,
+      0, 7, 0, 7, 1, 8, 1, 8, 2, 9, 2, 9, 1, 8, 1, 8,
+    ],
+    fingering: {
+      right: [
+        1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5,
+        1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5,
+      ],
+      left: [
+        5, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1,
+        5, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1,
+      ],
+    },
+  },
+  {
+    id: "octave-contrary-motion",
+    interval: 12, // toutes les paires font une octave juste — vérifié note par note
+    family: "octaves",
+    title: "Octaves aux deux mains en sens opposé",
+    goal: "Deux octaves qui s'écartent, deux poignets à surveiller",
+    instruction:
+      "La droite monte, la gauche descend, chacune en octaves. Deux mains ouvertes à l'octave qui partent en sens contraire : garde le poignet bas des deux côtés.",
+    difficulty: "advanced",
+    // Les deux mains jouent des octaves qui s'écartent : la gauche descend sous
+    // sa tonique. `bothMode: "contrary"` ne le donnerait pas — il renverserait
+    // les deux degrés de l'octave et la détruirait.
+    supportedHands: ["right", "left", "both"],
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 50,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 4,
+    patternByHand: {
+      right: [
+        [0, 7], [1, 8], [2, 9], [1, 8],
+        [0, 7], [1, 8], [2, 9], [1, 8],
+        [0, 7], [1, 8], [2, 9], [1, 8],
+        [0, 7], [1, 8], [2, 9], [1, 8],
+      ],
+      left: [
+        [-7, 0], [-8, -1], [-9, -2], [-8, -1],
+        [-7, 0], [-8, -1], [-9, -2], [-8, -1],
+        [-7, 0], [-8, -1], [-9, -2], [-8, -1],
+        [-7, 0], [-8, -1], [-9, -2], [-8, -1],
+      ],
+    },
+    fingering: {
+      right: [
+        [1, 5], [1, 5], [1, 5], [1, 5],
+        [1, 5], [1, 5], [1, 5], [1, 5],
+        [1, 5], [1, 5], [1, 5], [1, 5],
+        [1, 5], [1, 5], [1, 5], [1, 5],
+      ],
+      left: [
+        [5, 1], [5, 1], [5, 1], [5, 1],
+        [5, 1], [5, 1], [5, 1], [5, 1],
+        [5, 1], [5, 1], [5, 1], [5, 1],
+        [5, 1], [5, 1], [5, 1], [5, 1],
+      ],
+    },
+  },
+  // ==========================================================================
+  //  Trilles — battements entre deux doigts voisins
+  //
+  //  Les trois niveaux Débutant isolent chacun **une** paire de doigts, dans
+  //  l'ordre où elles cèdent : 2-3 d'abord, 3-4 ensuite, 1-2 en dernier — le
+  //  pouce bat mal parce qu'il tourne au lieu de descendre.
+  // ==========================================================================
+  {
+    id: "trill-2-3",
+    family: "trills",
+    title: "Battement 2-3",
+    goal: "Deux doigts voisins qui alternent sans que la main bouge",
+    instruction:
+      "Sept battements, puis une croche de repos. Le poignet ne bouge pas d'un millimètre : ce sont les deux doigts, seuls.",
+    difficulty: "beginner",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 60,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 4,
+    pattern: [
+      1, 2, 1, 2, 1, 2, 1, { degrees: [], beats: 0.5 },
+      1, 2, 1, 2, 1, 2, 1, { degrees: [], beats: 0.5 },
+    ],
+    fingering: {
+      right: [2, 3, 2, 3, 2, 3, 2, null, 2, 3, 2, 3, 2, 3, 2, null],
+      left: [4, 3, 4, 3, 4, 3, 4, null, 4, 3, 4, 3, 4, 3, 4, null],
+    },
+  },
+  {
+    id: "trill-3-4",
+    family: "trills",
+    title: "Battement 3-4",
+    goal: "La paire de doigts qui bat le plus mal",
+    instruction:
+      "Le quatrième doigt n'a pas de tendon indépendant : il suivra le troisième si tu vas trop vite. Ralentis jusqu'à ce que les deux notes soient égales.",
+    difficulty: "beginner",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 54,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 4,
+    pattern: [
+      2, 3, 2, 3, 2, 3, 2, { degrees: [], beats: 0.5 },
+      2, 3, 2, 3, 2, 3, 2, { degrees: [], beats: 0.5 },
+    ],
+    fingering: {
+      right: [3, 4, 3, 4, 3, 4, 3, null, 3, 4, 3, 4, 3, 4, 3, null],
+      left: [3, 2, 3, 2, 3, 2, 3, null, 3, 2, 3, 2, 3, 2, 3, null],
+    },
+  },
+  {
+    id: "trill-1-2",
+    family: "trills",
+    title: "Battement 1-2",
+    goal: "Battre avec le pouce, qui descend au lieu de tourner",
+    instruction:
+      "Le pouce doit descendre droit sur sa touche, pas pivoter de côté. C'est ce pivot qui rend le battement du pouce inégal.",
+    difficulty: "beginner",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 56,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 4,
+    pattern: [
+      0, 1, 0, 1, 0, 1, 0, { degrees: [], beats: 0.5 },
+      0, 1, 0, 1, 0, 1, 0, { degrees: [], beats: 0.5 },
+    ],
+    fingering: {
+      right: [1, 2, 1, 2, 1, 2, 1, null, 1, 2, 1, 2, 1, 2, 1, null],
+      left: [5, 4, 5, 4, 5, 4, 5, null, 5, 4, 5, 4, 5, 4, 5, null],
+    },
+  },
+  {
+    id: "trill-measured-four",
+    family: "trills",
+    title: "Trille mesuré en quatre notes",
+    goal: "Compter le trille au lieu de l'improviser",
+    instruction:
+      "Quatre notes par temps, exactement. Un trille se travaille mesuré avant d'être libre — sinon il accélère et se bloque.",
+    difficulty: "intermediate",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 56,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.25,
+    restBeats: 4,
+    pattern: [
+      1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, { degrees: 1, beats: 1 },
+      1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, { degrees: 1, beats: 1 },
+    ],
+    fingering: {
+      right: [2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2],
+      left: [4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4],
+    },
+  },
+  {
+    id: "trill-mordent",
+    family: "trills",
+    title: "Mordant et note piquée",
+    goal: "Deux notes très brèves collées à la note principale",
+    instruction:
+      "Deux notes rapides, puis la note tenue, puis une note piquée. Le mordant se joue *sur* le temps, pas avant : la note principale ne doit pas arriver en retard.",
+    difficulty: "intermediate",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 56,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 4,
+    // Le premier ornement du catalogue qui n'est pas un battement régulier : les
+    // deux notes du mordant durent un huitième de temps, le pas le plus court que
+    // ce mode accepte.
+    pattern: [
+      { degrees: 2, beats: 0.125 }, { degrees: 1, beats: 0.125 }, { degrees: 2, beats: 0.75 },
+      { degrees: 2, beats: 1, holdBeats: 0.25 },
+      { degrees: 3, beats: 0.125 }, { degrees: 2, beats: 0.125 }, { degrees: 3, beats: 0.75 },
+      { degrees: 3, beats: 1, holdBeats: 0.25 },
+      { degrees: 2, beats: 0.125 }, { degrees: 1, beats: 0.125 }, { degrees: 2, beats: 0.75 },
+      { degrees: 2, beats: 1, holdBeats: 0.25 },
+      { degrees: 3, beats: 0.125 }, { degrees: 2, beats: 0.125 }, { degrees: 3, beats: 0.75 },
+      { degrees: 3, beats: 1, holdBeats: 0.25 },
+    ],
+    fingering: {
+      right: [3, 2, 3, 3, 4, 3, 4, 4, 3, 2, 3, 3, 4, 3, 4, 4],
+      left: [3, 4, 3, 3, 2, 3, 2, 2, 3, 4, 3, 3, 2, 3, 2, 2],
+    },
+  },
+  {
+    id: "trill-with-held-fifth",
+    family: "trills",
+    title: "Trille avec le 5 qui tient",
+    goal: "Battre pendant qu'un autre doigt de la même main tient",
+    instruction:
+      "Le doigt du haut tient toute la mesure, les deux doigts du milieu battent. Si la tenue se relève, c'est qu'elle aide le battement — recommence plus lentement.",
+    difficulty: "intermediate",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 52,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.25,
+    restBeats: 4,
+    // D'après Pischna : le trille sous une tenue. C'est ce qui relie cette famille
+    // au Déliement — sauf qu'ici les doigts libres battent au lieu de parcourir.
+    pattern: [
+      { degrees: [1, 4], holdBeats: [0.25, 4] },
+      2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2,
+      { degrees: [2, 4], holdBeats: [0.25, 4] },
+      3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3,
+    ],
+    fingering: {
+      right: [
+        [2, 5], 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3,
+        [3, 5], 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4,
+      ],
+      left: [
+        [4, 1], 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3,
+        [3, 1], 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2,
+      ],
+    },
+  },
+  {
+    id: "trill-4-5",
+    family: "trills",
+    title: "Trille 4-5 en doubles-croches",
+    goal: "Les deux doigts les plus faibles, en battement rapide",
+    instruction:
+      "Le trille le plus dur du clavier. Ne cherche pas la vitesse : cherche deux notes de même force, et la vitesse viendra d'elle-même.",
+    difficulty: "advanced",
+    // Le 4 et le 5 d'une main ne sont pas sur les mêmes degrés que ceux de
+    // l'autre : à droite ils sont en haut de la position, à gauche en bas. Sans
+    // deux motifs, une des deux mains travaillerait son pouce et son index.
+    supportedHands: ["right", "left", "both"],
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 50,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.25,
+    restBeats: 4,
+    patternByHand: {
+      right: [
+        3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4,
+        3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4,
+      ],
+      left: [
+        1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0,
+        1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0,
+      ],
+    },
+    fingering: {
+      right: [
+        4, 5, 4, 5, 4, 5, 4, 5, 4, 5, 4, 5, 4, 5, 4, 5,
+        4, 5, 4, 5, 4, 5, 4, 5, 4, 5, 4, 5, 4, 5, 4, 5,
+      ],
+      left: [
+        4, 5, 4, 5, 4, 5, 4, 5, 4, 5, 4, 5, 4, 5, 4, 5,
+        4, 5, 4, 5, 4, 5, 4, 5, 4, 5, 4, 5, 4, 5, 4, 5,
+      ],
+    },
+  },
+  {
+    id: "trill-chromatic",
+    family: "trills",
+    title: "Trille chromatique",
+    goal: "Battre entre une blanche et une noire, à un demi-ton",
+    instruction:
+      "Un demi-ton seulement, et l'une des deux touches est en hauteur. Le doigt sur la noire descend plus loin — c'est lui qui va être en retard.",
+    difficulty: "advanced",
+    supportedHands: ["right", "left", "both"],
+    // Parallèle : un motif altéré ne se met pas en miroir diatonique (§ 6, M1).
+    bothMode: "parallel",
+    supportedKeys: ["C"],
+    defaultTempo: 52,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.25,
+    restBeats: 4,
+    // Mi contre ré♯, puis la contre sol♯ : dans les deux cas une blanche et une
+    // noire à un demi-ton. La différence de hauteur des deux touches est la
+    // vraie difficulté, pas l'intervalle.
+    pattern: [
+      2, "1#", 2, "1#", 2, "1#", 2, "1#", 2, "1#", 2, "1#", 2, "1#", 2, "1#",
+      5, "4#", 5, "4#", 5, "4#", 5, "4#", 5, "4#", 5, "4#", 5, "4#", 5, "4#",
+    ],
+    fingering: {
+      right: [
+        3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2,
+        3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2,
+      ],
+      left: [
+        2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3,
+        2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3,
+      ],
+    },
+  },
+  {
+    id: "trill-gruppetto-chain",
+    family: "trills",
+    title: "Gruppetto enchaîné",
+    goal: "Un groupe de quatre notes sur chaque degré, sans rupture entre eux",
+    instruction:
+      "Quatre notes par temps, un tour complet autour de chaque note. Le dernier doigt d'un groupe et le premier du suivant ne doivent pas se marcher dessus.",
+    difficulty: "advanced",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 52,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.25,
+    restBeats: 4,
+    // Le gruppetto est l'ornement le plus fréquent du répertoire classique après
+    // le trille, et il enchaîne : c'est le passage d'un groupe au suivant qu'on
+    // travaille ici, pas le groupe lui-même.
+    pattern: [
+      2, 1, 0, 1, 3, 2, 1, 2, 4, 3, 2, 3, 3, 2, 1, 2,
+      2, 1, 0, 1, 3, 2, 1, 2, 4, 3, 2, 3, 3, 2, 1, 2,
+    ],
+    fingering: {
+      right: [
+        3, 2, 1, 2, 4, 3, 2, 3, 5, 4, 3, 4, 4, 3, 2, 3,
+        3, 2, 1, 2, 4, 3, 2, 3, 5, 4, 3, 4, 4, 3, 2, 3,
+      ],
+      left: [
+        3, 4, 5, 4, 2, 3, 4, 3, 1, 2, 3, 2, 2, 3, 4, 3,
+        3, 4, 5, 4, 2, 3, 4, 3, 1, 2, 3, 2, 2, 3, 4, 3,
+      ],
+    },
+  },
+  // ==========================================================================
+  //  Extension — écarter, et passer un doigt par-dessus
+  //
+  //  La **substitution** — changer de doigt sur une touche qui reste enfoncée —
+  //  était prévue dans cette famille et n'y est pas. Le format ne sait pas
+  //  l'écrire : une note porte un doigt, pas deux, et la notater en deux notes
+  //  dirait le contraire de ce qu'il faut faire (ne pas relâcher). Plutôt que de
+  //  mentir dans le rouleau, elle est laissée de côté — voir
+  //  plan/exercices-catalogue.md § 8.
+  // ==========================================================================
+  {
+    id: "extension-sixth",
+    family: "extension",
+    title: "Écart de sixte, 1 et 5",
+    goal: "Atteindre la sixte sans tirer sur le poignet",
+    instruction:
+      "Le pouce, puis le petit doigt une sixte plus loin. C'est la paume qui s'ouvre, pas le bras qui tire — le poignet reste droit.",
+    difficulty: "beginner",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 58,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 4,
+    // Les deux notes jouées **l'une après l'autre** et non ensemble : ici c'est
+    // l'atteinte qu'on travaille, pas la simultanéité — celle-là est le sujet des
+    // Doubles notes.
+    pattern: [
+      0, 5, 0, 5, 0, 5, 0, { degrees: [], beats: 0.5 },
+      0, 5, 0, 5, 0, 5, 0, { degrees: [], beats: 0.5 },
+    ],
+    fingering: {
+      right: [1, 5, 1, 5, 1, 5, 1, null, 1, 5, 1, 5, 1, 5, 1, null],
+      left: [5, 1, 5, 1, 5, 1, 5, null, 5, 1, 5, 1, 5, 1, 5, null],
+    },
+  },
+  {
+    id: "extension-two-over-thumb",
+    family: "extension",
+    title: "Passer le 2 par-dessus le pouce",
+    goal: "L'inverse du passage du pouce : c'est le doigt qui enjambe",
+    instruction:
+      "Le pouce joue, puis l'index passe par-dessus lui pour aller plus loin. Le pouce reste en place jusqu'au dernier moment.",
+    difficulty: "beginner",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 54,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 4,
+    pattern: [
+      2, 1, 2, 1, 2, 1, 2, { degrees: [], beats: 0.5 },
+      2, 1, 2, 1, 2, 1, 2, { degrees: [], beats: 0.5 },
+    ],
+    fingering: {
+      right: [1, 2, 1, 2, 1, 2, 1, null, 1, 2, 1, 2, 1, 2, 1, null],
+      left: [1, 2, 1, 2, 1, 2, 1, null, 1, 2, 1, 2, 1, 2, 1, null],
+    },
+  },
+  {
+    id: "extension-five-over-sixth",
+    family: "extension",
+    title: "Cinq doigts sur une sixte",
+    goal: "La même position de cinq doigts, élargie d'un degré",
+    instruction:
+      "Cinq doigts, mais une sixte au lieu d'une quinte : un degré est sauté. Cherche lequel — c'est là que la main doit s'ouvrir.",
+    difficulty: "beginner",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 56,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 4,
+    // Le troisième degré est sauté : la main couvre une sixte avec les mêmes cinq
+    // doigts, et c'est entre le 3 et le 4 que l'écart se fait.
+    pattern: [
+      0, 1, 2, 4, 5, 4, 2, 1,
+      0, 1, 2, 4, 5, 4, 2, 1,
+    ],
+    fingering: {
+      right: [1, 2, 3, 4, 5, 4, 3, 2, 1, 2, 3, 4, 5, 4, 3, 2],
+      left: [5, 4, 3, 2, 1, 2, 3, 4, 5, 4, 3, 2, 1, 2, 3, 4],
+    },
+  },
+  {
+    id: "extension-seventh",
+    family: "extension",
+    title: "Écart de septième",
+    goal: "Un degré de plus que la sixte, sans forcer",
+    instruction:
+      "Si la main tire, arrête-toi à la sixte : une extension travaillée en force ne s'élargit pas, elle se blesse.",
+    difficulty: "intermediate",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 54,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 4,
+    pattern: [
+      0, 6, 0, 6, 0, 6, 0, { degrees: [], beats: 0.5 },
+      0, 6, 0, 6, 0, 6, 0, { degrees: [], beats: 0.5 },
+    ],
+    fingering: {
+      right: [1, 5, 1, 5, 1, 5, 1, null, 1, 5, 1, 5, 1, 5, 1, null],
+      left: [5, 1, 5, 1, 5, 1, 5, null, 5, 1, 5, 1, 5, 1, 5, null],
+    },
+  },
+  {
+    id: "extension-three-over-thumb",
+    family: "extension",
+    title: "Le 3 par-dessus le pouce",
+    goal: "Un enjambement plus large que celui de l'index",
+    instruction:
+      "Le majeur passe par-dessus le pouce et va chercher une note plus loin que l'index ne l'aurait fait. La main pivote légèrement, le poignet ne monte pas.",
+    difficulty: "intermediate",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 52,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 4,
+    pattern: [
+      3, 1, 3, 1, 3, 1, 3, { degrees: [], beats: 0.5 },
+      3, 1, 3, 1, 3, 1, 3, { degrees: [], beats: 0.5 },
+    ],
+    fingering: {
+      right: [1, 3, 1, 3, 1, 3, 1, null, 1, 3, 1, 3, 1, 3, 1, null],
+      left: [1, 3, 1, 3, 1, 3, 1, null, 1, 3, 1, 3, 1, 3, 1, null],
+    },
+  },
+  {
+    id: "extension-five-over-octave",
+    family: "extension",
+    title: "Cinq doigts sur une octave",
+    goal: "La position la plus ouverte que cinq doigts puissent tenir",
+    instruction:
+      "Cinq doigts pour une octave : chaque doigt saute un degré ou deux. La paume est ouverte au maximum, et doit le rester du début à la fin.",
+    difficulty: "intermediate",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 52,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 4,
+    // Do-mi-sol-la-do : l'accord de sixte ajoutée, qui se trouve être la seule
+    // position de cinq doigts couvrant une octave sans écart impossible entre
+    // deux doigts voisins.
+    pattern: [
+      0, 2, 4, 5, 7, 5, 4, 2,
+      0, 2, 4, 5, 7, 5, 4, 2,
+    ],
+    fingering: {
+      right: [1, 2, 3, 4, 5, 4, 3, 2, 1, 2, 3, 4, 5, 4, 3, 2],
+      left: [5, 4, 3, 2, 1, 2, 3, 4, 5, 4, 3, 2, 1, 2, 3, 4],
+    },
+  },
+  {
+    id: "extension-octave-with-hold",
+    family: "extension",
+    title: "Écart d'octave, pouce tenu",
+    goal: "Garder l'octave ouverte pendant que les doigts du haut jouent",
+    instruction:
+      "Le pouce tient sa touche toute la mesure, une octave plus bas. Les deux doigts du haut jouent par-dessus, et l'écart ne doit pas se refermer.",
+    difficulty: "advanced",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 50,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 4,
+    // La tenue transforme l'extension en travail continu : la main ne peut plus
+    // se refermer entre deux notes, ce que tous les exercices précédents lui
+    // permettaient.
+    pattern: [
+      { degrees: [0, 7], holdBeats: [4, 0.5] },
+      5, 7, 5, 7, 5, 7, 5,
+      { degrees: [0, 7], holdBeats: [4, 0.5] },
+      5, 7, 5, 7, 5, 7, 5,
+    ],
+    fingering: {
+      right: [[1, 5], 4, 5, 4, 5, 4, 5, 4, [1, 5], 4, 5, 4, 5, 4, 5, 4],
+      left: [[5, 1], 2, 1, 2, 1, 2, 1, 2, [5, 1], 2, 1, 2, 1, 2, 1, 2],
+    },
+  },
+  {
+    id: "extension-open-and-close",
+    family: "extension",
+    title: "Ouvrir et refermer",
+    goal: "Passer de la quinte à l'octave et revenir, sans à-coup",
+    instruction:
+      "Quinte, octave, quinte, octave. Ce n'est pas l'écart le plus grand qui compte ici, c'est le passage de l'un à l'autre.",
+    difficulty: "advanced",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 54,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 4,
+    pattern: [
+      0, 4, 0, 7, 0, 4, 0, 7,
+      0, 4, 0, 7, 0, 4, 0, 7,
+    ],
+    fingering: {
+      right: [1, 4, 1, 5, 1, 4, 1, 5, 1, 4, 1, 5, 1, 4, 1, 5],
+      left: [5, 2, 5, 1, 5, 2, 5, 1, 5, 2, 5, 1, 5, 2, 5, 1],
+    },
+  },
+  {
+    id: "extension-contrary-motion",
+    family: "extension",
+    title: "Extension en mouvement contraire",
+    goal: "Deux mains ouvertes à l'octave, qui s'écartent",
+    instruction:
+      "Les deux mains, ouvertes au maximum, partent en sens opposé. Surveille celle qui se referme sans que tu t'en aperçoives.",
+    difficulty: "advanced",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "contrary",
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 50,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 4,
+    pattern: [
+      0, 2, 4, 5, 7, 5, 4, 2,
+      0, 2, 4, 5, 7, 5, 4, 2,
+    ],
+    fingering: {
+      // Mouvement contraire : même doigté écrit pour les deux mains, avant miroir.
+      right: [1, 2, 3, 4, 5, 4, 3, 2, 1, 2, 3, 4, 5, 4, 3, 2],
+      left: [1, 2, 3, 4, 5, 4, 3, 2, 1, 2, 3, 4, 5, 4, 3, 2],
     },
   },
   // ==========================================================================

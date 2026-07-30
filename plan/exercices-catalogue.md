@@ -1,13 +1,13 @@
 # Catalogue d'exercices techniques — un vrai programme de professeur
 
-> Statut : **vagues 0, 1 et 2 faites — 63 exercices sur 99** (30/07/2026).
+> Statut : **complet — 99 exercices, 11 familles, 3 niveaux, 3 exercices** (30/07/2026).
 > Ce fichier couvre le **contenu** du mode Exercices ([03](03-technique-doigts.md)),
 > pas son interface : l'écran, le rouleau, le décompte, le métronome, le bilan
 > et la validation MIDI sont en place depuis le 26/07/2026 et ne changent pas.
 > Ce qui manquait, c'est ce qu'il y a **dedans** : huit exercices au départ,
-> soixante-trois aujourd'hui, quatre-vingt-dix-neuf visés. Sept familles sur
-> onze sont complètes — trois niveaux, trois exercices chacun. Restent les
-> quatre de la vague 3 : Doubles notes, Octaves, Trilles, Extension.
+> quatre-vingt-dix-neuf aujourd'hui. Les onze familles ont leurs trois niveaux
+> et leurs trois exercices, plus aucune n'est annoncée « Bientôt », et
+> `tools/verifier-catalogue.js` les vérifie toutes à chaque exécution.
 
 [Retour à la checklist générale](README.md) ·
 [Feature 03](03-technique-doigts.md) ·
@@ -32,27 +32,33 @@ Quatre exigences, qui se suivent dans tout ce document :
 | **E3** | Le doigté chiffré sur les notes | Il existe déjà, mais il disparaît sur les notes courtes (§ 7) |
 | **E4** | Autant de catégories qu'il est important d'en travailler | 11 familles retenues, 4 écartées avec leur raison (§ 4) |
 
-## 2. Ce qui existe déjà — l'inventaire honnête
+## 2. Le point de départ — l'inventaire honnête
 
-`src/exercises/catalog.js` contient **huit** exercices, et l'écran de réglages
-sait déjà les présenter : famille → niveau → exercice, un niveau vide restant
-visible mais désactivé. Le manque est du **contenu**, pas du code d'interface.
+Au 30/07/2026 au matin, `src/exercises/catalog.js` contenait **huit**
+exercices. L'écran de réglages, lui, savait déjà les présenter : famille →
+niveau → exercice, un niveau vide restant visible mais désactivé. Le manque
+était du **contenu**, pas du code d'interface — et c'est resté vrai jusqu'au
+bout : aucun écran n'a été refait pour passer de huit à quatre-vingt-dix-neuf.
 
-| Famille | Débutant | Intermédiaire | Difficile | Total |
-| --- | --- | --- | --- | --- |
-| Déliement | 1 | 1 | 1 | 3 |
-| Égalité | 0 | 0 | 0 | **0** |
-| Notes répétées | 0 | 0 | 0 | **0** |
-| Gammes | 1 | 1 | 1 | 3 |
-| Arpèges | 1 | 0 | 0 | 1 |
-| Accords | 1 | 0 | 0 | 1 |
-| Coordination | 0 | 0 | 0 | **0** |
-| Doubles notes, Octaves, Trilles, Extension | 0 | 0 | 0 | **0** |
+| Famille | Débutant | Intermédiaire | Difficile | Au départ | Aujourd'hui |
+| --- | --- | --- | --- | --- | --- |
+| Déliement | 1 | 1 | 1 | 3 | **9** |
+| Égalité | 0 | 0 | 0 | **0** | **9** |
+| Notes répétées | 0 | 0 | 0 | **0** | **9** |
+| Gammes | 1 | 1 | 1 | 3 | **9** |
+| Arpèges | 1 | 0 | 0 | 1 | **9** |
+| Accords | 1 | 0 | 0 | 1 | **9** |
+| Doubles notes | — | — | — | — | **9** |
+| Octaves | — | — | — | — | **9** |
+| Trilles | — | — | — | — | **9** |
+| Extension | — | — | — | — | **9** |
+| Coordination | 0 | 0 | 0 | **0** | **9** |
 
-Deux familles sont déclarées `available` **sans contenir un seul exercice** —
-`evenness` et `repeated-notes`. `availableFamilies()` les cache donc, et
-l'utilisateur ne les voit jamais : elles sont mortes dans le catalogue depuis
-qu'elles y ont été écrites. C'est exactement le trou que E2 comble.
+Deux familles étaient déclarées `available` **sans contenir un seul
+exercice** — `evenness` et `repeated-notes`. `availableFamilies()` les cachait
+donc, et l'utilisateur ne les voyait jamais : elles étaient mortes dans le
+catalogue depuis le jour où elles y avaient été écrites. C'est exactement le
+trou que E2 a comblé.
 
 ## 3. Ce que « un vrai professeur » veut dire
 
@@ -81,21 +87,24 @@ objectif que ses huit voisins de famille ne portent pas.
 
 ### Onze familles
 
+L'ordre est celui d'un cours : les doigts d'abord, puis les figures, puis ce
+qui demande une main déjà formée, la coordination des deux mains en dernier.
+
 | # | Famille | `id` | Ce qui se travaille | État |
 | --- | --- | --- | --- | --- |
-| 1 | **Déliement** | `finger-independence` | Un doigt tient, les autres jouent | 3/9 |
-| 2 | **Égalité** | `evenness` | Même son, même durée ; accents déplacés | 0/9 |
-| 3 | **Notes répétées** | `repeated-notes` | Changer de doigt sur une même note, poignet libre | 0/9 |
-| 4 | **Gammes** | `scales` | Passage du pouce sans trou ni accent | 3/9 |
-| 5 | **Arpèges** | `arpeggios` | Ouvrir la main sur l'accord et la garder ouverte | 1/9 |
-| 6 | **Accords** | `chords` | Plusieurs doigts au même instant ; renversements | 1/9 |
-| 7 | **Doubles notes** | `double-notes` | Tierces et sixtes : deux voix qui partent et s'arrêtent ensemble | 0/9 |
-| 8 | **Octaves** | `octaves` | Le poignet, pas le bras — préparé par la sixte et la septième | 0/9 |
-| 9 | **Trilles et ornements** | `trills` | Battements rapides entre deux doigts voisins | 0/9 |
-| 10 | **Extension et substitution** | `extension` | Écarter, passer un doigt par-dessus, changer de doigt sur une note tenue | 0/9 |
-| 11 | **Coordination des mains** | `coordination` | Deux rythmes, deux articulations, deux accentuations à la fois | 0/9 |
+| 1 | **Déliement** | `finger-independence` | Un doigt tient, les autres jouent | 9/9 |
+| 2 | **Égalité** | `evenness` | Même son, même durée ; accents déplacés | 9/9 |
+| 3 | **Notes répétées** | `repeated-notes` | Changer de doigt sur une même note, poignet libre | 9/9 |
+| 4 | **Gammes** | `scales` | Passage du pouce sans trou ni accent | 9/9 |
+| 5 | **Arpèges** | `arpeggios` | Ouvrir la main sur l'accord et la garder ouverte | 9/9 |
+| 6 | **Accords** | `chords` | Plusieurs doigts au même instant ; renversements | 9/9 |
+| 7 | **Doubles notes** | `double-notes` | Tierces et sixtes : deux voix qui partent et s'arrêtent ensemble | 9/9 |
+| 8 | **Octaves** | `octaves` | Le poignet, pas le bras — préparé par la sixte et la septième | 9/9 |
+| 9 | **Trilles** | `trills` | Battements rapides entre deux doigts voisins | 9/9 |
+| 10 | **Extension** | `extension` | Écarter la main, passer un doigt par-dessus le pouce | 9/9 |
+| 11 | **Coordination des mains** | `coordination` | Deux rythmes, deux articulations, deux accentuations à la fois | 9/9 |
 
-**99 exercices** au total. Il en existe 8 : il en reste **91** à écrire.
+**99 exercices**, tous écrits et tous vérifiés.
 
 ### Les quatre écartées, et la raison
 
@@ -397,35 +406,70 @@ ouvert avant d'ouvrir autre chose : **45 exercices, 5 familles complètes sur
   façon : la droite finit sa note à 1,96 temps, la gauche entre à 2,00 — le
   passage est réellement sans trou ni chevauchement, ce que la consigne promet.
 
-### Vague 3 — les quatre familles nouvelles (36 exercices)
+### Vague 3 — les quatre familles nouvelles — **faite le 30/07/2026**
 
-- [ ] **7. Doubles notes** — 0/9 — *le niveau Difficile dépend de M1*
-  - [ ] Débutant : Tierces sur cinq notes · Sixtes sur cinq notes ·
+- [x] **7. Doubles notes** — **9/9**
+  - [x] Débutant : Tierces sur cinq notes · Sixtes sur cinq notes ·
         Tierces et sixtes alternées
-  - [ ] Intermédiaire : Gamme en tierces sur une octave · Gamme en sixtes ·
-        Tierces legato 1-3 / 2-4
-  - [ ] Difficile : Tierces sur deux octaves · Tierces chromatiques (M1) ·
-        Doubles notes aux deux mains
-- [ ] **8. Octaves** — 0/9 — *le niveau Difficile dépend de M1*
-  - [ ] Débutant : Sixte puis septième, poignet souple · L'octave posée, tenue ·
+  - [x] Intermédiaire : Gamme en tierces sur une octave (1-3 / 2-4 en
+        alternance) · Gamme en sixtes · Tierces brisées
+  - [x] Difficile : Tierces sur deux octaves · Tierces chromatiques (M1) ·
+        Tierces à droite, sixtes à gauche (M2)
+
+  « Tierces legato 1-3 / 2-4 » a été fondu dans « Gamme en tierces sur une
+  octave », dont c'est déjà le doigté : en faire un exercice de plus n'aurait
+  changé que l'articulation. Remplacé par **Tierces brisées** — la note du bas,
+  celle du haut, puis les deux : le brisé sert de contrôle au plaqué, comme
+  l'accord plaqué sert de contrôle à l'arpège.
+- [x] **8. Octaves** — **9/9**
+  - [x] Débutant : Sixte puis septième, poignet souple · L'octave posée, tenue ·
         Octaves alternées entre les mains
-  - [ ] Intermédiaire : Octaves sur cinq notes · Octaves piquées ·
+  - [x] Intermédiaire : Octaves sur cinq notes · Octaves piquées ·
         Octave et sixte alternées
-  - [ ] Difficile : Octaves chromatiques, doigté 5-4 sur les noires (M1) ·
-        Octaves brisées · Octaves aux deux mains en contraire
-- [ ] **9. Trilles et ornements** — 0/9 — *le niveau Difficile dépend de M1*
-  - [ ] Débutant : Battement 2-3 · Battement 3-4 · Battement 1-2
-  - [ ] Intermédiaire : Trille mesuré en quatre notes · Mordant et note
-        piquée · Trille avec le 5 qui tient
-  - [ ] Difficile : Trille 4-5 en doubles-croches · Trille chromatique (M1) ·
-        Gruppetto enchaîné dans une gamme
-- [ ] **10. Extension et substitution** — 0/9
-  - [ ] Débutant : Écart de sixte 1-5 · Passer le 2 par-dessus le 1 ·
-        Ouvrir 1-2-3-4-5 sur une sixte
-  - [ ] Intermédiaire : Substitution 5 → 4 sur une note tenue ·
-        Écart de septième · Le 3 par-dessus le pouce
-  - [ ] Difficile : Écart d'octave 1-5 avec tenues · Substitution en chaîne
-        5-4-3 · Extension en mouvement contraire
+  - [x] Difficile : Octaves chromatiques, doigté 5-4 sur les noires (M1) ·
+        Octaves brisées · Octaves aux deux mains en sens opposé (M2)
+
+  Le niveau Débutant ne joue **pas** d'octaves, comme le § 5 l'annonçait : il
+  joue des sixtes puis des septièmes. C'est la seule famille où le mot
+  « Débutant » désigne la préparation du geste et non le geste lui-même.
+
+  Les octaves chromatiques sont **la** raison pour laquelle M1 a été écrit : le
+  doigté 5 sur les blanches, 4 sur les noires est tout le sujet de l'exercice,
+  et sans degrés altérés il était impossible à noter.
+- [x] **9. Trilles et ornements** — **9/9**
+  - [x] Débutant : Battement 2-3 · Battement 3-4 · Battement 1-2 — dans l'ordre
+        où les paires cèdent, le pouce en dernier parce qu'il tourne au lieu de
+        descendre
+  - [x] Intermédiaire : Trille mesuré en quatre notes · Mordant et note
+        piquée · Trille avec le 5 qui tient (Pischna)
+  - [x] Difficile : Trille 4-5 en doubles-croches (M2) · Trille chromatique
+        (M1) · Gruppetto enchaîné
+
+  **Le trille 4-5 a demandé M2**, et pour une raison qui ne s'était pas encore
+  présentée : le 4 et le 5 ne sont pas sur les mêmes degrés dans les deux mains
+  — en haut de la position à droite, en bas à gauche. Avec un motif commun, une
+  des deux mains aurait travaillé son pouce et son index.
+- [x] **10. Extension** — **9/9**, et la substitution a été abandonnée
+  - [x] Débutant : Écart de sixte 1 et 5 · Passer le 2 par-dessus le pouce ·
+        Cinq doigts sur une sixte
+  - [x] Intermédiaire : Écart de septième · Le 3 par-dessus le pouce ·
+        Cinq doigts sur une octave
+  - [x] Difficile : Écart d'octave, pouce tenu · Ouvrir et refermer ·
+        Extension en mouvement contraire
+
+  **La substitution — changer de doigt sur une touche qui reste enfoncée — n'est
+  pas dans le catalogue, et ne peut pas y être.** Le format ne sait pas
+  l'écrire : une note porte *un* doigt, pas deux. La noter en deux notes dirait
+  exactement le contraire de ce qu'il faut faire — ne pas relâcher —, et le
+  rouleau montrerait deux attaques là où il n'y en a qu'une. Plutôt que de
+  mentir dans l'affichage, elle est laissée de côté ; le nom de la famille et
+  son but ont été corrigés en conséquence (« Extension » et non « Extension et
+  substitution »).
+
+  C'est la seule chose que la demande d'origine impliquait et que ce catalogue
+  ne fournit pas. La rendre possible demanderait un doigté par *segment* de
+  note, ce qui touche le rouleau, le générateur et la validation MIDI — un
+  chantier à part, pas une ligne de données.
 
 ### Après les trois vagues
 
@@ -501,24 +545,65 @@ plutôt que prétendre l'avoir vérifié :
   par rien dans l'application, la validation MIDI ne regardant que les
   hauteurs et les départs.
 
-## 10. Décisions à trancher
+## 9 bis. Ce qui reste vrai après les 99 exercices
 
-1. **Les tonalités.** `KEYS` déclare Do, Sol et Fa. Chaque exercice dit dans
-   lesquelles son doigté a été vérifié (`supportedKeys`), et une gamme ne se
-   doigte pas pareil en Fa (si♭ sous le 4) — d'où `fingeringByKey`. Question
-   ouverte : les 90 nouveaux exercices s'écrivent-ils d'emblée dans les trois
-   tons, ou en Do seulement, quitte à ouvrir Sol et Fa ensuite ?
-   **Proposition :** en **Do seulement**, sauf pour les familles où le ton
-   *est* le sujet (Gammes, Accords niveau Difficile). Écrire 91 exercices × 3
-   tons, c'est 270 doigtés à vérifier un par un, et c'est le reproche fait à
-   Hanon au § 3.
+Trois choses que ce catalogue **ne** fait **pas**, et qu'il valait mieux écrire
+que laisser croire :
+
+1. **Aucun doigté n'a été essayé au clavier.** Le harnais vérifie qu'un doigté
+   est *cohérent* — bonne longueur, doigts de 1 à 5, bon sens dans un accord —,
+   pas qu'il est *jouable*. Un 4 sur une touche noire suivi d'un 5 sur la
+   blanche voisine passe ou ne passe pas selon la main. Les doigtés dont je
+   n'étais pas sûr ont été restreints plutôt qu'inventés : la gamme chromatique
+   est main droite seulement, et les tierces chromatiques portent un
+   commentaire disant que leur doigté suit le principe blanc/noir des traités et
+   reste à essayer.
+2. **L'égalité, l'articulation et le relâchement commun ne sont pas mesurés.**
+   La validation MIDI regarde les hauteurs et les départs. Un piqué réussi et
+   une note écourtée se ressemblent ; deux voix qui se relâchent ensemble et
+   deux voix qui se relâchent à un cheveu près, aussi. C'est pour cela que les
+   consignes de ces exercices disent *où écouter* : à défaut de mesure, on donne
+   un critère.
+3. **La substitution manque, et manquera jusqu'à un chantier à part.** Voir la
+   famille Extension au § 8.
+
+En revanche, ce que le harnais **a** attrapé mérite d'être noté, parce qu'aucune
+relecture ne l'aurait vu :
+
+- une paire de tierces chromatiques écrite `["5#", "7b"]` au lieu de
+  `["5#", "7#"]` — la♯ et si, une seconde mineure au milieu de douze tierces
+  correctes. C'est ce qui a fait ajouter le champ `interval`, qui compare
+  l'écart de **chaque** paire produite à celui que l'exercice déclare ; le
+  contrôle a été testé en réintroduisant la faute exprès ;
+- une série de gamme sur trois octaves qui ne retombait pas sur un premier
+  temps — quarante-deux croches font vingt et un temps, et la tenue finale
+  devait durer trois temps, pas deux ;
+- son propre plafond d'ambitus, trop prudent de douze demi-tons ;
+- et sa propre règle de doigté d'accord, fausse en mouvement contraire.
+
+Deux fois sur quatre, c'est le harnais qui avait tort. Un contrôle qui se trompe
+sur du code correct se corrige — il ne se contourne pas.
+
+## 10. Décisions tranchées
+
+1. ~~**Les tonalités.**~~ **Tranché : au cas par cas, et non par une règle.**
+   Un exercice déclare les tons dans lesquels son doigté a réellement été
+   vérifié. En pratique : les positions fixes prennent les trois tons (le
+   doigté n'y dépend pas du ton), les gammes et arpèges à doigté propre n'en
+   prennent qu'un, et les motifs altérés se limitent aux tons où l'altération
+   tombe bien sur une touche noire — « Une touche noire sous le 4 » exclut Fa
+   parce que le degré haussé y donnerait un si naturel, une blanche, et
+   l'exercice n'aurait plus d'objet. `fingeringByKey` ne surcharge que ce qui
+   change vraiment : en Fa, seule la main droite des gammes.
 2. **Les mains.** Faut-il que les 99 exercices proposent les trois modes
    (droite, gauche, les deux) ? **Proposition : non.** `supportedHands` existe
    pour cela, et un exercice de coordination n'a aucun sens à une main.
-3. **La famille `rhythm`.** Retirée au § 4. Si le retrait est refusé, il
-   faudra lui écrire ses 9 exercices — et accepter qu'ils ne soient jamais
-   jugés, contrairement à ceux de 05.
-4. **Le nombre de répétitions par défaut.** Les huit exercices actuels sont
-   tous à 4. Une famille comme Trilles gagnerait à en avoir plus (le trille se
-   travaille par séries longues), Accords moins. À décider exercice par
-   exercice plutôt que par une règle générale.
+3. ~~**La famille `rhythm`.**~~ **Retirée** (§ 4). Ce qui restait utile — le
+   rythme pointé, le contretemps, les groupes irréguliers — vit dans les autres
+   familles comme variante d'un geste : la gamme en rythme pointé, les cinq et
+   sept notes par temps de l'Égalité, les trois rapports de la Coordination.
+4. ~~**Le nombre de répétitions par défaut.**~~ **Tranché exercice par
+   exercice**, comme prévu : 4 par défaut, 3 ou 2 pour les longs (gamme et
+   arpège sur trois octaves, accent tous les cinq qui fait cinq mesures par
+   série), 8 pour le passage du pouce isolé — trois notes en boucle demandent
+   des séries nombreuses, pas longues.

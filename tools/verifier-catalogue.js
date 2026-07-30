@@ -246,6 +246,30 @@ function verifierExercice(exercise) {
       if (sansDoigt > 0) {
         dire(`${hand}/${keyId} : ${sansDoigt} note(s) sans doigté`);
       }
+
+      // `interval` : l'écart en demi-tons que **toutes** les paires simultanées
+      // d'un exercice doivent avoir. Les familles Doubles notes et Octaves le
+      // déclarent, et pour une bonne raison — une tierce chromatique s'écrit en
+      // treize paires d'altérations, et une erreur d'un demi-ton y est invisible
+      // à la relecture. C'est exactement ce qui s'est produit la première fois.
+      if (Number.isFinite(exercise.interval)) {
+        const parInstant = new Map();
+        for (const note of run.notes) {
+          const cle = `${note.hand}@${note.time.toFixed(6)}`;
+          if (!parInstant.has(cle)) parInstant.set(cle, []);
+          parInstant.get(cle).push(note.midi);
+        }
+        for (const [cle, hauteurs] of parInstant) {
+          if (hauteurs.length < 2) continue;
+          const ecart = Math.max(...hauteurs) - Math.min(...hauteurs);
+          if (ecart !== exercise.interval) {
+            dire(
+              `${hand}/${keyId} : paire de ${ecart} demi-tons au lieu de ${exercise.interval} (${cle})`
+            );
+            break; // une suffit à dire que le motif est faux
+          }
+        }
+      }
     }
   }
 
