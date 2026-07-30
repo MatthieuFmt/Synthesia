@@ -1,11 +1,12 @@
 # Catalogue d'exercices techniques — un vrai programme de professeur
 
-> Statut : **fondations faites, contenu en production** (30/07/2026).
+> Statut : **vagues 0 et 1 faites — 45 exercices sur 99** (30/07/2026).
 > Ce fichier couvre le **contenu** du mode Exercices ([03](03-technique-doigts.md)),
 > pas son interface : l'écran, le rouleau, le décompte, le métronome, le bilan
 > et la validation MIDI sont en place depuis le 26/07/2026 et ne changent pas.
-> Ce qui manque, c'est ce qu'il y a **dedans** : huit exercices aujourd'hui,
-> quatre-vingt-dix-neuf visés.
+> Ce qui manquait, c'est ce qu'il y a **dedans** : huit exercices au départ,
+> quarante-cinq aujourd'hui, quatre-vingt-dix-neuf visés. Cinq familles sur
+> onze sont complètes — trois niveaux, trois exercices chacun.
 
 [Retour à la checklist générale](README.md) ·
 [Feature 03](03-technique-doigts.md) ·
@@ -245,10 +246,11 @@ Aucune de ces trois n'est un exercice, et les trois bloquaient des exercices.
       d'exercice — sans quoi les cinq nouvelles n'auraient apparu nulle part,
       ni jouables ni annoncées.
 
-### Vague 1 — compléter ce qui est commencé (37 exercices)
+### Vague 1 — compléter ce qui est commencé — **faite le 30/07/2026**
 
-Les cinq familles qui contiennent déjà quelque chose. On finit ce qui est
-ouvert avant d'ouvrir autre chose.
+Les cinq familles qui contenaient déjà quelque chose. On a fini ce qui était
+ouvert avant d'ouvrir autre chose : **45 exercices, 5 familles complètes sur
+11**, tous vérifiés par `tools/verifier-catalogue.js`.
 
 - [x] **1. Déliement** — **9/9, fait le 30/07/2026**
   - [x] Débutant : Un doigt tient, les autres jouent · Deux doigts tiennent,
@@ -287,27 +289,61 @@ ouvert avant d'ouvrir autre chose.
      côté** de la note (§ 7, D1) — vérifié en capture d'écran à la taille de la
      tablette, où le rectangle tombe à 11 px et où l'ancien code n'écrivait plus
      rien du tout.
-- [ ] **5. Arpèges** — 1/9 → 9/9 (8 à écrire)
-  - [ ] Débutant : Accord brisé sur place (Do-Mi-Sol-Mi) ·
-        ~~Arpège de Do majeur~~ (fait) · Arpège de Fa et de Sol
-  - [ ] Intermédiaire : Arpège sur deux octaves · Premier renversement ·
+- [x] **5. Arpèges** — **9/9**
+  - [x] Débutant : Arpège de Do majeur · Accord brisé sur place · Brisé,
+        puis plaqué
+  - [x] Intermédiaire : Arpège sur deux octaves · Premier renversement ·
         Septième de dominante
-  - [ ] Difficile : Arpège sur trois octaves · Les trois renversements
+  - [x] Difficile : Arpège sur trois octaves · Les trois renversements
         enchaînés · Arpèges en mouvement contraire
-- [ ] **6. Accords** — 1/9 → 9/9 (8 à écrire) — *dépend de M1*
-  - [ ] Débutant : Accord répété, attaque nette · Majeur et mineur (M1) ·
-        ~~Do – Fa – Sol – Do~~ (fait)
-  - [ ] Intermédiaire : Renversements de Do majeur · Cadence I–IV–V–I avec
-        renversements (le vrai doigté pianistique) · Accords de septième
-  - [ ] Difficile : La cadence dans trois tonalités · Accords piqués, poignet ·
-        Brisé puis plaqué
-- [ ] **2. Égalité** — 0/9 → 9/9 (9 à écrire) — *deux dépendent de M2*
-  - [ ] Débutant : Cinq doigts, accent sur le premier temps · Accent sur le
-        deuxième · Quatre notes sans accent (l'oreille seule juge)
-  - [ ] Intermédiaire : Accent tous les trois (le décalage sur une mesure à 4) ·
-        Cinq notes dans un temps · Séquence montante, son égal
-  - [ ] Difficile : Accent tous les cinq · Sept notes dans un temps ·
-        Égalité aux deux mains en contraire (M2)
+
+  « Arpège de Fa et de Sol » a été abandonné : ce n'aurait pas été un exercice
+  mais le même joué dans un autre ton, ce que `supportedKeys` fait déjà. Il est
+  remplacé par **Brisé, puis plaqué** — l'accord plaqué sert de contrôle à
+  l'arpège, et donne à l'élève un critère qu'il peut entendre sans professeur.
+
+  **Le mouvement contraire a demandé `patternByHand`**, et c'est la deuxième
+  fois que la limite du miroir diatonique se manifeste : renverser 0-2-4-7
+  donne do-la-fa-do, un arpège de **Fa**. Pour que les deux mains jouent
+  réellement le même accord en sens opposé, il faut écrire les deux lignes.
+- [x] **6. Accords** — **9/9**
+  - [x] Débutant : Do – Fa – Sol – Do · Accord répété, attaque nette ·
+        Majeur et mineur (la tierce baissée, deuxième usage de M1)
+  - [x] Intermédiaire : Renversements de Do majeur · Cadence I–IV–V–I avec
+        renversements · Accords de septième
+  - [x] Difficile : Accords piqués · Renversements en montant et en
+        descendant · Cadence à quatre voix
+
+  « La cadence dans trois tonalités » a été abandonnée : la tonalité est un
+  réglage, pas un exercice — trois tonalités du même exercice ne font pas trois
+  exercices. Elle est remplacée par la **cadence à quatre voix**, où la main
+  gauche joue la basse et sa quinte tandis que la droite tient l'accord : c'est
+  le seul exercice de la famille où les deux mains n'ont pas le même contenu, et
+  c'est cela qui en fait le niveau le plus difficile — pas le nombre de notes.
+- [x] **2. Égalité** — **9/9**
+  - [x] Débutant : Accent sur chaque temps · Accent sur la deuxième croche ·
+        Aucun accent : l'oreille seule juge
+  - [x] Intermédiaire : Accent tous les trois · Cinq notes dans un temps ·
+        Séquence montante, son égal
+  - [x] Difficile : Accent tous les cinq · Sept notes dans un temps ·
+        Égalité aux deux mains en sens opposé
+
+  Aucun des neuf n'a eu besoin de M2 : le mouvement contraire suffit, parce que
+  les deux mains y jouent bien le même dessin diatonique — contrairement à
+  l'arpège, dont le miroir change d'accord. La prévision « deux dépendent de
+  M2 » était donc fausse, et il valait mieux le constater que forcer.
+
+  **Deux placements d'accents ont été vérifiés dans les notes produites** et
+  non seulement écrits : rangs 0-3-6-9-12-15-18-21 sur vingt-quatre croches pour
+  « tous les trois », et 0-5-10-15-20-25-30-35 sur quarante pour « tous les
+  cinq ». Un accent mal placé dans un tableau de quarante entrées ne se voit
+  pas à la relecture.
+
+  Ce que ces neuf exercices **ne** font **pas** : mesurer l'égalité. Rien dans
+  l'application ne juge une nuance — la validation MIDI regarde les hauteurs et
+  les départs. C'est pour cela que la consigne de « Aucun accent » dit *où*
+  écouter (le 5ᵉ doigt en montant, le pouce en descendant) : à défaut de
+  mesure, on donne un critère.
 
 ### Vague 2 — les familles vides mais déclarées (18 exercices)
 

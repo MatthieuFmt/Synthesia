@@ -559,6 +559,663 @@ export const EXERCISES = [
       ],
     },
   },
+  {
+    id: "chord-repeated-clean-attack",
+    family: "chords",
+    title: "Accord répété, attaque nette",
+    goal: "Les trois notes exactement ensemble, à chaque fois",
+    instruction:
+      "Pose les trois doigts sur les touches avant de jouer, puis descends d'un seul geste. Entre deux accords, la main quitte le clavier et se replace.",
+    difficulty: "beginner",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 54, // lent : c'est la simultanéité qu'on écoute, pas le débit
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 1,
+    restBeats: 4,
+    // Le silence entre deux accords fait partie de l'exercice : c'est pendant lui
+    // que la main se replace. Sans lui, on n'entend pas si les trois notes sont
+    // simultanées — la résonance de la précédente masque le décalage.
+    pattern: [
+      [0, 2, 4],
+      { degrees: [], beats: 1 },
+      [0, 2, 4],
+      { degrees: [], beats: 1 },
+      [0, 2, 4],
+      { degrees: [], beats: 1 },
+      [0, 2, 4],
+      { degrees: [], beats: 1 },
+    ],
+    fingering: {
+      right: [[1, 3, 5], null, [1, 3, 5], null, [1, 3, 5], null, [1, 3, 5], null],
+      left: [[5, 3, 1], null, [5, 3, 1], null, [5, 3, 1], null, [5, 3, 1], null],
+    },
+  },
+  {
+    id: "chord-major-minor",
+    family: "chords",
+    title: "Majeur et mineur",
+    goal: "Entendre et sentir le doigt du milieu descendre d'un demi-ton",
+    instruction:
+      "Seul le doigt du milieu bouge, d'un demi-ton. Les deux autres ne changent pas de touche : c'est ce qui rend la différence si nette.",
+    difficulty: "beginner",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 54,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 2,
+    restBeats: 4,
+    // Le premier exercice où l'altération sert de matière et non d'ornement : la
+    // tierce baissée fait le mineur. En Do le doigt du milieu passe de mi à
+    // mi♭ — une blanche vers une noire, ce qui se sent autant que ça s'entend.
+    pattern: [
+      [0, 2, 4],
+      [0, "2b", 4],
+      [0, 2, 4],
+      [0, "2b", 4],
+    ],
+    fingering: {
+      right: [
+        [1, 3, 5],
+        [1, 3, 5],
+        [1, 3, 5],
+        [1, 3, 5],
+      ],
+      left: [
+        [5, 3, 1],
+        [5, 3, 1],
+        [5, 3, 1],
+        [5, 3, 1],
+      ],
+    },
+  },
+  {
+    id: "chord-inversions-c-major",
+    family: "chords",
+    title: "Renversements de Do majeur",
+    goal: "Trois formes de main pour un seul accord",
+    instruction:
+      "Le même accord, trois positions. À chaque changement, l'écart entre les doigts n'est plus le même — regarde la main, pas les notes.",
+    difficulty: "intermediate",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C"],
+    defaultTempo: 58,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 2,
+    restBeats: 4,
+    // Fondamental, premier renversement, deuxième renversement, fondamental à
+    // l'octave. Le doigté change au premier renversement (1-2-5 à droite) et au
+    // deuxième à gauche (5-2-1) : c'est le doigté usuel, celui qui garde la main
+    // détendue plutôt que celui qui garde les mêmes doigts.
+    pattern: [
+      [0, 2, 4],
+      [2, 4, 7],
+      [4, 7, 9],
+      [7, 9, 11],
+    ],
+    fingering: {
+      right: [
+        [1, 3, 5],
+        [1, 2, 5],
+        [1, 3, 5],
+        [1, 3, 5],
+      ],
+      left: [
+        [5, 3, 1],
+        [5, 3, 1],
+        [5, 2, 1],
+        [5, 3, 1],
+      ],
+    },
+  },
+  {
+    id: "chord-cadence-with-inversions",
+    family: "chords",
+    title: "Cadence I – IV – V – I avec renversements",
+    goal: "Enchaîner quatre accords sans que la main se déplace",
+    instruction:
+      "Quatre accords, et la main reste au même endroit du clavier. Ce sont les renversements qui font le travail : cherche la note commune d'un accord au suivant.",
+    difficulty: "intermediate",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C"],
+    defaultTempo: 54,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 2,
+    restBeats: 4,
+    // La cadence pianistique, celle qu'on apprend avant les autres : do-mi-sol,
+    // do-fa-la, si-ré-sol, do-mi-sol. Le do reste sous le pouce trois accords sur
+    // quatre, et le si de la dominante est *en dessous* de la tonique — c'est
+    // pour cela que la main ne bouge pas, et c'est ce qui la distingue de la
+    // version à l'état fondamental du niveau Débutant.
+    pattern: [
+      [0, 2, 4],
+      [0, 3, 5],
+      [-1, 1, 4],
+      [0, 2, 4],
+    ],
+    fingering: {
+      right: [
+        [1, 3, 5],
+        [1, 3, 5],
+        [1, 2, 5],
+        [1, 3, 5],
+      ],
+      left: [
+        [5, 3, 1],
+        [5, 3, 1],
+        [5, 3, 1],
+        [5, 3, 1],
+      ],
+    },
+  },
+  {
+    id: "chord-sevenths",
+    family: "chords",
+    title: "Accords de septième",
+    goal: "Quatre doigts à la fois, sur un écart plus grand",
+    instruction:
+      "Quatre notes ensemble. Les quatre doigts se posent d'abord sur les touches, puis descendent — sinon l'un des quatre arrivera après les autres.",
+    difficulty: "intermediate",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C"],
+    defaultTempo: 52,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 2,
+    restBeats: 4,
+    // Do septième majeure, sol septième de dominante, puis la résolution sur
+    // l'accord de trois sons : le quatrième doigt entre dans l'accord, et l'écart
+    // passe de la quinte à la septième. C'est le premier accord du catalogue que
+    // la main ne couvre pas au repos.
+    pattern: [
+      [0, 2, 4, 6],
+      [4, 6, 8, 10],
+      [0, 2, 4, 6],
+      [0, 2, 4],
+    ],
+    fingering: {
+      right: [
+        [1, 2, 3, 5],
+        [1, 2, 3, 5],
+        [1, 2, 3, 5],
+        [1, 3, 5],
+      ],
+      left: [
+        [5, 4, 2, 1],
+        [5, 4, 2, 1],
+        [5, 4, 2, 1],
+        [5, 3, 1],
+      ],
+    },
+  },
+  {
+    id: "chord-staccato-wrist",
+    family: "chords",
+    title: "Accords piqués",
+    goal: "Lâcher l'accord aussitôt joué, par le poignet",
+    instruction:
+      "L'accord ne dure qu'un quart de temps : c'est le poignet qui rebondit, pas le bras qui appuie. Entre deux accords la main flotte au-dessus des touches.",
+    difficulty: "advanced",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C"],
+    defaultTempo: 60,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 1,
+    restBeats: 4,
+    // C'est ici que l'articulation vit — elle n'est pas une famille à part, parce
+    // que rien dans l'application ne distingue un piqué réussi d'une note
+    // écourtée (cf. plan/exercices-catalogue.md § 4). L'écriture, elle, est
+    // exacte : la note sonne un quart du temps qu'elle occupe.
+    pattern: [
+      { degrees: [0, 2, 4], holdBeats: 0.25 },
+      { degrees: [0, 3, 5], holdBeats: 0.25 },
+      { degrees: [-1, 1, 4], holdBeats: 0.25 },
+      { degrees: [0, 2, 4], holdBeats: 0.25 },
+      { degrees: [0, 2, 4], holdBeats: 0.25 },
+      { degrees: [0, 3, 5], holdBeats: 0.25 },
+      { degrees: [-1, 1, 4], holdBeats: 0.25 },
+      { degrees: [0, 2, 4], holdBeats: 0.25 },
+    ],
+    fingering: {
+      right: [
+        [1, 3, 5], [1, 3, 5], [1, 2, 5], [1, 3, 5],
+        [1, 3, 5], [1, 3, 5], [1, 2, 5], [1, 3, 5],
+      ],
+      left: [
+        [5, 3, 1], [5, 3, 1], [5, 3, 1], [5, 3, 1],
+        [5, 3, 1], [5, 3, 1], [5, 3, 1], [5, 3, 1],
+      ],
+    },
+  },
+  {
+    id: "chord-inversions-climbing",
+    family: "chords",
+    title: "Renversements en montant et en descendant",
+    goal: "Changer de position sept fois de suite sans regarder ses mains",
+    instruction:
+      "Chaque accord est le même que le précédent, déplacé d'un cran. La main prend sa forme avant d'arriver : elle ne cherche pas les touches sur place.",
+    difficulty: "advanced",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C"],
+    defaultTempo: 58,
+    defaultRepetitions: 3,
+    beatsPerBar: 4,
+    beatsPerStep: 1,
+    restBeats: 4,
+    // L'accord du sommet est joué deux fois — une fois en arrivant, une fois en
+    // repartant. C'est ainsi que la main fait demi-tour sans temps mort, et c'est
+    // écrit exprès plutôt que d'inventer un huitième accord dont on n'a pas
+    // besoin.
+    pattern: [
+      [0, 2, 4],
+      [2, 4, 7],
+      [4, 7, 9],
+      [7, 9, 11],
+      [7, 9, 11],
+      [4, 7, 9],
+      [2, 4, 7],
+      [0, 2, 4],
+    ],
+    fingering: {
+      right: [
+        [1, 3, 5], [1, 2, 5], [1, 3, 5], [1, 3, 5],
+        [1, 3, 5], [1, 3, 5], [1, 2, 5], [1, 3, 5],
+      ],
+      left: [
+        [5, 3, 1], [5, 3, 1], [5, 2, 1], [5, 3, 1],
+        [5, 3, 1], [5, 2, 1], [5, 3, 1], [5, 3, 1],
+      ],
+    },
+  },
+  {
+    id: "chord-cadence-four-voices",
+    family: "chords",
+    title: "Cadence à quatre voix",
+    goal: "La basse et l'accord, chacun dans sa main, au même instant",
+    instruction:
+      "La main gauche joue la basse et sa quinte, la droite l'accord. Les deux doivent tomber ensemble : écoute la basse, c'est elle qui donne le repère.",
+    difficulty: "advanced",
+    // La main gauche ne joue pas l'accord de la droite : elle joue la basse et sa
+    // quinte, et se déplace là où la droite reste sur place. Deux motifs
+    // différents, donc `patternByHand`.
+    supportedHands: ["right", "left", "both"],
+    supportedKeys: ["C"],
+    defaultTempo: 52,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 2,
+    restBeats: 4,
+    // La cadence telle qu'on l'écrit vraiment : quatre voix, la fondamentale à
+    // la basse. C'est le seul exercice de la famille où les deux mains n'ont pas
+    // le même contenu, et c'est ce qui en fait le niveau le plus difficile — pas
+    // le nombre de notes.
+    patternByHand: {
+      right: [
+        [0, 2, 4], // do mi sol
+        [0, 3, 5], // do fa la
+        [-1, 1, 4], // si ré sol
+        [0, 2, 4], // do mi sol
+      ],
+      left: [
+        [0, 4], // do3 sol3
+        [-4, 0], // fa2 do3
+        [-3, 1], // sol2 ré3
+        [0, 4], // do3 sol3
+      ],
+    },
+    fingering: {
+      right: [
+        [1, 3, 5],
+        [1, 3, 5],
+        [1, 2, 5],
+        [1, 3, 5],
+      ],
+      left: [
+        [5, 1],
+        [5, 1],
+        [5, 1],
+        [5, 1],
+      ],
+    },
+  },
+  // ==========================================================================
+  //  Égalité — même son, même durée
+  //
+  //  L'accent déplacé est l'outil principal : il oblige à *décider* où va le
+  //  poids, au lieu de le laisser tomber là où la main penche. Les groupes
+  //  irréguliers — cinq puis sept notes par temps — retirent le repère binaire
+  //  et ne laissent que la régularité pour se tenir.
+  //
+  //  Rien dans l'application ne **mesure** l'égalité d'un son : la validation
+  //  MIDI regarde les hauteurs et les départs, pas les nuances. C'est écrit
+  //  dans plan/exercices-catalogue.md § 9 et ça reste vrai — ici, c'est
+  //  l'oreille qui juge.
+  // ==========================================================================
+  {
+    id: "even-accent-on-beat",
+    family: "evenness",
+    title: "Accent sur chaque temps",
+    goal: "Décider où va le poids, plutôt que de le laisser tomber",
+    instruction:
+      "Une croche sur deux est appuyée, celle du temps. Les autres doivent être exactement égales entre elles — c'est ce qui est difficile, pas l'accent.",
+    difficulty: "beginner",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 60,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 4,
+    // L'accent tombe là où la pulsation le met : c'est le cas facile, et il sert
+    // de référence aux deux exercices suivants, où il tombe ailleurs.
+    pattern: [
+      { degrees: 0, accent: true }, 1,
+      { degrees: 2, accent: true }, 3,
+      { degrees: 4, accent: true }, 3,
+      { degrees: 2, accent: true }, 1,
+    ],
+    fingering: {
+      right: [1, 2, 3, 4, 5, 4, 3, 2],
+      left: [5, 4, 3, 2, 1, 2, 3, 4],
+    },
+  },
+  {
+    id: "even-accent-off-beat",
+    family: "evenness",
+    title: "Accent sur la deuxième croche",
+    goal: "Appuyer là où la pulsation ne le demande pas",
+    instruction:
+      "L'accent est sur la croche faible. Le pied continue de battre le temps, la main appuie juste après — et le temps, lui, reste léger.",
+    difficulty: "beginner",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 58,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 4,
+    // Les mêmes notes que l'exercice précédent, l'accent déplacé d'une croche.
+    // C'est le procédé d'égalité par excellence : si le son ne dépend plus de la
+    // place dans la mesure, c'est que la main l'a en main.
+    pattern: [
+      0, { degrees: 1, accent: true },
+      2, { degrees: 3, accent: true },
+      4, { degrees: 3, accent: true },
+      2, { degrees: 1, accent: true },
+    ],
+    fingering: {
+      right: [1, 2, 3, 4, 5, 4, 3, 2],
+      left: [5, 4, 3, 2, 1, 2, 3, 4],
+    },
+  },
+  {
+    id: "even-no-accent",
+    family: "evenness",
+    title: "Aucun accent : l'oreille seule juge",
+    goal: "Seize croches dont aucune ne dépasse",
+    instruction:
+      "Rien n'est appuyé. Écoute le cinquième doigt en montant et le pouce en descendant : ce sont eux qui font la bosse, presque toujours.",
+    difficulty: "beginner",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 60,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 4,
+    // Deux mesures sans le moindre repère : c'est le seul exercice du catalogue
+    // dont le critère est entièrement à l'oreille de l'élève. L'application ne
+    // sait pas le juger, et la consigne dit donc *où* écouter.
+    pattern: [0, 1, 2, 3, 4, 3, 2, 1, 0, 1, 2, 3, 4, 3, 2, 1],
+    fingering: {
+      right: [1, 2, 3, 4, 5, 4, 3, 2, 1, 2, 3, 4, 5, 4, 3, 2],
+      left: [5, 4, 3, 2, 1, 2, 3, 4, 5, 4, 3, 2, 1, 2, 3, 4],
+    },
+  },
+  {
+    id: "even-accent-every-three",
+    family: "evenness",
+    title: "Accent tous les trois",
+    goal: "Un accent qui ne retombe jamais au même endroit de la mesure",
+    instruction:
+      "Trois croches par groupe, quatre temps par mesure : l'accent se promène. Compte les groupes, pas les temps.",
+    difficulty: "intermediate",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 60,
+    defaultRepetitions: 3,
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 4,
+    // Trois contre quatre, en accentuation seulement : l'accent revient sur le
+    // premier temps au bout de trois mesures. C'est le décalage de Brahms
+    // (« 51 Übungen ») réduit à ce qu'un rouleau peut montrer.
+    pattern: [
+      { degrees: 0, accent: true }, 1, 2, { degrees: 3, accent: true }, 4, 3, { degrees: 2, accent: true }, 1,
+      0, { degrees: 1, accent: true }, 2, 3, { degrees: 4, accent: true }, 3, 2, { degrees: 1, accent: true },
+      0, 1, { degrees: 2, accent: true }, 3, 4, { degrees: 3, accent: true }, 2, 1,
+    ],
+    fingering: {
+      right: [
+        1, 2, 3, 4, 5, 4, 3, 2,
+        1, 2, 3, 4, 5, 4, 3, 2,
+        1, 2, 3, 4, 5, 4, 3, 2,
+      ],
+      left: [
+        5, 4, 3, 2, 1, 2, 3, 4,
+        5, 4, 3, 2, 1, 2, 3, 4,
+        5, 4, 3, 2, 1, 2, 3, 4,
+      ],
+    },
+  },
+  {
+    id: "even-five-per-beat",
+    family: "evenness",
+    title: "Cinq notes dans un temps",
+    goal: "Cinq notes égales, sans pouvoir les découper en deux ni en trois",
+    instruction:
+      "Cinq notes par temps : impossible de s'appuyer sur une subdivision. Seule la régularité tient le groupe ensemble.",
+    difficulty: "intermediate",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 52, // cinq notes par temps : le tempo compte double
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.2, // un cinquième de temps
+    restBeats: 4,
+    // Le groupe irrégulier est l'épreuve de vérité de l'égalité : dans un groupe
+    // de quatre, l'oreille recolle les morceaux toute seule ; dans un groupe de
+    // cinq, non. L'accent marque seulement le début de chaque groupe.
+    pattern: [
+      { degrees: 0, accent: true }, 1, 2, 3, 4,
+      { degrees: 3, accent: true }, 2, 1, 0, 1,
+      { degrees: 2, accent: true }, 3, 4, 3, 2,
+      { degrees: 1, accent: true }, 0, 1, 2, 3,
+    ],
+    fingering: {
+      right: [
+        1, 2, 3, 4, 5,
+        4, 3, 2, 1, 2,
+        3, 4, 5, 4, 3,
+        2, 1, 2, 3, 4,
+      ],
+      left: [
+        5, 4, 3, 2, 1,
+        2, 3, 4, 5, 4,
+        3, 2, 1, 2, 3,
+        4, 5, 4, 3, 2,
+      ],
+    },
+  },
+  {
+    id: "even-rising-sequence",
+    family: "evenness",
+    title: "Séquence montante, son égal",
+    goal: "Le même son quand la main a changé de place",
+    instruction:
+      "Quatre fois le même dessin, un degré plus haut à chaque mesure. La difficulté n'est pas de jouer les notes, c'est que la quatrième mesure sonne comme la première.",
+    difficulty: "intermediate",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    // Pas de Fa : la dernière mesure y mettrait le pouce sur si♭.
+    supportedKeys: ["C", "G"],
+    defaultTempo: 63,
+    defaultRepetitions: 3,
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 4,
+    // La séquence de Czerny, employée pour l'égalité et non pour la vélocité :
+    // ce qui se dégrade quand la main se déplace, c'est le son, pas les notes.
+    pattern: [
+      0, 1, 2, 3, 4, 3, 2, 1,
+      1, 2, 3, 4, 5, 4, 3, 2,
+      2, 3, 4, 5, 6, 5, 4, 3,
+      3, 4, 5, 6, 7, 6, 5, 4,
+    ],
+    fingering: {
+      right: [
+        1, 2, 3, 4, 5, 4, 3, 2,
+        1, 2, 3, 4, 5, 4, 3, 2,
+        1, 2, 3, 4, 5, 4, 3, 2,
+        1, 2, 3, 4, 5, 4, 3, 2,
+      ],
+      left: [
+        5, 4, 3, 2, 1, 2, 3, 4,
+        5, 4, 3, 2, 1, 2, 3, 4,
+        5, 4, 3, 2, 1, 2, 3, 4,
+        5, 4, 3, 2, 1, 2, 3, 4,
+      ],
+    },
+  },
+  {
+    id: "even-accent-every-five",
+    family: "evenness",
+    title: "Accent tous les cinq",
+    goal: "Tenir un groupe de cinq contre une mesure de quatre, cinq mesures durant",
+    instruction:
+      "L'accent met cinq mesures à revenir sur le premier temps. Ne compte pas : sens le groupe de cinq et laisse la mesure passer dessous.",
+    difficulty: "advanced",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 63,
+    defaultRepetitions: 2, // cinq mesures par série : deux suffisent
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 4,
+    // Cinq contre quatre : l'accent ne retombe sur le premier temps qu'au bout de
+    // quarante croches. C'est la version difficile de « Accent tous les trois »,
+    // et ce qui change n'est pas la vitesse mais la durée pendant laquelle il
+    // faut garder deux comptes à la fois.
+    pattern: [
+      { degrees: 0, accent: true }, 1, 2, 3, 4, { degrees: 3, accent: true }, 2, 1,
+      0, 1, { degrees: 2, accent: true }, 3, 4, 3, 2, { degrees: 1, accent: true },
+      0, 1, 2, 3, { degrees: 4, accent: true }, 3, 2, 1,
+      0, { degrees: 1, accent: true }, 2, 3, 4, 3, { degrees: 2, accent: true }, 1,
+      0, 1, 2, { degrees: 3, accent: true }, 4, 3, 2, 1,
+    ],
+    fingering: {
+      right: [
+        1, 2, 3, 4, 5, 4, 3, 2,
+        1, 2, 3, 4, 5, 4, 3, 2,
+        1, 2, 3, 4, 5, 4, 3, 2,
+        1, 2, 3, 4, 5, 4, 3, 2,
+        1, 2, 3, 4, 5, 4, 3, 2,
+      ],
+      left: [
+        5, 4, 3, 2, 1, 2, 3, 4,
+        5, 4, 3, 2, 1, 2, 3, 4,
+        5, 4, 3, 2, 1, 2, 3, 4,
+        5, 4, 3, 2, 1, 2, 3, 4,
+        5, 4, 3, 2, 1, 2, 3, 4,
+      ],
+    },
+  },
+  {
+    id: "even-seven-per-beat",
+    family: "evenness",
+    title: "Sept notes dans un temps",
+    goal: "Sept notes égales, le groupe le plus difficile à ne pas découper",
+    instruction:
+      "Sept notes par temps. Ne cherche pas à les grouper : pense au temps entier, et laisse les sept notes le remplir.",
+    difficulty: "advanced",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 46, // sept notes par temps : plus lent que tout le reste du catalogue
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 1 / 7,
+    restBeats: 4,
+    // Le septolet est le pas le plus court que ce mode accepte : un septième de
+    // temps, juste au-dessus du huitième en dessous duquel le doigté ne serait
+    // plus lisible même écrit à côté de la note.
+    pattern: [
+      { degrees: 0, accent: true }, 1, 2, 3, 4, 3, 2,
+      { degrees: 1, accent: true }, 0, 1, 2, 3, 4, 3,
+      { degrees: 2, accent: true }, 1, 0, 1, 2, 3, 4,
+      { degrees: 3, accent: true }, 2, 1, 0, 1, 2, 3,
+    ],
+    fingering: {
+      right: [
+        1, 2, 3, 4, 5, 4, 3,
+        2, 1, 2, 3, 4, 5, 4,
+        3, 2, 1, 2, 3, 4, 5,
+        4, 3, 2, 1, 2, 3, 4,
+      ],
+      left: [
+        5, 4, 3, 2, 1, 2, 3,
+        4, 5, 4, 3, 2, 1, 2,
+        3, 4, 5, 4, 3, 2, 1,
+        2, 3, 4, 5, 4, 3, 2,
+      ],
+    },
+  },
+  {
+    id: "even-contrary-motion",
+    family: "evenness",
+    title: "Égalité aux deux mains en sens opposé",
+    goal: "Deux mains également régulières, sans pouvoir se copier l'une sur l'autre",
+    instruction:
+      "Les mains s'écartent. Une main en retard ne se rattrape pas ici : l'écart s'entend tout de suite, et c'est le meilleur contrôle qui existe.",
+    difficulty: "advanced",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "contrary",
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 58,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 4,
+    // En parallèle, une main peu sûre s'appuie sur l'autre sans qu'on l'entende ;
+    // en sens opposé, elle n'a plus rien à quoi se raccrocher. C'est pour cela que
+    // le mouvement contraire ferme cette famille et non le septolet.
+    pattern: [0, 1, 2, 3, 4, 3, 2, 1, 0, 1, 2, 3, 4, 3, 2, 1],
+    fingering: {
+      // Mouvement contraire : le doigté s'écrit dans l'ordre des degrés du motif,
+      // avant miroir. Les deux mains ont donc le même — c'est le seul cas où la
+      // symétrie du clavier joue pour l'élève.
+      right: [1, 2, 3, 4, 5, 4, 3, 2, 1, 2, 3, 4, 5, 4, 3, 2],
+      left: [1, 2, 3, 4, 5, 4, 3, 2, 1, 2, 3, 4, 5, 4, 3, 2],
+    },
+  },
   // ==========================================================================
   //  B1 — Gammes et passage du pouce
   //
@@ -937,6 +1594,251 @@ export const EXERCISES = [
     fingering: {
       right: [1, 2, 3, 5, 3, 2, 1],
       left: [5, 3, 2, 1, 2, 3, 5],
+    },
+  },
+  {
+    id: "broken-chord-in-place",
+    family: "arpeggios",
+    title: "Accord brisé sur place",
+    goal: "Les trois notes de l'accord, sans quitter la position de cinq doigts",
+    instruction:
+      "Do, mi, sol, mi : la main ne se déplace pas, le pouce ne passe pas. C'est l'égalité des trois doigts qu'on écoute.",
+    difficulty: "beginner",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 60,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 1,
+    restBeats: 4,
+    // La marche avant l'arpège : le même accord, mais sans octave et donc sans
+    // passage de pouce. Ce que l'exercice « Arpège de Do majeur » ajoute, c'est
+    // exactement le passage — autant l'isoler.
+    pattern: [0, 2, 4, 2, 0, 2, 4, 2],
+    fingering: {
+      right: [1, 3, 5, 3, 1, 3, 5, 3],
+      left: [5, 3, 1, 3, 5, 3, 1, 3],
+    },
+  },
+  {
+    id: "broken-then-block-chord",
+    family: "arpeggios",
+    title: "Brisé, puis plaqué",
+    goal: "Faire sonner l'arpège comme l'accord qu'on vient d'entendre",
+    instruction:
+      "Trois notes l'une après l'autre, puis les trois ensemble. L'accord dit la vérité : si l'arpège ne sonnait pas comme lui, c'est qu'un doigt était en retard.",
+    difficulty: "beginner",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 58,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 1,
+    restBeats: 4,
+    // L'accord plaqué sert de contrôle à l'arpège : c'est le procédé de
+    // vérification que tous les traités emploient pour les brisés, et il donne à
+    // l'élève un critère qu'il peut entendre seul, sans professeur.
+    pattern: [0, 2, 4, [0, 2, 4], 0, 2, 4, [0, 2, 4]],
+    fingering: {
+      right: [1, 3, 5, [1, 3, 5], 1, 3, 5, [1, 3, 5]],
+      left: [5, 3, 1, [5, 3, 1], 5, 3, 1, [5, 3, 1]],
+    },
+  },
+  {
+    id: "arpeggio-two-octaves",
+    family: "arpeggios",
+    title: "Arpège sur deux octaves",
+    goal: "Garder la main ouverte en la déplaçant d'une octave",
+    instruction:
+      "La main garde la même forme d'un bout à l'autre : elle se déplace, elle ne s'étire pas. Le pouce arrive sur sa note déjà placé.",
+    difficulty: "intermediate",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C"], // le doigté d'arpège change avec le ton ; un ton par exercice vérifié
+    defaultTempo: 60,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 1,
+    // Le doigté standard de l'arpège de Do majeur sur deux octaves : 1-2-3 par
+    // octave à droite, 5-3-2-1 puis 3-2-1 à gauche. C'est celui de tous les
+    // recueils de gammes et arpèges, et il diffère d'une tonalité à l'autre —
+    // d'où le ton unique déclaré.
+    pattern: [0, 2, 4, 7, 9, 11, 14, 11, 9, 7, 4, 2, { degrees: 0, beats: 1 }],
+    fingering: {
+      right: [1, 2, 3, 1, 2, 3, 5, 3, 2, 1, 3, 2, 1],
+      left: [5, 3, 2, 1, 3, 2, 1, 2, 3, 1, 2, 3, 5],
+    },
+  },
+  {
+    id: "arpeggio-first-inversion",
+    family: "arpeggios",
+    title: "Premier renversement",
+    goal: "Le même accord, mais la main ne se pose plus au même endroit",
+    instruction:
+      "Mi, sol, do, mi : c'est toujours l'accord de Do, mais l'écart entre le premier et le deuxième doigt a changé. C'est la main qui doit s'en apercevoir.",
+    difficulty: "intermediate",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C"],
+    defaultTempo: 58,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 1,
+    restBeats: 1,
+    // Le renversement est ce qui distingue un arpège travaillé d'un arpège
+    // appris : la forme de la main change à chaque position, et c'est elle qu'on
+    // mémorise, pas la suite de notes.
+    pattern: [2, 4, 7, 9, 7, 4, 2],
+    fingering: {
+      right: [1, 2, 3, 5, 3, 2, 1],
+      left: [5, 3, 2, 1, 2, 3, 5],
+    },
+  },
+  {
+    id: "arpeggio-dominant-seventh",
+    family: "arpeggios",
+    title: "Septième de dominante",
+    goal: "Quatre doigts sur quatre notes, sur une septième d'écart",
+    instruction:
+      "Sol, si, ré, fa : quatre notes qui ne tiennent plus dans la main sans l'ouvrir. Les quatre doigts se posent d'un coup, avant de jouer.",
+    difficulty: "intermediate",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C"],
+    defaultTempo: 56,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 1,
+    restBeats: 1,
+    // La septième de dominante est le premier accord de quatre sons qu'on
+    // arpège, et le premier dont l'écart dépasse ce qu'une main d'élève couvre
+    // au repos. C'est là que l'ouverture cesse d'être un détail.
+    pattern: [4, 6, 8, 10, 8, 6, 4],
+    fingering: {
+      right: [1, 2, 3, 4, 3, 2, 1],
+      left: [5, 4, 2, 1, 2, 4, 5],
+    },
+  },
+  {
+    id: "arpeggio-three-octaves",
+    family: "arpeggios",
+    title: "Arpège sur trois octaves",
+    goal: "Trois déplacements d'affilée sans que la forme de la main se déforme",
+    instruction:
+      "Trois octaves d'un souffle. Le coude accompagne la main vers l'aigu ; si le poignet se casse, l'accord suivant sera raté.",
+    difficulty: "advanced",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C"],
+    defaultTempo: 66,
+    defaultRepetitions: 3,
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 2,
+    // Aux deux mains, l'exercice couvre quatre octaves de clavier : la limite de
+    // ce que ce rouleau dessine en gardant des touches assez larges pour le
+    // doigté. C'est le plus étendu du catalogue, avec la gamme sur trois octaves.
+    pattern: [
+      0, 2, 4, 7, 9, 11, 14, 16, 18, 21,
+      18, 16, 14, 11, 9, 7, 4, 2,
+      { degrees: 0, beats: 1 },
+    ],
+    fingering: {
+      right: [
+        1, 2, 3, 1, 2, 3, 1, 2, 3, 5,
+        3, 2, 1, 3, 2, 1, 3, 2,
+        1,
+      ],
+      left: [
+        5, 3, 2, 1, 3, 2, 1, 3, 2, 1,
+        2, 3, 1, 2, 3, 1, 2, 3,
+        5,
+      ],
+    },
+  },
+  {
+    id: "arpeggio-inversions-chained",
+    family: "arpeggios",
+    title: "Les trois renversements enchaînés",
+    goal: "Changer de forme de main trois fois de suite, sans trou entre deux",
+    instruction:
+      "Quatre notes, nouvelle position, quatre notes. À chaque groupe la main prend une forme différente — et le pouce arrive toujours prêt.",
+    difficulty: "advanced",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C"],
+    defaultTempo: 60,
+    defaultRepetitions: 3,
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 0, // la tenue finale ferme déjà la mesure
+    // Fondamental, premier renversement, deuxième renversement, puis l'octave :
+    // c'est la marche d'arpèges des recueils classiques. L'accord du sommet est
+    // joué deux fois de suite — une fois en montant, une fois en redescendant —
+    // et c'est ainsi que la main fait demi-tour, sans temps mort.
+    pattern: [
+      0, 2, 4, 7,
+      2, 4, 7, 9,
+      4, 7, 9, 11,
+      7, 9, 11, 14,
+      11, 9, 7, 4,
+      9, 7, 4, 2,
+      7, 4, 2, 0,
+      { degrees: 0, beats: 2 },
+    ],
+    fingering: {
+      right: [
+        1, 2, 3, 5,
+        1, 2, 3, 5,
+        1, 2, 3, 5,
+        1, 2, 3, 5,
+        5, 3, 2, 1,
+        5, 3, 2, 1,
+        5, 3, 2, 1,
+        1,
+      ],
+      left: [
+        5, 3, 2, 1,
+        5, 3, 2, 1,
+        5, 3, 2, 1,
+        5, 3, 2, 1,
+        1, 2, 3, 5,
+        1, 2, 3, 5,
+        1, 2, 3, 5,
+        5,
+      ],
+    },
+  },
+  {
+    id: "arpeggio-contrary-motion",
+    family: "arpeggios",
+    title: "Arpèges en mouvement contraire",
+    goal: "Le même accord dans les deux mains, en sens opposé",
+    instruction:
+      "Les deux mains s'écartent sur le même accord. Les deux pouces partent ensemble : si l'un traîne, l'écart s'entend aussitôt.",
+    difficulty: "advanced",
+    // Ici `bothMode: "contrary"` ne suffit pas. Le miroir de ce mode est
+    // **diatonique** : renverser les degrés 0-2-4-7 donnerait do-la-fa-do, un
+    // arpège de Fa, pas de Do. Pour que les deux mains jouent réellement le même
+    // accord en sens opposé, il faut écrire les deux lignes — c'est ce à quoi
+    // `patternByHand` sert.
+    supportedHands: ["right", "left", "both"],
+    supportedKeys: ["C"],
+    defaultTempo: 58,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 1,
+    restBeats: 1,
+    patternByHand: {
+      right: [0, 2, 4, 7, 4, 2, 0], // do4 mi sol do5 sol mi do4
+      left: [0, -3, -5, -7, -5, -3, 0], // do3 sol2 mi2 do2 mi sol do3
+    },
+    fingering: {
+      right: [1, 2, 3, 5, 3, 2, 1],
+      left: [1, 2, 3, 5, 3, 2, 1],
     },
   },
 ];
