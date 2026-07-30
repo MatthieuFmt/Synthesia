@@ -4,8 +4,11 @@
 > Boucle complète pour les trois familles du MVP — famille → réglages → consigne
 > → décompte d'une mesure → répétitions dans un rouleau avec doigtés → bilan —
 > et, si un clavier est branché, un bilan qui dit quelles notes sont passées
-> (§ 17). Restent les trois familles hors MVP, les tonalités autres que Do
-> majeur, les niveaux au-delà de Débutant, et le test avec un vrai clavier.
+> (§ 17). Le sélecteur de niveau est en place depuis le 29/07/2026.
+> Ce qui reste est du **contenu** : neuf exercices seulement, deux familles
+> déclarées mais vides, et deux tonalités sur trois peu couvertes — voir
+> [exercices-catalogue.md](exercices-catalogue.md). Reste aussi le test avec un
+> vrai clavier.
 
 [Retour à la checklist générale](README.md)
 
@@ -25,9 +28,14 @@
 - [x] Valider la pratique avec et sans clavier MIDI.
   (les deux vérifiées le 26/07/2026 — la validation MIDI par une doublure du
   Web MIDI ; reste le test avec un vrai clavier, ligne de [F2](F2-entree-midi.md))
-- [ ] Ajouter le choix de difficulté.
-  (absent volontairement : le catalogue ne contient que des exercices Débutant,
-  un sélecteur à une seule valeur serait un faux choix — § 13 étape C)
+- [x] Ajouter le choix de difficulté.
+  (sélecteur famille → niveau → exercice en place, les niveaux vides restant
+  visibles et désactivés ; le catalogue a trois niveaux peuplés en Déliement et
+  en Gammes depuis le 29/07/2026)
+- [ ] Remplir le catalogue : 11 familles × 3 niveaux × 3 exercices.
+  (9 exercices sur 99 aujourd'hui, deux familles déclarées `available` sans
+  contenu — plan détaillé dans
+  [exercices-catalogue.md](exercices-catalogue.md))
 
 ## 1. Objectif
 

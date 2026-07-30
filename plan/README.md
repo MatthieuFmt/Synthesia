@@ -58,7 +58,8 @@ exercice, à trois niveaux.
 
 | Sujet | État actuel | Plan détaillé |
 | --- | --- | --- |
-| Exercices générés | Catalogue de 19 familles écrit ; production à faire | [exercices-generes.md](exercices-generes.md) |
+| Exercices générés (fichiers MIDI, mode Morceau) | Catalogue de 19 familles écrit ; 5 familles produites sur 19 | [exercices-generes.md](exercices-generes.md) |
+| Catalogue d'exercices (mode Exercices) | Plan écrit ; 9 exercices sur 99, 11 familles visées | [exercices-catalogue.md](exercices-catalogue.md) |
 | Fichiers MIDI du dépôt | 26 fichiers Mutopia, licences vérifiées | [morceaux-exercice/README.md](../morceaux-exercice/README.md) |
 
 ## Checklist générale
