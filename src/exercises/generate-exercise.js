@@ -44,12 +44,48 @@ export function clampRepetitions(count) {
   return Math.min(MAX_REPETITIONS, Math.max(MIN_REPETITIONS, Math.round(count)));
 }
 
-// Degré diatonique -> demi-tons au-dessus de la tonique. Au-delà de 6, on monte
+// ----------------------------------------------------------------------------
+//  Degrés, avec ou sans altération
+//
+//  Un degré s'écrit `4` (le cinquième son de la gamme) ou `"4#"` / `"4b"` quand
+//  il est altéré. Les sept degrés diatoniques ne suffisaient pas : le doigté
+//  d'octaves chromatiques — 5 sur les blanches, 4 sur les noires — est *tout*
+//  le sujet de cet exercice, et un accord mineur demande une tierce baissée.
+//  Écrire une deuxième table de gamme par mode aurait multiplié les tables ;
+//  une altération sur le degré dit la même chose et se lit dans le motif.
+// ----------------------------------------------------------------------------
+export function parseDegree(degree) {
+  if (typeof degree === "number") {
+    return Number.isInteger(degree) ? { step: degree, alter: 0 } : null;
+  }
+  const match = /^(-?\d+)([#b]?)$/.exec(String(degree).trim());
+  if (!match) return null;
+  return {
+    step: Number(match[1]),
+    alter: match[2] === "#" ? 1 : match[2] === "b" ? -1 : 0,
+  };
+}
+
+// Degré -> demi-tons au-dessus de la tonique. Au-delà de 6, on monte
 // d'octave : le degré 7 est l'octave de la tonique, le 8 sa seconde.
 export function degreeToSemitones(degree) {
-  const octave = Math.floor(degree / 7);
-  const step = ((degree % 7) + 7) % 7;
-  return octave * 12 + MAJOR_SCALE[step];
+  const parsed = parseDegree(degree);
+  if (parsed === null) return null;
+  const octave = Math.floor(parsed.step / 7);
+  const step = ((parsed.step % 7) + 7) % 7;
+  return octave * 12 + MAJOR_SCALE[step] + parsed.alter;
+}
+
+// Miroir d'un degré, pour le mouvement contraire. L'altération change de signe
+// avec le degré : le miroir d'une quarte **augmentée** au-dessus de la tonique
+// est une quarte **diminuée** en dessous — c'est l'intervalle qui se renverse,
+// pas seulement sa direction. Sans cela une octave chromatique en contraire
+// sonnerait faux d'un demi-ton à chaque note noire.
+export function negateDegree(degree) {
+  const parsed = parseDegree(degree);
+  if (parsed === null) return degree;
+  if (parsed.alter === 0) return -parsed.step;
+  return `${-parsed.step}${parsed.alter > 0 ? "b" : "#"}`;
 }
 
 // Hauteur de la tonique pour une main : Do4 à droite, Do3 à gauche.
@@ -101,22 +137,50 @@ export function normalizeStep(step, defaultBeats) {
   };
 }
 
+// ----------------------------------------------------------------------------
+//  Un motif, ou un motif par main
+//
+//  La plupart des exercices ont **un** motif que les deux mains jouent, en
+//  parallèle ou en miroir (`bothMode`) : c'est le cas courant et il ne faut pas
+//  l'alourdir. Mais deux contre trois, un canon à un temps, une main legato et
+//  l'autre piquée ne s'écrivent pas comme un motif commun. Ces exercices-là
+//  déclarent `patternByHand: { right, left }`, chaque main ayant son motif et
+//  son doigté de même longueur.
+//
+//  Contrainte : les deux motifs doivent totaliser le **même nombre de temps**,
+//  sinon la deuxième série d'une main partirait avant celle de l'autre. Le
+//  harnais du catalogue le vérifie.
+// ----------------------------------------------------------------------------
+export function patternOf(exercise, hand = "right") {
+  if (exercise.patternByHand) {
+    return exercise.patternByHand[hand] ?? exercise.patternByHand.right;
+  }
+  return exercise.pattern;
+}
+
+// Les mains qui ont leur propre motif. Un exercice à motif commun n'en a
+// aucune : c'est ce qui distingue les deux formes sans avoir à tester le champ
+// partout.
+export function hasPatternByHand(exercise) {
+  return Boolean(exercise.patternByHand);
+}
+
 // Les pas d'un exercice, dans l'ordre, avec leur durée résolue.
-export function stepsOf(exercise) {
+export function stepsOf(exercise, hand = "right") {
   const defaultBeats = exercise.beatsPerStep;
-  return exercise.pattern.map((step) => normalizeStep(step, defaultBeats));
+  return patternOf(exercise, hand).map((step) => normalizeStep(step, defaultBeats));
 }
 
 // Temps réellement joués d'une série, respiration exclue. C'est une **somme**
 // et non un produit : depuis les rythmes pointés et les groupes irréguliers,
 // deux pas d'un même exercice n'ont plus la même durée.
-export function playedBeatsPerRepetition(exercise) {
-  return stepsOf(exercise).reduce((total, step) => total + step.beats, 0);
+export function playedBeatsPerRepetition(exercise, hand = "right") {
+  return stepsOf(exercise, hand).reduce((total, step) => total + step.beats, 0);
 }
 
 // Nombre de temps d'une série, respiration comprise.
-export function beatsPerRepetition(exercise) {
-  return playedBeatsPerRepetition(exercise) + exercise.restBeats;
+export function beatsPerRepetition(exercise, hand = "right") {
+  return playedBeatsPerRepetition(exercise, hand) + exercise.restBeats;
 }
 
 // « Répéter le motif sans rupture de mesure » (plan/03 étape B) : une série doit
@@ -125,8 +189,21 @@ export function beatsPerRepetition(exercise) {
 // 1/5 de temps font un temps en musique, pas tout à fait en binaire.
 export function isBarAligned(exercise) {
   const perBar = exercise.beatsPerBar ?? DEFAULT_BEATS_PER_BAR;
-  const remainder = beatsPerRepetition(exercise) % perBar;
-  return remainder < BEAT_EPSILON || perBar - remainder < BEAT_EPSILON;
+  const hands = hasPatternByHand(exercise) ? ["right", "left"] : ["right"];
+  return hands.every((hand) => {
+    const remainder = beatsPerRepetition(exercise, hand) % perBar;
+    return remainder < BEAT_EPSILON || perBar - remainder < BEAT_EPSILON;
+  });
+}
+
+// Les deux motifs d'un exercice à deux mains doivent totaliser le même nombre
+// de temps : sinon la deuxième série d'une main partirait avant celle de
+// l'autre, et les deux lignes se décaleraient un peu plus à chaque répétition.
+export function handsAgreeOnLength(exercise) {
+  if (!hasPatternByHand(exercise)) return true;
+  const right = playedBeatsPerRepetition(exercise, "right");
+  const left = playedBeatsPerRepetition(exercise, "left");
+  return Math.abs(right - left) < BEAT_EPSILON;
 }
 
 export function canGenerate(exercise, hand, keyId = "C") {
@@ -160,19 +237,6 @@ export function generateExercise(
   const series = clampRepetitions(repetitions ?? exercise.defaultRepetitions);
   const secondsPerBeat = 60 / bpm;
   const stepBeats = exercise.beatsPerStep;
-  const steps = stepsOf(exercise);
-  const perRepetition = beatsPerRepetition(exercise);
-
-  // Rang de chaque pas sur la grille, en temps depuis le début de la série. Les
-  // durées n'étant plus toutes égales, l'instant d'un pas s'**accumule** : il ne
-  // se recalcule pas depuis son index. Le tableau est exposé plus bas, pour que
-  // le bilan puisse dire « mesure 2, temps 3 » plutôt que « pas 11 ».
-  const stepOffsets = [];
-  let cursor = 0;
-  for (const step of steps) {
-    stepOffsets.push(cursor);
-    cursor += step.beats;
-  }
 
   // En mouvement parallèle les deux mains jouent le même motif à l'octave ; en
   // mouvement contraire la gauche joue le degré **opposé**, et s'éloigne donc
@@ -183,19 +247,50 @@ export function generateExercise(
   // de la droite. Sinon son doigté écrit ne correspondrait à rien.
   const contrary = exercise.bothMode === "contrary";
 
+  // Ce que chaque main a à jouer, résolu une fois. Avec un motif commun les
+  // deux entrées sont identiques ; avec `patternByHand` elles diffèrent, et
+  // chacune a ses propres rangs de pas.
+  //
+  // Le rang d'un pas s'**accumule** : les durées n'étant plus toutes égales, il
+  // ne se recalcule pas depuis son index. Les rangs sont exposés plus bas, pour
+  // que le bilan puisse dire « mesure 2, temps 3 » plutôt que « pas 11 ».
+  const lines = new Map();
+  for (const noteHand of hands) {
+    const steps = stepsOf(exercise, noteHand);
+    const offsets = [];
+    let cursor = 0;
+    for (const step of steps) {
+      offsets.push(cursor);
+      cursor += step.beats;
+    }
+    lines.set(noteHand, {
+      steps,
+      offsets,
+      playedBeats: cursor,
+      root: tonicMidi(key, noteHand),
+      fingering: fingeringFor(exercise, noteHand, key),
+      mirror: contrary && noteHand === "left",
+    });
+  }
+
+  // La grille des séries est commune aux deux mains : c'est la plus longue des
+  // deux lignes qui la fixe, pour qu'une main plus courte n'écourte pas la
+  // série de l'autre. Les deux sont censées être égales — le harnais du
+  // catalogue le vérifie —, et prendre le maximum est le comportement sûr si
+  // elles ne le sont pas.
+  const playedPerRepetition = Math.max(...[...lines.values()].map((l) => l.playedBeats));
+  const perRepetition = playedPerRepetition + exercise.restBeats;
+
   const notes = [];
   for (let series_ = 0; series_ < series; series_++) {
     const repetitionStart = startTime + series_ * perRepetition * secondsPerBeat;
 
-    steps.forEach((step, stepIndex) => {
-      const time = repetitionStart + stepOffsets[stepIndex] * secondsPerBeat;
-
-      for (const noteHand of hands) {
-        const root = tonicMidi(key, noteHand);
+    for (const [noteHand, line] of lines) {
+      line.steps.forEach((step, stepIndex) => {
+        const time = repetitionStart + line.offsets[stepIndex] * secondsPerBeat;
         // Le doigté reste écrit dans l'ordre des degrés du motif, **avant**
         // miroir : en contraire, l'ordre ascendant s'inverserait sinon.
-        const fingers = asChord(fingeringFor(exercise, noteHand, key)[stepIndex]);
-        const mirror = contrary && noteHand === "left";
+        const fingers = asChord(line.fingering[stepIndex]);
 
         step.degrees.forEach((degree, degreeIndex) => {
           // La durée sonnante est celle du degré, pas celle du pas : c'est ce
@@ -203,7 +298,9 @@ export function generateExercise(
           const duration = step.holdBeats[degreeIndex] * secondsPerBeat * HELD_FRACTION;
 
           notes.push({
-            midi: root + degreeToSemitones(mirror ? -degree : degree),
+            midi:
+              line.root +
+              degreeToSemitones(line.mirror ? negateDegree(degree) : degree),
             time,
             duration,
             endTime: time + duration,
@@ -216,8 +313,8 @@ export function generateExercise(
             step: stepIndex,
           });
         });
-      }
-    });
+      });
+    }
   }
 
   // Même tri que `buildSong()` du mode Morceau : les recherches par dichotomie
@@ -252,11 +349,19 @@ export function generateExercise(
     beatsPerBar: exercise.beatsPerBar ?? DEFAULT_BEATS_PER_BAR,
     beatsPerStep: stepBeats,
     beatsPerRepetition: perRepetition,
-    stepsPerRepetition: exercise.pattern.length,
+    // Avec `patternByHand`, les deux mains n'ont pas forcément le même nombre
+    // de pas — deux croches contre trois triolets. On annonce le plus grand :
+    // c'est le nombre de rangs que le bilan par pas peut rencontrer.
+    stepsPerRepetition: Math.max(...[...lines.values()].map((l) => l.steps.length)),
     // Rang de chaque pas en temps depuis le début de la série, et durée du plus
     // court : le rouleau s'en sert pour décider combien de mesures afficher.
-    stepOffsets,
-    shortestStepBeats: steps.reduce((min, step) => Math.min(min, step.beats), Infinity),
+    // Les rangs sont ceux de la main droite quand elle joue, sinon de la main
+    // seule — un exercice à deux motifs n'a pas *une* grille de pas.
+    stepOffsets: (lines.get("right") ?? lines.get(hands[0])).offsets,
+    shortestStepBeats: [...lines.values()].reduce(
+      (min, line) => line.steps.reduce((m, step) => Math.min(m, step.beats), min),
+      Infinity
+    ),
     playedBeats,
     startTime,
     endTime,
@@ -286,9 +391,10 @@ export function generateExercise(
       // d'une série serait pris pour la fin de la respiration de la précédente.
       // Le cas se voit dès qu'un temps n'est pas rond — à 63 bpm par exemple.
       if (perRepetition - inRepetition < BEAT_EPSILON) inRepetition = 0;
-      // `cursor` est la somme des durées de pas : la respiration commence là où
-      // le motif s'arrête, quelles que soient les durées qui l'ont composé.
-      return inRepetition >= cursor;
+      // `playedPerRepetition` est la somme des durées de pas : la respiration
+      // commence là où le motif s'arrête, quelles que soient les durées qui
+      // l'ont composé — et, à deux motifs, là où le plus long s'arrête.
+      return inRepetition >= playedPerRepetition;
     },
   };
 }

@@ -31,50 +31,86 @@ export const HAND_TONIC_OCTAVE = { right: 4, left: 3 };
 // ----------------------------------------------------------------------------
 //  Familles
 //
-//  Les trois familles du MVP et les trois qui attendent leur tour (plan/03 § 4).
-//  Les secondes restent visibles et désactivées, comme les cartes « Bientôt » de
-//  l'accueil : l'utilisateur voit où va la fonctionnalité sans pouvoir lancer un
-//  exercice qui n'existe pas.
+//  Onze familles, dans l'ordre où un professeur les aborde : les doigts d'abord,
+//  puis les figures (gammes, arpèges, accords), puis ce qui demande déjà une
+//  main formée (doubles notes, octaves, trilles, extensions), et la coordination
+//  des deux mains en dernier. Le raisonnement complet est dans
+//  [plan/exercices-catalogue.md § 4](../../plan/exercices-catalogue.md).
+//
+//  `status: "available"` dit qu'une famille est prévue, pas qu'elle est prête :
+//  `availableFamilies()` écarte celles qui ne contiennent encore aucun exercice,
+//  et l'écran de réglages les affiche « Bientôt ». Une famille vide n'est donc
+//  jamais un cul-de-sac.
+//
+//  Quatre sujets sont volontairement **absents**, chacun traité ailleurs :
+//  le rythme (plan/05, qui le juge au lieu de seulement le montrer), les sauts
+//  larges (exercices générés B3 — le rouleau de ce mode ne défile pas
+//  latéralement), l'articulation (rien ici ne distingue un staccato réussi d'une
+//  note écourtée : elle vit dans Accords, Octaves et Coordination) et la pédale
+//  (plan/09).
 // ----------------------------------------------------------------------------
 export const FAMILIES = [
   {
     id: "finger-independence",
     label: "Déliement",
-    goal: "Indépendance et égalité des doigts",
+    goal: "Un doigt tient pendant que les autres jouent",
     status: "available",
   },
   {
     id: "evenness",
     label: "Égalité",
-    goal: "Jouer sans bosse ni trou",
+    goal: "Même son, même durée : jouer sans bosse ni trou",
     status: "available",
   },
   {
     id: "repeated-notes",
     label: "Notes répétées",
-    goal: "Rejouer une note sans raidir le poignet",
+    goal: "Rejouer une note en changeant de doigt, sans raidir le poignet",
     status: "available",
   },
   { id: "scales", label: "Gammes", goal: "Passage du pouce et régularité", status: "available" },
   {
     id: "arpeggios",
     label: "Arpèges",
-    goal: "Enchaîner les notes d'un accord sans rupture",
+    goal: "Ouvrir la main sur l'accord et la garder ouverte",
     status: "available",
   },
   {
     id: "chords",
     label: "Accords",
-    goal: "Placer plusieurs doigts ensemble avec précision",
+    goal: "Placer plusieurs doigts au même instant, et les renversements",
+    status: "available",
+  },
+  {
+    id: "double-notes",
+    label: "Doubles notes",
+    goal: "Tierces et sixtes : deux voix qui partent et s'arrêtent ensemble",
+    status: "available",
+  },
+  {
+    id: "octaves",
+    label: "Octaves",
+    goal: "Le poignet, pas le bras — préparé par la sixte et la septième",
+    status: "available",
+  },
+  {
+    id: "trills",
+    label: "Trilles",
+    goal: "Battements rapides entre deux doigts voisins",
+    status: "available",
+  },
+  {
+    id: "extension",
+    label: "Extension",
+    goal: "Écarter, passer un doigt par-dessus, changer de doigt sur une tenue",
     status: "available",
   },
   {
     id: "coordination",
     label: "Coordination",
-    goal: "Rendre les mains indépendantes",
-    status: "soon",
+    goal: "Deux rythmes, deux articulations, deux accentuations à la fois",
+    status: "available",
   },
-  { id: "rhythm", label: "Rythme", goal: "Stabiliser la pulsation", status: "soon" },
 ];
 
 // ----------------------------------------------------------------------------
@@ -462,8 +498,13 @@ export function availableFamilies() {
 export function supportsHand(exercise, hand) {
   if (!exercise.supportedHands.includes(hand)) return false;
   if (hand === "both") {
+    // Deux façons de définir « les deux mains » : un motif commun joué en
+    // parallèle ou en miroir (`bothMode`), ou deux motifs distincts
+    // (`patternByHand`) — le canon, le deux contre trois. L'une ou l'autre
+    // suffit, mais le doigté des deux mains reste obligatoire dans les deux cas.
+    const defined = Boolean(exercise.bothMode) || Boolean(exercise.patternByHand);
     return (
-      Boolean(exercise.bothMode) &&
+      defined &&
       Array.isArray(exercise.fingering.right) &&
       Array.isArray(exercise.fingering.left)
     );

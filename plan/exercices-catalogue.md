@@ -1,10 +1,10 @@
 # Catalogue d'exercices techniques — un vrai programme de professeur
 
-> Statut : **plan écrit, production à faire** (30/07/2026).
+> Statut : **fondations faites, contenu en production** (30/07/2026).
 > Ce fichier couvre le **contenu** du mode Exercices ([03](03-technique-doigts.md)),
 > pas son interface : l'écran, le rouleau, le décompte, le métronome, le bilan
 > et la validation MIDI sont en place depuis le 26/07/2026 et ne changent pas.
-> Ce qui manque, c'est ce qu'il y a **dedans** : neuf exercices aujourd'hui,
+> Ce qui manque, c'est ce qu'il y a **dedans** : huit exercices aujourd'hui,
 > quatre-vingt-dix-neuf visés.
 
 [Retour à la checklist générale](README.md) ·
@@ -32,7 +32,7 @@ Quatre exigences, qui se suivent dans tout ce document :
 
 ## 2. Ce qui existe déjà — l'inventaire honnête
 
-`src/exercises/catalog.js` contient **neuf** exercices, et l'écran de réglages
+`src/exercises/catalog.js` contient **huit** exercices, et l'écran de réglages
 sait déjà les présenter : famille → niveau → exercice, un niveau vide restant
 visible mais désactivé. Le manque est du **contenu**, pas du code d'interface.
 
@@ -44,8 +44,8 @@ visible mais désactivé. Le manque est du **contenu**, pas du code d'interface.
 | Gammes | 1 | 1 | 1 | 3 |
 | Arpèges | 1 | 0 | 0 | 1 |
 | Accords | 1 | 0 | 0 | 1 |
-| Coordination (déclarée « bientôt ») | 0 | 0 | 0 | **0** |
-| Rythme (déclarée « bientôt ») | 0 | 0 | 0 | **0** |
+| Coordination | 0 | 0 | 0 | **0** |
+| Doubles notes, Octaves, Trilles, Extension | 0 | 0 | 0 | **0** |
 
 Deux familles sont déclarées `available` **sans contenir un seul exercice** —
 `evenness` et `repeated-notes`. `availableFamilies()` les cache donc, et
@@ -55,7 +55,7 @@ qu'elles y ont été écrites. C'est exactement le trou que E2 comble.
 ## 3. Ce que « un vrai professeur » veut dire
 
 Pas « plus de notes » : un corpus identifié. Chaque exercice de ce catalogue
-porte sa source dans un commentaire, comme les neuf actuels le font déjà.
+porte sa source dans un commentaire, comme les huit actuels le font déjà.
 
 | Source | Ce qu'on lui emprunte |
 | --- | --- |
@@ -93,7 +93,7 @@ objectif que ses huit voisins de famille ne portent pas.
 | 10 | **Extension et substitution** | `extension` | Écarter, passer un doigt par-dessus, changer de doigt sur une note tenue | 0/9 |
 | 11 | **Coordination des mains** | `coordination` | Deux rythmes, deux articulations, deux accentuations à la fois | 0/9 |
 
-**99 exercices** au total. Il en existe 9 : il en reste **90** à écrire.
+**99 exercices** au total. Il en existe 8 : il en reste **91** à écrire.
 
 ### Les quatre écartées, et la raison
 
@@ -170,27 +170,28 @@ Le format actuel (`pattern` de pas, `fingering` par main, `holdBeats`,
 
 Trois manques réels, chacun bloquant des exercices précis :
 
-- [ ] **M1 — Degrés altérés.** `degreeToSemitones()` ne connaît que les sept
-      degrés de la gamme majeure : 0 2 4 5 7 9 11. Impossible d'écrire un
-      trille chromatique, une tierce chromatique, une octave chromatique
-      (dont le doigté 5-4 sur les noires est *tout* le sujet), ni un accord
-      mineur. Il faut une forme de degré qui porte une altération —
-      `{ degree, alter }`, ou la notation courte `"2b"` / `"4#"` — et
-      `MAJOR_SCALE` reste la référence diatonique.
-      **Bloque :** Trilles Difficile, Doubles notes Difficile, Octaves
-      Difficile, Accords Débutant (majeur/mineur).
-- [ ] **M2 — Un motif par main.** Aujourd'hui les deux mains jouent le *même*
-      `pattern`, en parallèle ou en miroir (`bothMode`). Deux contre trois, un
-      canon à un temps, une main legato et l'autre piquée : aucun ne s'écrit.
-      Il faut `patternByHand: { right, left }` et le `fingering` qui va avec,
-      `bothMode` restant pour le cas symétrique — qui est le plus courant et
-      qu'il ne faut pas alourdir.
-      **Bloque :** les 9 exercices de Coordination, plus deux d'Égalité.
-- [ ] **M3 — Le nombre de doigts.** Rien ne vérifie qu'un doigté est cohérent
-      avec son motif : même longueur, même nombre de doigts par accord,
-      valeurs entre 1 et 5, et — pour la main gauche — le pouce sur la note la
-      plus **haute** d'un accord. Neuf exercices se relisent à la main ;
-      quatre-vingt-dix-neuf, non. C'est le harnais du § 9.
+- [x] **M1 — Degrés altérés.** **Fait le 30/07/2026.** Un degré s'écrit `4`
+      ou `"4#"` / `"4b"` ; `parseDegree()` lit les deux, `degreeToSemitones()`
+      ajoute l'altération à la table diatonique, et `negateDegree()` renverse
+      l'altération avec le degré pour le mouvement contraire.
+      **Une limite découverte en le faisant :** un motif chromatique **ne se met
+      pas en miroir**. Le miroir de ce mode est *diatonique* — la gauche joue le
+      même degré vers le bas, pas le même demi-ton —, si bien qu'une suite
+      chromatique renversée ainsi n'est plus chromatique : deux notes voisines
+      y retombent sur la même hauteur. Le harnais **refuse** donc les degrés
+      altérés combinés à `bothMode: "contrary"` ; ces exercices-là s'écrivent
+      avec `patternByHand`, les deux mains explicitement.
+- [x] **M2 — Un motif par main.** **Fait le 30/07/2026.**
+      `patternByHand: { right, left }` ; `bothMode` reste pour le cas
+      symétrique, qui est le plus courant. La génération résout une **ligne par
+      main** — pas, rangs, doigté, tonique, miroir — au lieu d'un seul jeu de
+      pas partagé, et `handsAgreeOnLength()` vérifie que les deux motifs
+      totalisent le même nombre de temps : sinon les deux mains se décaleraient
+      un peu plus à chaque répétition. Vérifié sur un deux-contre-trois.
+- [x] **M3 — Le nombre de doigts.** **Fait le 30/07/2026** :
+      `tools/verifier-catalogue.js`, qui applique tout le § 9 et refuse un
+      exercice mal formé. Il a attrapé son premier cas dès sa première
+      exécution — voir § 9.
 
 ## 7. Le doigté sur les notes (E3) — ce qu'il faut corriger
 
@@ -205,16 +206,21 @@ Sur une gamme en doubles-croches (`beatsPerStep: 0.25`) le rectangle fait
 une quinzaine de pixels de haut : **le doigté disparaît exactement là où
 l'élève en a le plus besoin.** Trois corrections :
 
-- [ ] **D1 — Écrire le chiffre à côté de la note quand il ne tient pas
-      dedans**, plutôt que de ne pas l'écrire. Au-dessus du rectangle pour la
-      main droite, en dessous pour la gauche, avec un fond sombre translucide
-      pour rester lisible par-dessus une autre note.
-- [ ] **D2 — Ne jamais masquer un chiffre pour cause de largeur.** Une touche
-      étroite (trois octaves à l'écran) laisse 25 px : de quoi écrire un
-      chiffre de 10 px. C'est le seuil de 14 px qui est trop prudent.
-- [ ] **D3 — Le doigté d'un accord.** Trois notes empilées portent trois
-      chiffres, chacun sur sa note : c'est déjà le cas, mais jamais vérifié
-      en capture d'écran. À contrôler dans le harnais visuel.
+- [x] **D1 — Écrire le chiffre à côté de la note quand il ne tient pas
+      dedans.** **Fait le 30/07/2026** : `drawFinger()` écrit le chiffre dans
+      la note au-dessus de 15 px de haut, et sinon dans une pastille sombre
+      juste au-dessus du rectangle pour la main droite, juste en dessous pour la
+      gauche — chaque main garde son côté, les deux chiffres ne se superposent
+      pas.
+- [x] **D2 — Ne jamais masquer un chiffre pour cause de largeur.** **Fait** :
+      12 px au-dessus de 18 px de large, 10 px au-dessus de 11 px, et rien en
+      dessous — mais à cette largeur rien d'autre n'est lisible non plus.
+- [x] **D3 — Le doigté d'un accord.** **Vérifié en capture d'écran** le
+      30/07/2026, sur la gamme en croches : les huit chiffres 1-2-3-1-2-3-4-5
+      sont écrits, un par note. La pastille du cas « à côté » reste **non
+      vérifiée à l'image** : aucun exercice du catalogue n'a encore de pas
+      assez court pour la déclencher — ce sera la gamme en doubles-croches de
+      la vague 1.
 
 Ce qui **ne** change **pas** : le chiffre reste sur la note, pas dans une
 légende à côté. C'est ce que demande la demande, et c'est ce que fait une
@@ -225,16 +231,21 @@ partition.
 Trois vagues. Une famille n'est cochée que lorsque ses **neuf** exercices sont
 écrits, vérifiés par le harnais du § 9, et joués dans le mode Exercices.
 
-### Vague 0 — les fondations du format (avant tout contenu)
+### Vague 0 — les fondations du format — **faite le 30/07/2026**
 
-Aucune de ces trois n'est un exercice, et les trois bloquent des exercices.
+Aucune de ces trois n'est un exercice, et les trois bloquaient des exercices.
 
-- [ ] **M1** — degrés altérés dans `generate-exercise.js` + `catalog.js`.
-- [ ] **M2** — `patternByHand` pour les motifs différents entre les mains.
-- [ ] **M3 + D1 + D2 + D3** — harnais de cohérence des doigtés, et doigté
+- [x] **M1** — degrés altérés dans `generate-exercise.js`.
+- [x] **M2** — `patternByHand` pour les motifs différents entre les mains.
+- [x] **M3 + D1 + D2 + D3** — `tools/verifier-catalogue.js`, et doigté
       toujours lisible dans le rouleau.
+- [x] **Les onze familles déclarées**, `rhythm` retirée (décision du § 10.3).
+      `familiesToCome()` du mode ne les cite plus en dur : la liste des
+      familles « Bientôt » se déduit de celles qui n'ont pas encore
+      d'exercice — sans quoi les cinq nouvelles n'auraient apparu nulle part,
+      ni jouables ni annoncées.
 
-### Vague 1 — compléter ce qui est commencé (23 exercices)
+### Vague 1 — compléter ce qui est commencé (37 exercices)
 
 Les cinq familles qui contiennent déjà quelque chose. On finit ce qui est
 ouvert avant d'ouvrir autre chose.
@@ -340,28 +351,49 @@ ouvert avant d'ouvrir autre chose.
 
 Quatre-vingt-dix-neuf exercices ne se relisent pas à l'œil. Comme
 `tools/generer-exercice.js` refuse d'écrire un fichier MIDI qui ne tient pas
-son niveau, un harnais doit refuser un exercice mal formé. Ce qui se **compte**
-dans une définition, donc ce qui se vérifie :
+son niveau, **`tools/verifier-catalogue.js`** refuse un exercice mal formé.
+Écrit le 30/07/2026, il vérifie :
 
-- [ ] `fingering[main]` a exactement autant d'entrées que `pattern` a de pas ;
-- [ ] un pas-accord a autant de doigts que de degrés ;
-- [ ] tous les doigts sont des entiers de 1 à 5 ;
-- [ ] main gauche : dans un accord, le doigt le plus petit est sur le degré le
-      plus **haut** (son pouce est en haut) ; main droite, l'inverse ;
-- [ ] `isBarAligned()` est vrai — sinon la deuxième série ne tombe plus sur un
-      premier temps ;
-- [ ] l'ambitus de l'exercice tient dans **trois octaves** (36 demi-tons), au
-      delà de quoi les touches deviennent trop étroites pour le doigté (§ 4,
-      Sauts écartés) ;
-- [ ] aucun pas ne dure moins de **1/8 de temps** — en dessous, le rectangle
-      est plus court que son chiffre même avec D1 ;
-- [ ] `supportedKeys` non vide, et `fingeringByKey` ne référence que des
-      tonalités qui y figurent ;
-- [ ] chaque `main` de `supportedHands` a son doigté (`supportsHand()` le dit
-      déjà, mais rien ne l'exécute sur tout le catalogue) ;
-- [ ] chaque famille `available` a **9** exercices, 3 par niveau — l'exigence
-      E2, vérifiée mécaniquement ;
-- [ ] les `id` sont uniques, et les `title` uniques **au sein d'une famille**.
+- [x] `fingering[main]` a exactement autant d'entrées que le motif a de pas —
+      pour chaque tonalité déclarée, `fingeringByKey` compris ;
+- [x] un pas-accord a autant de doigts que de degrés, et un silence n'a pas de
+      doigt du tout (`null`, et rien d'autre) ;
+- [x] tous les doigts sont des entiers de 1 à 5 ;
+- [x] dans un accord, les doigts se suivent dans le bon sens : croissant à
+      droite (pouce en bas), décroissant à gauche (pouce en haut) ;
+- [x] `isBarAligned()` est vrai — sinon la deuxième série ne tomberait plus sur
+      un premier temps — et les deux motifs d'un exercice à deux mains durent
+      autant l'un que l'autre ;
+- [x] l'ambitus tient dans **trois octaves** (36 demi-tons), au-delà de quoi les
+      touches deviennent trop étroites pour le doigté ;
+- [x] aucun pas ne dure moins de **1/8 de temps** ;
+- [x] les degrés se lisent (`parseDegree`), et les degrés altérés ne sont pas
+      combinés à un mouvement contraire (§ 6, M1) ;
+- [x] `supportedKeys` non vide, tonalités connues, `fingeringByKey` ne cite que
+      des tonalités déclarées ;
+- [x] chaque main annoncée a son doigté et son mode ;
+- [x] la génération produit réellement des notes, dans le clavier, toutes
+      pourvues d'un doigt ;
+- [x] les `id` sont uniques, et les `title` uniques au sein d'une famille ;
+- [x] l'état de chaque famille est **compté** et affiché — 3 par niveau ou non,
+      et `∅` pour une famille déclarée mais vide, donc invisible dans
+      l'application.
+
+### Le premier cas qu'il a attrapé
+
+Dès sa première exécution, le harnais a refusé `hold-thumb-contrary` : son
+doigté de main gauche, `[1, 2, 3]`, « ne décroît pas comme il devrait, le pouce
+gauche va sur la note la plus haute ». Le harnais avait tort, et c'est
+instructif — **en mouvement contraire le doigté de la main gauche est écrit
+dans l'ordre des degrés du motif, avant miroir.** Les hauteurs réelles
+descendent quand les degrés écrits montent : le premier degré écrit *est* la
+note la plus haute, et le pouce y est bien. La règle s'inverse donc pour ce
+seul cas, et le harnais le sait maintenant.
+
+Un contrôle qui se trompe sur du code correct est un contrôle qu'il faut
+corriger, pas contourner : sans cette exception, les neuf exercices de
+mouvement contraire à venir auraient tous été refusés — ou, pire, réécrits
+avec un doigté faux pour faire passer le test.
 
 Ce que le harnais ne saura **pas** dire, et qu'il faut écrire dans ce plan
 plutôt que prétendre l'avoir vérifié :
@@ -383,7 +415,7 @@ plutôt que prétendre l'avoir vérifié :
    ouverte : les 90 nouveaux exercices s'écrivent-ils d'emblée dans les trois
    tons, ou en Do seulement, quitte à ouvrir Sol et Fa ensuite ?
    **Proposition :** en **Do seulement**, sauf pour les familles où le ton
-   *est* le sujet (Gammes, Accords niveau Difficile). Écrire 90 exercices × 3
+   *est* le sujet (Gammes, Accords niveau Difficile). Écrire 91 exercices × 3
    tons, c'est 270 doigtés à vérifier un par un, et c'est le reproche fait à
    Hanon au § 3.
 2. **Les mains.** Faut-il que les 99 exercices proposent les trois modes
@@ -392,7 +424,7 @@ plutôt que prétendre l'avoir vérifié :
 3. **La famille `rhythm`.** Retirée au § 4. Si le retrait est refusé, il
    faudra lui écrire ses 9 exercices — et accepter qu'ils ne soient jamais
    jugés, contrairement à ceux de 05.
-4. **Le nombre de répétitions par défaut.** Les neuf exercices actuels sont
+4. **Le nombre de répétitions par défaut.** Les huit exercices actuels sont
    tous à 4. Une famille comme Trilles gagnerait à en avoir plus (le trille se
    travaille par séries longues), Accords moins. À décider exercice par
    exercice plutôt que par une règle générale.
