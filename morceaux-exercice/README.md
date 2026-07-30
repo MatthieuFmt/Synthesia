@@ -130,9 +130,10 @@ premiers depuis le 25/07/2026, les treize autres depuis le 27/07/2026) et
 apparaissent dans le sélecteur de morceaux, groupés par compositeur. Le
 bouton d'import de fichier a été retiré de l'application : tout le répertoire
 est livré avec le dépôt. Les exercices générés de `genere/` s'y ajoutent au
-fur et à mesure de leur production : quinze depuis le 28/07/2026 — la vague 1
-complète (A1 Déliage, B1 Gammes, B2 Arpèges, B3 Sauts) et la première famille
-de la vague 2 (C1 Doubles notes), chacune à ses trois niveaux.
+fur et à mesure de leur production : dix-huit à ce jour — la vague 1 complète
+(A1 Déliage, B1 Gammes, B2 Arpèges, B3 Sauts) et les deux premières familles de
+la vague 2 (C1 Doubles notes, C2 Octaves et accords plaqués), chacune à ses
+trois niveaux.
 
 L'attribution des fichiers CC BY-SA (Gnossiennes) n'est **pas**
 affichée dans l'application : celle-ci est un usage personnel, sur le dépôt

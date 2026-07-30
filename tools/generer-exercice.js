@@ -886,6 +886,38 @@ function poserDoubles(carnet, { paires, tick, pas, main = "droite", finTick = nu
   return finTick ?? tick + combien * pas;
 }
 
+// ---- Octaves et accords plaqués (C2) -----------------------------------
+//
+//  Une octave est une paire dont l'écart ne varie jamais : c'est ce qui la rend
+//  différente d'une tierce ou d'une sixte, dont l'écart change avec le degré.
+//  `courseDoubles` ne convient donc pas — elle raisonne en degrés —, et une
+//  fonction à part est plus juste qu'un paramètre de plus.
+function courseOctaves(course) {
+  return course.map((hauteur) => [hauteur, hauteur + 12]);
+}
+
+// La gamme chromatique en octaves : le doigté 5-4 sur les touches noires est le
+// sujet du niveau difficile, et l'écriture ne peut pas le dire — le fichier MIDI
+// ne porte pas de doigté. Elle le rend **audible** en revanche : quatre notes
+// noires d'affilée s'entendent.
+function courseOctavesChromatiques({ depart, demiTons = 12 }) {
+  const course = [];
+  for (let d = 0; d <= demiTons; d++) course.push(depart + d);
+  for (let d = demiTons - 1; d >= 0; d--) course.push(depart + d);
+  return courseOctaves(course);
+}
+
+// Trémolo d'octaves : les deux notes alternent au lieu de sonner ensemble.
+// C'est ce qui permet de tenir un long passage — le poignet bascule d'un côté
+// puis de l'autre au lieu de porter tout le poids à chaque fois.
+function courseTremolo({ hauteurs, battements = 4 }) {
+  const suite = [];
+  for (const hauteur of hauteurs) {
+    for (let i = 0; i < battements; i++) suite.push(i % 2 === 0 ? hauteur : hauteur + 12);
+  }
+  return suite;
+}
+
 // ============================================================================
 //  Famille C1 — Doubles notes
 //
@@ -1066,6 +1098,200 @@ function doublesTresDifficile({ tonalite, gamme }) {
     legato: true,
     finTick: finC,
   });
+  t = finC;
+
+  t = poserCharniere(carnet, { tick: t, tonique, duree: 2 * MESURE - 60 });
+  return { notes: carnet.notes, duree: t + MESURE };
+}
+
+// ============================================================================
+//  Famille C2 — Octaves et accords plaqués
+//
+//  Ce qu'elle travaille : **le poignet souple et l'avant-bras qui porte**
+//  (plan § 5, C2). L'octave n'est pas difficile à trouver, elle est difficile à
+//  répéter : c'est la fatigue qui fait échouer un passage d'octaves, pas la
+//  justesse.
+//
+//    moyen          — octaves détachées en croches, une octave d'ambitus ;
+//    difficile      — octaves legato et gamme d'octaves chromatique, où le
+//                     doigté 5-4 sur les noires devient nécessaire ;
+//    très difficile — trémolo d'octaves, puis accords de quatre sons répétés.
+//
+//  L'écart de l'octave est la matière de la famille : le niveau moyen desserre
+//  ce seul axe, l'octave dépassant la quinte du § 4. Le difficile n'a besoin
+//  d'aucune tolérance — son plafond est déjà l'octave.
+// ============================================================================
+
+function octavesMoyen({ tonalite, gamme }) {
+  const carnet = creerCarnet();
+  const { tonique, mode } = tonalite;
+  let t = 0;
+
+  // A — octaves **détachées** à la droite, sur une octave d'ambitus. Détachées
+  // et non liées : c'est le relâchement entre deux octaves qui fait qu'on peut
+  // en jouer beaucoup, et il s'entend dans le silence entre les deux.
+  const octavesDroite = courseOctaves(courseGamme({ tonique, mode, octaves: 1 }));
+  const finA = 7 * MESURE;
+  poserDoubles(carnet, {
+    paires: repeter(octavesDroite, 4),
+    tick: t,
+    pas: CROCHE,
+    main: "droite",
+    finTick: finA,
+  });
+  for (let mesure = 0; mesure < 7; mesure++) {
+    carnet.poser(t + mesure * MESURE, MESURE - 60, gamme(mesure % 4) - 12, VEL_TENUE, "gauche");
+  }
+  t = finA;
+
+  // B — les mêmes octaves à la gauche. C'est la main qui les rencontre le plus
+  // dans le répertoire, et celle qui se raidit le plus vite.
+  const octavesGauche = courseOctaves(
+    courseGamme({ tonique: tonique - 24, mode, octaves: 1 })
+  );
+  const finB = t + 7 * MESURE;
+  poserDoubles(carnet, {
+    paires: repeter(octavesGauche, 4),
+    tick: t,
+    pas: CROCHE,
+    main: "gauche",
+    finTick: finB,
+  });
+  for (let mesure = 0; mesure < 7; mesure++) {
+    carnet.poser(t + mesure * MESURE, MESURE - 60, gamme(mesure % 4 + 7), VEL_TENUE, "droite");
+  }
+  t = finB;
+
+  t = poserCharniere(carnet, { tick: t, tonique, duree: 2 * MESURE - 60 });
+  return { notes: carnet.notes, duree: t + MESURE };
+}
+
+function octavesDifficile({ tonalite, gamme }) {
+  const carnet = creerCarnet();
+  const { tonique, mode } = tonalite;
+  let t = 0;
+
+  // A — gamme d'octaves **liée**, à la droite : les deux notes se relâchent
+  // ensemble et l'octave suivante enchaîne sans trou.
+  const gammeOctaves = courseOctaves(courseGamme({ tonique, mode, octaves: 2 }));
+  const finA = 6 * MESURE;
+  poserDoubles(carnet, {
+    paires: repeter(gammeOctaves, 3),
+    tick: t,
+    pas: CROCHE,
+    main: "droite",
+    legato: true,
+    finTick: finA,
+  });
+  for (let mesure = 0; mesure < 6; mesure++) {
+    carnet.poser(t + mesure * MESURE, MESURE - 60, gamme(mesure % 4) - 24, VEL_TENUE, "gauche");
+  }
+  t = finA;
+
+  // B — octaves **chromatiques** : c'est ici que le 5-4 sur les noires devient
+  // obligatoire. Le fichier MIDI ne porte pas de doigté, mais il rend la
+  // contrainte audible — cinq noires d'affilée, aucun repère de touche blanche.
+  const chromatiques = courseOctavesChromatiques({ depart: tonique, demiTons: 12 });
+  const finB = t + 6 * MESURE;
+  poserDoubles(carnet, {
+    paires: repeter(chromatiques, 3),
+    tick: t,
+    pas: CROCHE,
+    main: "droite",
+    legato: true,
+    finTick: finB,
+  });
+  for (let mesure = 0; mesure < 6; mesure++) {
+    carnet.poser(t + mesure * MESURE, MESURE - 60, gamme(mesure % 4) - 24, VEL_TENUE, "gauche");
+  }
+  t = finB;
+
+  // C — les mêmes octaves à la gauche, pour que le poignet faible y passe aussi.
+  const chromatiquesGauche = courseOctavesChromatiques({
+    depart: tonique - 24,
+    demiTons: 12,
+  });
+  const finC = t + 6 * MESURE;
+  poserDoubles(carnet, {
+    paires: repeter(chromatiquesGauche, 3),
+    tick: t,
+    pas: CROCHE,
+    main: "gauche",
+    legato: true,
+    finTick: finC,
+  });
+  for (let mesure = 0; mesure < 6; mesure++) {
+    carnet.poser(t + mesure * MESURE, MESURE - 60, gamme(mesure % 4 + 7), VEL_TENUE, "droite");
+  }
+  t = finC;
+
+  t = poserCharniere(carnet, { tick: t, tonique });
+  return { notes: carnet.notes, duree: t };
+}
+
+function octavesTresDifficile({ tonalite, gamme }) {
+  const carnet = creerCarnet();
+  const { tonique } = tonalite;
+  let t = 0;
+
+  // A — **trémolo d'octaves** à la droite, en doubles-croches : les deux notes
+  // alternent au lieu de sonner ensemble. C'est le geste qui permet de tenir un
+  // long passage, et il n'a plus rien à voir avec l'octave plaquée.
+  const socles = [0, 2, 4, 5, 7, 5, 4, 2].map((degre) => gamme(degre));
+  const tremolo = courseTremolo({ hauteurs: socles, battements: 8 });
+  const finA = 7 * MESURE;
+  for (let i = 0; i < (finA - t) / DOUBLE; i++) {
+    const hauteur = tremolo[i % tremolo.length];
+    carnet.poser(
+      t + i * DOUBLE,
+      DOUBLE - 20,
+      hauteur,
+      i % 8 === 0 ? VEL_APPUI : VEL_COURANTE,
+      "droite"
+    );
+  }
+  for (let mesure = 0; mesure < 7; mesure++) {
+    carnet.poser(t + mesure * MESURE, MESURE - 60, gamme(mesure % 4) - 24, VEL_TENUE, "gauche");
+  }
+  t = finA;
+
+  t = poserCharniere(carnet, { tick: t, tonique });
+
+  // B — **accords de quatre sons répétés vite**, aux deux mains. Ici aucun
+  // relais de doigts n'est possible : la répétition ne peut venir que du
+  // poignet, et c'est l'épreuve de fatigue de la famille.
+  const finB = t + 7 * MESURE;
+  const quatreSons = [0, 2, 4, 7].map((degre) => gamme(degre));
+  for (let i = 0; i < (finB - t) / CROCHE; i++) {
+    const quand = t + i * CROCHE;
+    // Une croche sur quatre est silencieuse : la main s'y replace. Sans ce
+    // souffle, l'exercice n'apprendrait qu'à se crisper.
+    if (i % 4 === 3) continue;
+    for (const hauteur of quatreSons) {
+      carnet.poser(quand, CROCHE - 60, hauteur, i % 4 === 0 ? VEL_APPUI : VEL_COURANTE, "droite");
+      carnet.poser(quand, CROCHE - 60, hauteur - 24, i % 4 === 0 ? VEL_APPUI : VEL_COURANTE, "gauche");
+    }
+  }
+  t = finB;
+
+  // C — trémolo aux **deux** mains en sens opposé : la droite monte pendant que
+  // la gauche descend, chacune en trémolo d'octaves.
+  const finC = t + 7 * MESURE;
+  // Les socles montent jusqu'à la quinte **puis redescendent** : sans ce
+  // retour, la suite se rebouclait du sommet à la tonique et le générateur y
+  // voyait — à raison — un saut de trente et un demi-tons qu'aucun poignet ne
+  // fait en une double-croche. La gauche reste à une octave sous sa tonique
+  // habituelle et non deux : deux l'emmenaient sous la borne lisible.
+  const monte = [0, 2, 4, 5, 7, 5, 4, 2].map((degre) => gamme(degre));
+  const descend = [0, -2, -4, -5, -7, -5, -4, -2].map((degre) => gamme(degre) - 12);
+  const tremoloDroite = courseTremolo({ hauteurs: monte, battements: 8 });
+  const tremoloGauche = courseTremolo({ hauteurs: descend, battements: 8 });
+  for (let i = 0; i < (finC - t) / DOUBLE; i++) {
+    const quand = t + i * DOUBLE;
+    const appui = i % 8 === 0 ? VEL_APPUI : VEL_COURANTE;
+    carnet.poser(quand, DOUBLE - 20, tremoloDroite[i % tremoloDroite.length], appui, "droite");
+    carnet.poser(quand, DOUBLE - 20, tremoloGauche[i % tremoloGauche.length], appui, "gauche");
+  }
   t = finC;
 
   t = poserCharniere(carnet, { tick: t, tonique, duree: 2 * MESURE - 60 });
@@ -1396,6 +1622,37 @@ const CATALOGUE = [
           sautMax: 36,
           pourquoi: "les trois octaves et le croisement sont l'objet même de la famille (§ 5, B3)",
         },
+      },
+    },
+  },
+  {
+    famille: "c2-octaves",
+    fichier: "octaves",
+    titre: "Octaves et accords plaqués",
+    niveaux: {
+      moyen: {
+        tonalite: "do",
+        composer: octavesMoyen,
+        objectif:
+          "Octaves détachées en croches, une main à la fois : le relâchement entre deux octaves est ce qui permet d'en jouer beaucoup.",
+        // L'octave fait douze demi-tons par définition. C'est la matière de la
+        // famille, pas un relâchement du niveau.
+        tolerances: {
+          ecartMax: 12,
+          pourquoi: "l'octave est la matière même de la famille (§ 5, C2)",
+        },
+      },
+      difficile: {
+        tonalite: "do",
+        composer: octavesDifficile,
+        objectif:
+          "Gamme d'octaves liée, puis octaves chromatiques aux deux mains — là où le 5-4 sur les touches noires devient obligatoire.",
+      },
+      "tres-difficile": {
+        tonalite: "do",
+        composer: octavesTresDifficile,
+        objectif:
+          "Trémolo d'octaves, accords de quatre sons répétés, puis trémolo aux deux mains en sens opposé.",
       },
     },
   },

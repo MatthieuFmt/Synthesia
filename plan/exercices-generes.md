@@ -60,10 +60,17 @@ mains, polyphonie, sauts, pédale, déchiffrage), c'est la route fichier.
 Quelques familles méritent les deux — elles sont marquées « les deux » au § 5,
 et la version catalogue vient alors en premier.
 
-Effet de bord utile : produire des entrées de catalogue à trois niveaux
-débloque la case encore ouverte de 03 dans
-[plan/README](README.md#feature-03--exercices-techniques-et-agilité-des-doigts)
-— « la difficulté attend un premier exercice Intermédiaire ».
+Effet de bord utile, **obtenu le 30/07/2026** : le sélecteur de difficulté de
+03 est actif, son catalogue comptant désormais 99 exercices à trois niveaux
+([exercices-catalogue.md](exercices-catalogue.md)).
+
+Une conséquence à ne pas perdre de vue : les deux catalogues se sont **éloignés**,
+et c'est voulu. Celui de 03 grade le *geste* à ambitus contenu, parce que son
+rouleau dessine son clavier sans défilement latéral et que le doigté chiffré doit
+tenir dans la note — il mesure donc l'ambitus **en total**. Les fichiers d'ici
+plafonnent des axes mesurables sur un morceau entier joué dans le rouleau de 88
+touches, et mesurent l'ambitus **par main**. Même vocabulaire de niveaux, deux
+échelles ; aucune n'est à aligner sur l'autre.
 
 ## 4. Les trois niveaux, en critères vérifiables
 
@@ -234,7 +241,10 @@ leur niveau.
       Route fichier seulement : le § 5 ne lui demande pas de doigté au
       catalogue, et un doigté de tierces (1-3 / 2-4) ne se note pas dans le
       format d'`exercises/catalog.js`, qui n'a qu'un doigt par note.
-- [ ] **C2 Octaves et accords plaqués** — les trois niveaux.
+- [x] **C2 Octaves et accords plaqués** — les trois niveaux. **Fait le
+      30/07/2026** : trois fichiers, vérifiés et chargés dans le mode Morceau.
+      Fiches ci-dessous. Écart toléré à l'octave au niveau moyen, comme la sixte
+      de C1 : c'est la matière de la famille, pas un relâchement.
 - [ ] **D1 Indépendance rythmique** — les trois niveaux.
 - [ ] **E4 Pédale (CC 64)** — les trois niveaux ; débloque la famille
       Application de 09.
@@ -243,10 +253,24 @@ leur niveau.
 
 - [ ] A2, A3, A4 · B4 · D2, D3 · E1, E2, E3 · F1, F2 — trois niveaux chacune.
 
-### Route catalogue (03), en parallèle
+### Route catalogue (03) — **faite le 30/07/2026, et bien au-delà**
 
-- [ ] A1, A2, A3 et B1, B2 en entrées de `exercises/catalog.js`, avec doigté
-      et niveau — puis activer le sélecteur de difficulté de 03.
+- [x] ~~A1, A2, A3 et B1, B2 en entrées de `exercises/catalog.js`, avec doigté
+      et niveau — puis activer le sélecteur de difficulté de 03.~~
+
+  Le mode Exercices ne contient plus cinq familles mais **onze**, à trois
+  niveaux et trois exercices chacun : 99 exercices avec doigté chiffré, décrits
+  dans [exercices-catalogue.md](exercices-catalogue.md). Le sélecteur de
+  difficulté est actif.
+
+  Une chose vaut d'être notée pour la suite de *ce* plan-ci : les deux catalogues
+  se sont éloignés, et c'est voulu. Le catalogue de 03 grade le **geste** à
+  ambitus contenu — son rouleau dessine son clavier sans défilement latéral, et
+  le doigté chiffré doit tenir dans la note. Les fichiers MIDI d'ici plafonnent
+  des axes mesurables sur un morceau entier, joué dans le rouleau de 88 touches
+  du mode Morceau. Même vocabulaire de niveaux, deux échelles différentes :
+  l'ambitus se mesure **par main** ici et **en total** là-bas, pour cette raison
+  précise. Aucune des deux n'est à aligner sur l'autre.
 
 ### Fiches des exercices produits
 
@@ -512,6 +536,85 @@ suivante — écart de 14 demi-tons, impossible à jouer. `poserDoubles` coupe
 désormais sur `finTick` au lieu de poser toutes les paires reçues. Une
 famille dont la matière est justement l'écart entre deux voix n'aurait rien
 remarqué à la lecture ; c'est le refus qui l'a dit.
+
+#### `octaves-moyen-01.mid`
+
+| | |
+| --- | --- |
+| Famille · niveau | C2 Octaves et accords plaqués · **moyen** |
+| Tonalité · tempo | do majeur · 80 à la noire |
+| Forme | 16 mesures, 48 s, 244 notes |
+| Objectif | Octaves détachées en croches, une main à la fois : le relâchement entre deux octaves est ce qui permet d'en jouer beaucoup. |
+| Structure | A (7 mes.) octaves **détachées** à la droite sur une octave d'ambitus, la gauche tenant une basse · B (7 mes.) les mêmes à la **gauche**, celle qui les rencontre le plus dans le répertoire et se raidit le plus vite · charnière (2 mes.) |
+| Mesuré | débit 3/s · ambitus d'une main 24 · écart 12 · saut 2 |
+| Tolérance | écart porté de 7 à 12 — *l'octave est la matière même de la famille (§ 5, C2)* |
+| Critère | Deux exécutions propres au tempo cible, sur deux jours distincts. |
+
+Détachées et non liées, et c'est le sujet : le silence entre deux octaves est
+là où la main se relâche. Vérifié dans le fichier : **56 octaves par main, tous
+de 12 demi-tons exactement**, et aucun instant où les deux mains en jouent
+ensemble — le niveau moyen les prend une à la fois.
+
+#### `octaves-difficile-01.mid`
+
+| | |
+| --- | --- |
+| Famille · niveau | C2 Octaves et accords plaqués · **difficile** |
+| Tonalité · tempo | do majeur · 100 à la noire |
+| Forme | 19 mesures, 46 s, 312 notes |
+| Objectif | Gamme d'octaves liée, puis octaves chromatiques aux deux mains — là où le 5-4 sur les touches noires devient obligatoire. |
+| Structure | A (6 mes.) **gamme d'octaves liée** sur deux octaves à la droite · B (6 mes.) **octaves chromatiques** à la droite · C (6 mes.) les mêmes à la gauche · charnière |
+| Mesuré | débit 4/s · ambitus d'une main 36 · écart 12 · saut 5 |
+| Tolérance | aucune — le plafond du niveau difficile *est* l'octave |
+| Critère | Deux exécutions propres au tempo cible, sur deux jours distincts. |
+
+Le fichier MIDI ne porte pas de doigté, et ne peut donc pas *dire* « 5 sur les
+blanches, 4 sur les noires ». Il rend la contrainte **audible**, ce qui suffit :
+38 notes de la main droite tombent sur une touche noire, en séries de plusieurs
+d'affilée, et aucun repère de blanche ne vient aider. Vérifié aussi que les 144
+octaves du fichier font tous 12 demi-tons.
+
+#### `octaves-tres-difficile-01.mid`
+
+| | |
+| --- | --- |
+| Famille · niveau | C2 Octaves et accords plaqués · **très difficile** |
+| Tonalité · tempo | do majeur · 120 à la noire |
+| Forme | 24 mesures, 48 s, 691 notes |
+| Objectif | Trémolo d'octaves, accords de quatre sons répétés, puis trémolo aux deux mains en sens opposé. |
+| Structure | A (7 mes.) **trémolo d'octaves** en doubles-croches à la droite · charnière · B (7 mes.) **accords de quatre sons répétés** aux deux mains, une croche sur quatre silencieuse · C (7 mes.) trémolo aux **deux mains en sens opposé** · charnière |
+| Mesuré | débit 8/s · ambitus d'une main 24 · écart 12 · saut 16 |
+| Tolérance | aucune |
+| Critère | Deux exécutions propres au tempo cible, sur deux jours distincts. |
+
+Le trémolo est vérifié dans le fichier, pas seulement écrit : **les deux notes
+alternent et ne sonnent jamais ensemble** — do4 do5 do4 do5, jamais deux au même
+tick. C'est ce qui le distingue de l'octave plaquée, et c'est le geste qui permet
+de tenir un long passage : le poignet bascule au lieu de porter tout le poids.
+
+La section B est le contre-exemple : quarante-quatre accords de quatre sons où
+aucun relais de doigts n'est possible, la répétition ne pouvant venir que du
+poignet. Une croche sur quatre y est silencieuse, et c'est délibéré — sans ce
+souffle, l'exercice n'apprendrait qu'à se crisper.
+
+### Deux refus du générateur, et ce qu'ils ont appris
+
+Le premier jet du niveau très difficile a été **refusé deux fois**, pour deux
+raisons qu'aucune relecture n'aurait données :
+
+1. **MIDI 16, sous la borne lisible.** La main gauche de la section C descendait
+   depuis deux octaves sous sa tonique *et* parcourait une octave : elle
+   arrivait quatre octaves sous le do central. Une octave de base au lieu de
+   deux a suffi.
+2. **Un saut de 33 demi-tons à la mesure 20.** Les socles du trémolo montaient
+   jusqu'à l'octave puis la suite se **rebouclait** du sommet à la tonique — un
+   saut de trente et un demi-tons en une double-croche, qu'aucun poignet ne
+   fait. Les socles montent maintenant jusqu'à la quinte **puis redescendent**,
+   si bien que la fin de la suite est voisine de son début.
+
+Le second est instructif au-delà de C2 : une suite répétée en boucle a une
+**couture**, et la couture est un saut. Les familles à venir qui répètent une
+course devront la fermer sur elle-même, ou l'accepter comme un saut déclaré.
 
 ## 10. Décisions tranchées avant la vague 1 — 28/07/2026
 
