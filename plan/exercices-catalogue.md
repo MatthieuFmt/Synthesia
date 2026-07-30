@@ -1,12 +1,13 @@
 # Catalogue d'exercices techniques — un vrai programme de professeur
 
-> Statut : **vagues 0 et 1 faites — 45 exercices sur 99** (30/07/2026).
+> Statut : **vagues 0, 1 et 2 faites — 63 exercices sur 99** (30/07/2026).
 > Ce fichier couvre le **contenu** du mode Exercices ([03](03-technique-doigts.md)),
 > pas son interface : l'écran, le rouleau, le décompte, le métronome, le bilan
 > et la validation MIDI sont en place depuis le 26/07/2026 et ne changent pas.
 > Ce qui manquait, c'est ce qu'il y a **dedans** : huit exercices au départ,
-> quarante-cinq aujourd'hui, quatre-vingt-dix-neuf visés. Cinq familles sur
-> onze sont complètes — trois niveaux, trois exercices chacun.
+> soixante-trois aujourd'hui, quatre-vingt-dix-neuf visés. Sept familles sur
+> onze sont complètes — trois niveaux, trois exercices chacun. Restent les
+> quatre de la vague 3 : Doubles notes, Octaves, Trilles, Extension.
 
 [Retour à la checklist générale](README.md) ·
 [Feature 03](03-technique-doigts.md) ·
@@ -345,22 +346,56 @@ ouvert avant d'ouvrir autre chose : **45 exercices, 5 familles complètes sur
   écouter (le 5ᵉ doigt en montant, le pouce en descendant) : à défaut de
   mesure, on donne un critère.
 
-### Vague 2 — les familles vides mais déclarées (18 exercices)
+### Vague 2 — les familles vides mais déclarées — **faite le 30/07/2026**
 
-- [ ] **3. Notes répétées** — 0/9
-  - [ ] Débutant : 3-2-1 sur la même note · 4-3-2-1 sur la même note ·
-        Deux notes alternées, doigts fixes
-  - [ ] Intermédiaire : 3-2-1 en montant la gamme · Répétées et changement de
+- [x] **3. Notes répétées** — **9/9**
+  - [x] Débutant : 3-2-1 sur la même note · 4-3-2-1 sur la même note ·
+        Répéter, puis changer de note
+  - [x] Intermédiaire : 3-2-1 en montant la gamme · Répétées et changement de
         position · Accord répété, même main
-  - [ ] Difficile : 4-3-2-1 en doubles-croches · Répétée sous une mélodie
-        tenue · Répétées alternées entre les mains
-- [ ] **11. Coordination des mains** — 0/9 — *les neuf dépendent de M2*
-  - [ ] Débutant : Une main tient, l'autre joue · Alternance mesure par mesure ·
-        Mains en miroir exact
-  - [ ] Intermédiaire : Deux contre un (croches contre noires) · Accents
-        décalés entre les mains · Canon à un temps
-  - [ ] Difficile : Trois contre deux · Legato d'une main, staccato de
-        l'autre · Deux rythmes en mouvement contraire
+  - [x] Difficile : 4-3-2-1 sans respiration · Répétée sous une note tenue ·
+        Répétées alternées entre les mains
+
+  « Deux notes alternées, doigts fixes » a été abandonné : c'est un trille, et
+  la famille Trilles l'attend. Remplacé par **Répéter, puis changer de note**,
+  qui reste dans le sujet — le même groupe de trois, repris sur la touche
+  voisine.
+
+  Deux choses valent d'être notées. **Le silence fait partie de l'exercice** aux
+  deux premiers niveaux : c'est pendant lui que la main se détend, et un exercice
+  de notes répétées sans respiration apprend à se crisper. Et **« Accord
+  répété » est le contre-exemple utile de la famille** : le relais de doigts y
+  est impossible, la répétition ne peut venir que du poignet — c'est ce qui
+  montre à quoi servait le relais dans les cinq autres.
+
+  Le niveau Difficile reste sur **une seule touche** : ce n'est pas parce que
+  c'est le niveau le plus dur qu'il faut y ajouter des déplacements qui ne sont
+  pas le sujet (§ 5).
+- [x] **11. Coordination des mains** — **9/9**, et les neuf dépendaient bien de M2
+  - [x] Débutant : Une main tient, l'autre joue · Alternance mesure par mesure ·
+        Deux contre un
+  - [x] Intermédiaire : Accents décalés entre les mains · Canon à un temps ·
+        Trois contre deux
+  - [x] Difficile : Quatre contre trois · Legato d'une main, piqué de l'autre ·
+        Deux rythmes en sens opposé
+
+  « Mains en miroir exact » a été abandonné : c'est exactement
+  `even-contrary-motion` de la famille Égalité, et deux exercices identiques dans
+  deux familles sont précisément le reproche fait à Hanon. Les trois rapports de
+  rythme ont donc été redistribués — deux contre un au Débutant, trois contre
+  deux à l'Intermédiaire, quatre contre trois au Difficile —, ce qui est de toute
+  façon la vraie progression : le Débutant est le seul rapport où chaque note
+  d'une main tombe **avec** une note de l'autre.
+
+  **Les rapports sont vérifiés dans les temps de départ produits**, pas seulement
+  écrits : trois contre deux donne 0 · 0,333 · 0,667 à droite contre
+  0 · 0,5 · 1 à gauche ; quatre contre trois donne 0 · 0,25 · 0,5 · 0,75 contre
+  0 · 0,333 · 0,667. Un dénominateur mal placé dans un tableau de vingt-quatre
+  entrées ne se voit pas à la relecture.
+
+  Le relais de « Répétées alternées entre les mains » a été vérifié de la même
+  façon : la droite finit sa note à 1,96 temps, la gauche entre à 2,00 — le
+  passage est réellement sans trou ni chevauchement, ce que la consigne promet.
 
 ### Vague 3 — les quatre familles nouvelles (36 exercices)
 

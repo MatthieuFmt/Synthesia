@@ -891,6 +891,331 @@ export const EXERCISES = [
     },
   },
   // ==========================================================================
+  //  Notes répétées — rejouer une note sans raidir le poignet
+  //
+  //  Une même touche, plusieurs doigts : c'est le seul moyen de répéter vite
+  //  sans que l'avant-bras se crispe. Les doigts marchent vers le pouce — 3-2-1
+  //  puis 4-3-2-1 — parce que le pouce est le plus sûr et qu'on le garde pour la
+  //  dernière note du groupe.
+  //
+  //  Les silences font partie du travail : c'est pendant eux que la main se
+  //  détend. Un exercice de notes répétées sans respiration apprend à se
+  //  crisper.
+  // ==========================================================================
+  {
+    id: "repeat-three-two-one",
+    family: "repeated-notes",
+    title: "3-2-1 sur la même note",
+    goal: "Trois doigts sur une seule touche, sans que le poignet monte",
+    instruction:
+      "Trois doigts, une touche. Le poignet reste bas et souple — c'est le doigt qui remonte, pas la main.",
+    difficulty: "beginner",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 60,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 4,
+    // Le groupe de trois avec une croche de silence : la main se détend pendant
+    // le silence. C'est le doigté standard des notes répétées, dans les deux
+    // mains — les doigts marchent vers le pouce, qui prend la dernière.
+    pattern: [
+      0, 0, 0, { degrees: [], beats: 0.5 },
+      0, 0, 0, { degrees: [], beats: 0.5 },
+      0, 0, 0, { degrees: [], beats: 0.5 },
+      0, 0, 0, { degrees: [], beats: 0.5 },
+    ],
+    fingering: {
+      right: [3, 2, 1, null, 3, 2, 1, null, 3, 2, 1, null, 3, 2, 1, null],
+      left: [3, 2, 1, null, 3, 2, 1, null, 3, 2, 1, null, 3, 2, 1, null],
+    },
+  },
+  {
+    id: "repeat-four-three-two-one",
+    family: "repeated-notes",
+    title: "4-3-2-1 sur la même note",
+    goal: "Quatre doigts sur une touche, en doubles-croches",
+    instruction:
+      "Quatre doigts d'affilée, puis un temps entier de repos. Le repos n'est pas une pause : c'est là que la main lâche tout.",
+    difficulty: "beginner",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 58,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.25,
+    restBeats: 4,
+    // Quatre doigts au lieu de trois, et un temps plein de silence : le rapport
+    // entre le travail et le repos est ce qui fait qu'un exercice de répétition
+    // délie au lieu de raidir.
+    pattern: [
+      0, 0, 0, 0, { degrees: [], beats: 1 },
+      0, 0, 0, 0, { degrees: [], beats: 1 },
+      0, 0, 0, 0, { degrees: [], beats: 1 },
+      0, 0, 0, 0, { degrees: [], beats: 1 },
+    ],
+    fingering: {
+      right: [4, 3, 2, 1, null, 4, 3, 2, 1, null, 4, 3, 2, 1, null, 4, 3, 2, 1, null],
+      left: [4, 3, 2, 1, null, 4, 3, 2, 1, null, 4, 3, 2, 1, null, 4, 3, 2, 1, null],
+    },
+  },
+  {
+    id: "repeat-changing-note",
+    family: "repeated-notes",
+    title: "Répéter, puis changer de note",
+    goal: "Reprendre le groupe de trois sur une touche voisine",
+    instruction:
+      "Trois fois la même note, puis la suivante. Les trois doigts repartent du même geste — c'est la main qui se déplace d'une touche, pas le doigté qui change.",
+    difficulty: "beginner",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 58,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 4,
+    pattern: [
+      0, 0, 0, { degrees: [], beats: 0.5 },
+      1, 1, 1, { degrees: [], beats: 0.5 },
+      2, 2, 2, { degrees: [], beats: 0.5 },
+      1, 1, 1, { degrees: [], beats: 0.5 },
+    ],
+    fingering: {
+      right: [3, 2, 1, null, 3, 2, 1, null, 3, 2, 1, null, 3, 2, 1, null],
+      left: [3, 2, 1, null, 3, 2, 1, null, 3, 2, 1, null, 3, 2, 1, null],
+    },
+  },
+  {
+    id: "repeat-up-the-scale",
+    family: "repeated-notes",
+    title: "3-2-1 en montant la gamme",
+    goal: "Le groupe de trois sur cinq notes de suite, sans silence entre eux",
+    instruction:
+      "Plus de respiration entre les groupes : le troisième doigt de la note suivante part aussitôt après le pouce de la précédente. C'est ce relais qu'on travaille.",
+    difficulty: "intermediate",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 60,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 4,
+    // Cinq groupes de trois croches font quinze croches : la seule croche de
+    // silence est la seizième, à la fin. Les groupes de trois ne tombent donc
+    // jamais deux fois au même endroit du temps — c'est ce qui rend l'enchaînement
+    // difficile, pas la vitesse.
+    pattern: [
+      0, 0, 0,
+      1, 1, 1,
+      2, 2, 2,
+      3, 3, 3,
+      4, 4, 4,
+      { degrees: [], beats: 0.5 },
+    ],
+    fingering: {
+      right: [3, 2, 1, 3, 2, 1, 3, 2, 1, 3, 2, 1, 3, 2, 1, null],
+      left: [3, 2, 1, 3, 2, 1, 3, 2, 1, 3, 2, 1, 3, 2, 1, null],
+    },
+  },
+  {
+    id: "repeat-with-position-jump",
+    family: "repeated-notes",
+    title: "Répétées et changement de position",
+    goal: "Retrouver la touche à la quinte, doigts déjà prêts",
+    instruction:
+      "Trois notes en bas, trois notes une quinte plus haut. Pendant la croche de silence, la main est déjà partie et le troisième doigt visé.",
+    difficulty: "intermediate",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 58,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 4,
+    pattern: [
+      0, 0, 0, { degrees: [], beats: 0.5 },
+      4, 4, 4, { degrees: [], beats: 0.5 },
+      0, 0, 0, { degrees: [], beats: 0.5 },
+      4, 4, 4, { degrees: [], beats: 0.5 },
+    ],
+    fingering: {
+      right: [3, 2, 1, null, 3, 2, 1, null, 3, 2, 1, null, 3, 2, 1, null],
+      left: [3, 2, 1, null, 3, 2, 1, null, 3, 2, 1, null, 3, 2, 1, null],
+    },
+  },
+  {
+    id: "repeat-chord",
+    family: "repeated-notes",
+    title: "Accord répété, même main",
+    goal: "Répéter sans pouvoir changer de doigt",
+    instruction:
+      "Trois notes ensemble, trois fois : les doigts ne peuvent pas se relayer. C'est le poignet seul qui rebondit — la seule solution restante.",
+    difficulty: "intermediate",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 56,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 4,
+    // Le contre-exemple utile de la famille : ici le relais de doigts est
+    // impossible, et la répétition ne peut venir que du poignet. C'est ce qui
+    // montre à quoi servait le relais dans les cinq autres.
+    pattern: [
+      { degrees: [0, 2, 4], holdBeats: 0.25 },
+      { degrees: [0, 2, 4], holdBeats: 0.25 },
+      { degrees: [0, 2, 4], holdBeats: 0.25 },
+      { degrees: [], beats: 0.5 },
+      { degrees: [0, 2, 4], holdBeats: 0.25 },
+      { degrees: [0, 2, 4], holdBeats: 0.25 },
+      { degrees: [0, 2, 4], holdBeats: 0.25 },
+      { degrees: [], beats: 0.5 },
+      { degrees: [0, 2, 4], holdBeats: 0.25 },
+      { degrees: [0, 2, 4], holdBeats: 0.25 },
+      { degrees: [0, 2, 4], holdBeats: 0.25 },
+      { degrees: [], beats: 0.5 },
+      { degrees: [0, 2, 4], holdBeats: 0.25 },
+      { degrees: [0, 2, 4], holdBeats: 0.25 },
+      { degrees: [0, 2, 4], holdBeats: 0.25 },
+      { degrees: [], beats: 0.5 },
+    ],
+    fingering: {
+      right: [
+        [1, 3, 5], [1, 3, 5], [1, 3, 5], null,
+        [1, 3, 5], [1, 3, 5], [1, 3, 5], null,
+        [1, 3, 5], [1, 3, 5], [1, 3, 5], null,
+        [1, 3, 5], [1, 3, 5], [1, 3, 5], null,
+      ],
+      left: [
+        [5, 3, 1], [5, 3, 1], [5, 3, 1], null,
+        [5, 3, 1], [5, 3, 1], [5, 3, 1], null,
+        [5, 3, 1], [5, 3, 1], [5, 3, 1], null,
+        [5, 3, 1], [5, 3, 1], [5, 3, 1], null,
+      ],
+    },
+  },
+  {
+    id: "repeat-four-continuous",
+    family: "repeated-notes",
+    title: "4-3-2-1 sans respiration",
+    goal: "Trente-deux répétitions d'affilée, sans que rien ne se raidisse",
+    instruction:
+      "Deux mesures sans un silence. Si l'avant-bras commence à durcir, arrête — cet exercice ne se gagne pas en serrant les dents.",
+    difficulty: "advanced",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 60,
+    defaultRepetitions: 3,
+    beatsPerBar: 4,
+    beatsPerStep: 0.25,
+    restBeats: 4,
+    // Le niveau Difficile de cette famille reste sur **une seule touche** : ce
+    // n'est pas parce que c'est le niveau le plus dur qu'il faut y ajouter des
+    // déplacements qui ne sont pas le sujet (cf. plan § 5).
+    pattern: [
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    ],
+    fingering: {
+      right: [
+        4, 3, 2, 1, 4, 3, 2, 1, 4, 3, 2, 1, 4, 3, 2, 1,
+        4, 3, 2, 1, 4, 3, 2, 1, 4, 3, 2, 1, 4, 3, 2, 1,
+      ],
+      left: [
+        4, 3, 2, 1, 4, 3, 2, 1, 4, 3, 2, 1, 4, 3, 2, 1,
+        4, 3, 2, 1, 4, 3, 2, 1, 4, 3, 2, 1, 4, 3, 2, 1,
+      ],
+    },
+  },
+  {
+    id: "repeat-under-held-melody",
+    family: "repeated-notes",
+    title: "Répétée sous une note tenue",
+    goal: "Répéter avec trois doigts pendant que le cinquième tient",
+    instruction:
+      "Le petit doigt tient la note du haut toute la mesure. En dessous, trois doigts se relaient sur une seule touche — et la tenue ne doit pas trembler.",
+    difficulty: "advanced",
+    supportedHands: ["right", "left", "both"],
+    bothMode: "parallel",
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 54,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 4,
+    // Deux voix dans une main : la tenue et la répétition. C'est le procédé de
+    // Brahms (« 51 Übungen ») et ce qui relie cette famille au Déliement — sauf
+    // qu'ici les doigts libres retombent tous sur la **même** touche.
+    pattern: [
+      { degrees: [0, 4], holdBeats: [0.5, 4] },
+      0, 0, 0, 0, 0, 0, 0,
+      { degrees: [0, 5], holdBeats: [0.5, 4] },
+      0, 0, 0, 0, 0, 0, 0,
+    ],
+    fingering: {
+      right: [[3, 5], 2, 1, 3, 2, 1, 3, 2, [3, 5], 2, 1, 3, 2, 1, 3, 2],
+      left: [[3, 1], 4, 5, 3, 4, 5, 3, 4, [3, 1], 4, 5, 3, 4, 5, 3, 4],
+    },
+  },
+  {
+    id: "repeat-alternating-hands",
+    family: "repeated-notes",
+    title: "Répétées alternées entre les mains",
+    goal: "Passer le relais d'une main à l'autre sans trou ni chevauchement",
+    instruction:
+      "Chaque main tient deux temps, puis se taise. Le passage doit être invisible : on ne doit pas entendre où l'une s'arrête et l'autre commence.",
+    difficulty: "advanced",
+    // Chaque main joue quand l'autre se tait : deux motifs complémentaires, donc
+    // `patternByHand`. Le silence de l'une est ce qui laisse la place à l'autre.
+    supportedHands: ["right", "left", "both"],
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 58,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 4,
+    patternByHand: {
+      right: [
+        0, 0, 0, 0,
+        { degrees: [], beats: 0.5 }, { degrees: [], beats: 0.5 },
+        { degrees: [], beats: 0.5 }, { degrees: [], beats: 0.5 },
+        { degrees: [], beats: 0.5 }, { degrees: [], beats: 0.5 },
+        { degrees: [], beats: 0.5 }, { degrees: [], beats: 0.5 },
+        0, 0, 0, 0,
+      ],
+      left: [
+        { degrees: [], beats: 0.5 }, { degrees: [], beats: 0.5 },
+        { degrees: [], beats: 0.5 }, { degrees: [], beats: 0.5 },
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        { degrees: [], beats: 0.5 }, { degrees: [], beats: 0.5 },
+        { degrees: [], beats: 0.5 }, { degrees: [], beats: 0.5 },
+      ],
+    },
+    fingering: {
+      right: [
+        4, 3, 2, 1,
+        null, null, null, null,
+        null, null, null, null,
+        4, 3, 2, 1,
+      ],
+      left: [
+        null, null, null, null,
+        4, 3, 2, 1,
+        4, 3, 2, 1,
+        null, null, null, null,
+      ],
+    },
+  },
+  // ==========================================================================
   //  Égalité — même son, même durée
   //
   //  L'accent déplacé est l'outil principal : il oblige à *décider* où va le
@@ -1839,6 +2164,325 @@ export const EXERCISES = [
     fingering: {
       right: [1, 2, 3, 5, 3, 2, 1],
       left: [1, 2, 3, 5, 3, 2, 1],
+    },
+  },
+  // ==========================================================================
+  //  Coordination des mains — deux choses à la fois
+  //
+  //  La seule famille dont **tous** les exercices ont deux motifs distincts. Sans
+  //  `patternByHand` (plan § 6, M2) aucun n'aurait pu s'écrire : le deux contre
+  //  trois, le canon, une main legato et l'autre piquée ne sont pas des
+  //  variantes d'un motif commun.
+  //
+  //  Elle est en dernier dans l'ordre du catalogue parce qu'elle suppose les
+  //  autres : deux mains coordonnées mais inégales ne coordonnent rien.
+  // ==========================================================================
+  {
+    id: "coord-one-holds-one-plays",
+    family: "coordination",
+    title: "Une main tient, l'autre joue",
+    goal: "Ne pas laisser la main occupée entraîner celle qui ne fait rien",
+    instruction:
+      "Une main tient une seule note pendant toute la mesure, l'autre joue huit croches. La tenue ne doit pas bouger, ni appuyer au rythme de l'autre main.",
+    difficulty: "beginner",
+    supportedHands: ["right", "left", "both"],
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 60,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 4,
+    // Le premier degré de la coordination : faire deux choses de durées
+    // différentes. La tenue paraît facile — c'est justement pour cela qu'on
+    // s'aperçoit qu'elle suit le rythme de l'autre main sans le vouloir.
+    patternByHand: {
+      right: [0, 1, 2, 3, 4, 3, 2, 1, 0, 1, 2, 3, 4, 3, 2, 1],
+      left: [
+        { degrees: 0, beats: 4 },
+        { degrees: 4, beats: 4 },
+      ],
+    },
+    fingering: {
+      right: [1, 2, 3, 4, 5, 4, 3, 2, 1, 2, 3, 4, 5, 4, 3, 2],
+      left: [5, 1],
+    },
+  },
+  {
+    id: "coord-alternating-bars",
+    family: "coordination",
+    title: "Alternance mesure par mesure",
+    goal: "Entrer et sortir à l'heure, chacune son tour",
+    instruction:
+      "Une mesure chacune. La main qui attend compte les temps : elle doit partir exactement sur le premier, sans hésiter ni anticiper.",
+    difficulty: "beginner",
+    supportedHands: ["right", "left", "both"],
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 60,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 4,
+    patternByHand: {
+      right: [0, 1, 2, 3, 4, 3, 2, 1, { degrees: [], beats: 4 }],
+      left: [{ degrees: [], beats: 4 }, 0, 1, 2, 3, 4, 3, 2, 1],
+    },
+    fingering: {
+      right: [1, 2, 3, 4, 5, 4, 3, 2, null],
+      left: [null, 5, 4, 3, 2, 1, 2, 3, 4],
+    },
+  },
+  {
+    id: "coord-two-against-one",
+    family: "coordination",
+    title: "Deux contre un",
+    goal: "Une main deux fois plus lente que l'autre",
+    instruction:
+      "Deux croches à droite pour une noire à gauche. Compte les noires : ce sont elles qui portent la mesure, les croches se posent dessus.",
+    difficulty: "beginner",
+    supportedHands: ["right", "left", "both"],
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 58,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 4,
+    // Le rapport le plus simple entre deux mains, et le seul où l'une des deux
+    // tombe toujours avec l'autre. C'est ce qui en fait le niveau Débutant : il
+    // n'y a pas encore de note à placer « entre » deux notes de l'autre main.
+    patternByHand: {
+      right: [0, 1, 2, 3, 4, 3, 2, 1, 0, 1, 2, 3, 4, 3, 2, 1],
+      left: [
+        { degrees: 0, beats: 1 }, { degrees: 2, beats: 1 },
+        { degrees: 4, beats: 1 }, { degrees: 2, beats: 1 },
+        { degrees: 0, beats: 1 }, { degrees: 2, beats: 1 },
+        { degrees: 4, beats: 1 }, { degrees: 2, beats: 1 },
+      ],
+    },
+    fingering: {
+      right: [1, 2, 3, 4, 5, 4, 3, 2, 1, 2, 3, 4, 5, 4, 3, 2],
+      left: [5, 3, 1, 3, 5, 3, 1, 3],
+    },
+  },
+  {
+    id: "coord-offset-accents",
+    family: "coordination",
+    title: "Accents décalés entre les mains",
+    goal: "Appuyer d'une main pendant que l'autre reste légère",
+    instruction:
+      "Les deux mains jouent les mêmes croches, mais n'appuient pas aux mêmes. Chaque main doit ignorer l'accent de l'autre — c'est le plus dur de l'exercice.",
+    difficulty: "intermediate",
+    supportedHands: ["right", "left", "both"],
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 58,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 4,
+    // Même rythme, même dessin, accents différents : c'est l'exercice qui isole
+    // la coordination de la *nuance*, indépendamment de celle du rythme. Rien ne
+    // la mesure dans l'application — l'oreille seule, comme pour la famille
+    // Égalité.
+    patternByHand: {
+      right: [
+        { degrees: 0, accent: true }, 1, 2, 3, { degrees: 4, accent: true }, 3, 2, 1,
+        { degrees: 0, accent: true }, 1, 2, 3, { degrees: 4, accent: true }, 3, 2, 1,
+      ],
+      left: [
+        0, 1, { degrees: 2, accent: true }, 3, 4, 3, { degrees: 2, accent: true }, 1,
+        0, 1, { degrees: 2, accent: true }, 3, 4, 3, { degrees: 2, accent: true }, 1,
+      ],
+    },
+    fingering: {
+      right: [1, 2, 3, 4, 5, 4, 3, 2, 1, 2, 3, 4, 5, 4, 3, 2],
+      left: [5, 4, 3, 2, 1, 2, 3, 4, 5, 4, 3, 2, 1, 2, 3, 4],
+    },
+  },
+  {
+    id: "coord-canon-one-beat",
+    family: "coordination",
+    title: "Canon à un temps",
+    goal: "Jouer le même dessin que l'autre main, un temps plus tard",
+    instruction:
+      "La main gauche répète ce que la droite vient de jouer, un temps après. Ne l'écoute pas trop : si tu la suis, tu ralentiras avec elle.",
+    difficulty: "intermediate",
+    supportedHands: ["right", "left", "both"],
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 58,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 4,
+    // Le canon est le cas où les deux mains font la **même** chose et où c'est
+    // pourtant le plus difficile : l'oreille veut les remettre ensemble. La
+    // gauche entre un temps après et s'arrête donc un temps avant la fin — c'est
+    // ce qui garde les deux motifs à huit temps chacun.
+    patternByHand: {
+      right: [
+        0, 1, 2, 3, 4, 3, 2, 1,
+        0, 1, 2, 3, 4, 3, 2, 1,
+      ],
+      left: [
+        { degrees: [], beats: 1 },
+        0, 1, 2, 3, 4, 3, 2, 1,
+        0, 1, 2, 3, 4, 3,
+      ],
+    },
+    fingering: {
+      right: [1, 2, 3, 4, 5, 4, 3, 2, 1, 2, 3, 4, 5, 4, 3, 2],
+      left: [null, 5, 4, 3, 2, 1, 2, 3, 4, 5, 4, 3, 2, 1, 2],
+    },
+  },
+  {
+    id: "coord-three-against-two",
+    family: "coordination",
+    title: "Trois contre deux",
+    goal: "Trois notes d'une main contre deux de l'autre",
+    instruction:
+      "Trois notes à droite pour deux à gauche. Seules la première de chaque temps tombent ensemble — les autres ne se rencontrent jamais, et c'est normal.",
+    difficulty: "intermediate",
+    supportedHands: ["right", "left", "both"],
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 54,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 4,
+    // Le premier rapport où une note d'une main tombe *entre* deux notes de
+    // l'autre. C'est là que compter cesse de marcher et qu'il faut sentir les
+    // deux groupes à la fois.
+    patternByHand: {
+      right: [
+        { degrees: 0, beats: 1 / 3 }, { degrees: 1, beats: 1 / 3 }, { degrees: 2, beats: 1 / 3 },
+        { degrees: 3, beats: 1 / 3 }, { degrees: 4, beats: 1 / 3 }, { degrees: 3, beats: 1 / 3 },
+        { degrees: 2, beats: 1 / 3 }, { degrees: 1, beats: 1 / 3 }, { degrees: 0, beats: 1 / 3 },
+        { degrees: 1, beats: 1 / 3 }, { degrees: 2, beats: 1 / 3 }, { degrees: 3, beats: 1 / 3 },
+        { degrees: 0, beats: 1 / 3 }, { degrees: 1, beats: 1 / 3 }, { degrees: 2, beats: 1 / 3 },
+        { degrees: 3, beats: 1 / 3 }, { degrees: 4, beats: 1 / 3 }, { degrees: 3, beats: 1 / 3 },
+        { degrees: 2, beats: 1 / 3 }, { degrees: 1, beats: 1 / 3 }, { degrees: 0, beats: 1 / 3 },
+        { degrees: 1, beats: 1 / 3 }, { degrees: 2, beats: 1 / 3 }, { degrees: 3, beats: 1 / 3 },
+      ],
+      left: [
+        0, 1, 2, 3, 4, 3, 2, 1,
+        0, 1, 2, 3, 4, 3, 2, 1,
+      ],
+    },
+    fingering: {
+      right: [
+        1, 2, 3, 4, 5, 4, 3, 2, 1, 2, 3, 4,
+        1, 2, 3, 4, 5, 4, 3, 2, 1, 2, 3, 4,
+      ],
+      left: [5, 4, 3, 2, 1, 2, 3, 4, 5, 4, 3, 2, 1, 2, 3, 4],
+    },
+  },
+  {
+    id: "coord-four-against-three",
+    family: "coordination",
+    title: "Quatre contre trois",
+    goal: "Le rapport que le comptage ne résout pas",
+    instruction:
+      "Quatre doubles-croches à droite contre trois triolets à gauche. Ne compte pas les deux : sens le temps entier, et laisse chaque main le remplir à sa façon.",
+    difficulty: "advanced",
+    supportedHands: ["right", "left", "both"],
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 50,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.25,
+    restBeats: 4,
+    // Quatre contre trois n'est pas « trois contre deux en plus rapide » : le plus
+    // petit commun multiple est douze, et aucune note ne retombe avec l'autre
+    // main à l'intérieur du temps. C'est le rapport où il faut cesser de compter.
+    patternByHand: {
+      right: [
+        0, 1, 2, 3, 4, 3, 2, 1,
+        0, 1, 2, 3, 4, 3, 2, 1,
+      ],
+      left: [
+        { degrees: 0, beats: 1 / 3 }, { degrees: 1, beats: 1 / 3 }, { degrees: 2, beats: 1 / 3 },
+        { degrees: 3, beats: 1 / 3 }, { degrees: 4, beats: 1 / 3 }, { degrees: 3, beats: 1 / 3 },
+        { degrees: 2, beats: 1 / 3 }, { degrees: 1, beats: 1 / 3 }, { degrees: 0, beats: 1 / 3 },
+        { degrees: 1, beats: 1 / 3 }, { degrees: 2, beats: 1 / 3 }, { degrees: 3, beats: 1 / 3 },
+      ],
+    },
+    fingering: {
+      right: [1, 2, 3, 4, 5, 4, 3, 2, 1, 2, 3, 4, 5, 4, 3, 2],
+      left: [5, 4, 3, 2, 1, 2, 3, 4, 5, 4, 3, 2],
+    },
+  },
+  {
+    id: "coord-legato-against-staccato",
+    family: "coordination",
+    title: "Legato d'une main, piqué de l'autre",
+    goal: "Deux touchers différents en même temps",
+    instruction:
+      "La droite lie, la gauche pique. Chaque main garde son toucher jusqu'au bout : dès que l'attention se porte sur l'une, l'autre l'imite.",
+    difficulty: "advanced",
+    supportedHands: ["right", "left", "both"],
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 56,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 4,
+    // C'est ici que l'articulation trouve sa place la plus difficile, faute d'être
+    // une famille à elle (plan § 4) : deux touchers à la fois. L'écriture est
+    // exacte — la gauche sonne un huitième de temps —, mais rien dans
+    // l'application ne juge un piqué. L'oreille, encore.
+    patternByHand: {
+      right: [
+        0, 1, 2, 3, 4, 3, 2, 1,
+        0, 1, 2, 3, 4, 3, 2, 1,
+      ],
+      left: [
+        { degrees: 0, holdBeats: 0.125 }, { degrees: 1, holdBeats: 0.125 },
+        { degrees: 2, holdBeats: 0.125 }, { degrees: 3, holdBeats: 0.125 },
+        { degrees: 4, holdBeats: 0.125 }, { degrees: 3, holdBeats: 0.125 },
+        { degrees: 2, holdBeats: 0.125 }, { degrees: 1, holdBeats: 0.125 },
+        { degrees: 0, holdBeats: 0.125 }, { degrees: 1, holdBeats: 0.125 },
+        { degrees: 2, holdBeats: 0.125 }, { degrees: 3, holdBeats: 0.125 },
+        { degrees: 4, holdBeats: 0.125 }, { degrees: 3, holdBeats: 0.125 },
+        { degrees: 2, holdBeats: 0.125 }, { degrees: 1, holdBeats: 0.125 },
+      ],
+    },
+    fingering: {
+      right: [1, 2, 3, 4, 5, 4, 3, 2, 1, 2, 3, 4, 5, 4, 3, 2],
+      left: [5, 4, 3, 2, 1, 2, 3, 4, 5, 4, 3, 2, 1, 2, 3, 4],
+    },
+  },
+  {
+    id: "coord-two-rhythms-contrary",
+    family: "coordination",
+    title: "Deux rythmes en sens opposé",
+    goal: "Rythmes différents et directions opposées, en même temps",
+    instruction:
+      "La droite monte en croches, la gauche descend en noires. Deux vitesses et deux directions : ne regarde qu'une main, l'autre doit tenir seule.",
+    difficulty: "advanced",
+    supportedHands: ["right", "left", "both"],
+    supportedKeys: ["C", "G", "F"],
+    defaultTempo: 54,
+    defaultRepetitions: 4,
+    beatsPerBar: 4,
+    beatsPerStep: 0.5,
+    restBeats: 4,
+    // Le dernier exercice du catalogue, et celui qui cumule le plus : deux
+    // rythmes, deux directions, et rien de commun entre les deux mains qu'un
+    // premier temps sur quatre. La gauche descend sous sa tonique — degrés
+    // négatifs, ce que le générateur sait faire depuis toujours.
+    patternByHand: {
+      right: [
+        0, 1, 2, 3, 4, 3, 2, 1,
+        0, 1, 2, 3, 4, 3, 2, 1,
+      ],
+      left: [
+        { degrees: 0, beats: 1 }, { degrees: -1, beats: 1 },
+        { degrees: -2, beats: 1 }, { degrees: -1, beats: 1 },
+        { degrees: 0, beats: 1 }, { degrees: -1, beats: 1 },
+        { degrees: -2, beats: 1 }, { degrees: -1, beats: 1 },
+      ],
+    },
+    fingering: {
+      right: [1, 2, 3, 4, 5, 4, 3, 2, 1, 2, 3, 4, 5, 4, 3, 2],
+      left: [1, 2, 3, 2, 1, 2, 3, 2],
     },
   },
 ];
