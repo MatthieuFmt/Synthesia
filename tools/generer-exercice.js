@@ -246,6 +246,42 @@ function poserCourse(carnet, { droite, gauche, tick, pas, appuiTous = 4, finTick
   return finTick ?? tick + droite.length * pas;
 }
 
+// Pose une ligne dans **une seule** main, avec son propre pas. `poserCourse`
+// ne sait pas le faire : elle avance les deux mains du même pas, ce qui est
+// exactement ce que la famille D1 doit cesser de faire — deux pulsations dans
+// une seule tête supposent deux pas différents au même instant.
+//
+// `etirerFin` allonge la dernière note jusqu'à `finTick`, pour fermer une
+// phrase. Une ligne à contretemps ne le veut pas : sa dernière note doit garder
+// sa durée, sinon elle sonne bien après que l'autre main s'est arrêtée.
+function poserLigne(
+  carnet,
+  {
+    course,
+    tick,
+    pas,
+    main = "droite",
+    appuiTous = 4,
+    finTick = null,
+    legato = false,
+    etirerFin = true,
+  }
+) {
+  const duree = legato ? pas : Math.max(30, pas - Math.round(pas * 0.12));
+  const combien =
+    finTick === null
+      ? course.length
+      : Math.min(course.length, Math.max(1, Math.floor((finTick - tick) / pas)));
+  for (let i = 0; i < combien; i++) {
+    const quand = tick + i * pas;
+    const dernier = i === combien - 1;
+    const tenue =
+      dernier && finTick && etirerFin ? Math.max(duree, finTick - quand - 40) : duree;
+    carnet.poser(quand, tenue, course[i], i % appuiTous === 0 ? VEL_APPUI : VEL_COURANTE, main);
+  }
+  return finTick ?? tick + combien * pas;
+}
+
 // Les mains à l'octave : la suite de la gauche est celle de la droite, plus
 // bas. C'est le rapport « parallèles à l'octave » du § 4.
 function aLOctave(hauteurs, octaves = -1) {
@@ -1299,6 +1335,237 @@ function octavesTresDifficile({ tonalite, gamme }) {
 }
 
 // ============================================================================
+//  Famille D1 — Indépendance rythmique
+//
+//  Ce qu'elle travaille : **deux pulsations dans une seule tête** (plan § 5,
+//  D1). Les notes n'y sont qu'un support — ce sont des gammes qui se referment
+//  sur elles-mêmes —, et c'est le rapport des deux mains qui fait la
+//  difficulté.
+//
+//    moyen          — croches contre noires, puis contretemps ;
+//    difficile      — trois contre deux, dans les deux sens, puis en contraire ;
+//    très difficile — quatre contre trois, puis triolets contre doubles.
+//
+//  Le § 4 classe « rythmes différents (3:2, 4:3) » en très difficile. C'est le
+//  rapport que cette famille **travaille**, pas un axe qu'elle subit : sa propre
+//  ligne du § 5 le gradue, comme les sauts graduent B3. Aucune tolérance n'est
+//  nécessaire pour autant — le vérificateur ne mesure que le débit, l'ambitus,
+//  l'écart et le saut, et le rapport des mains est un choix d'écriture.
+//
+//  Chaque section se termine par une charnière, et ce n'est pas décoratif : sans
+//  elle, la reprise de la course au début de la section suivante formait un saut
+//  de septième que le niveau moyen interdit. La charnière contient la tonique,
+//  donc la distance à la note précédente y est nulle.
+// ============================================================================
+
+function rythmeMoyen({ tonalite }) {
+  const carnet = creerCarnet();
+  const { tonique, mode } = tonalite;
+  let t = 0;
+
+  const courseD = courseGamme({ tonique, mode, octaves: 1 });
+  const courseG = courseGamme({ tonique: tonique - 12, mode, octaves: 1 });
+
+  // A — deux notes contre une : croches à la droite, noires à la gauche. Le
+  // rapport le plus simple, et le seul où chaque note de la gauche tombe
+  // **avec** une note de la droite.
+  const finA = 6 * MESURE;
+  poserLigne(carnet, {
+    course: repeter(courseD, 4),
+    tick: t,
+    pas: CROCHE,
+    main: "droite",
+    finTick: finA,
+  });
+  poserLigne(carnet, {
+    course: repeter(courseG, 2),
+    tick: t,
+    pas: TEMPS,
+    main: "gauche",
+    finTick: finA,
+  });
+  t = finA;
+  t = poserCharniere(carnet, { tick: t, tonique });
+
+  // B — contretemps : la gauche joue **entre** les temps. Plus aucune note ne
+  // tombe avec l'autre main, et c'est là que le pied doit continuer de battre.
+  const finB = t + 6 * MESURE;
+  poserLigne(carnet, {
+    course: repeter(courseD, 2),
+    tick: t,
+    pas: TEMPS,
+    main: "droite",
+    finTick: finB,
+  });
+  poserLigne(carnet, {
+    course: repeter(courseG, 2),
+    tick: t + CROCHE,
+    pas: TEMPS,
+    main: "gauche",
+    finTick: finB,
+    etirerFin: false, // une note à contretemps ne se prolonge pas jusqu'à la fin
+  });
+  t = finB;
+
+  t = poserCharniere(carnet, { tick: t, tonique, duree: 2 * MESURE - 60 });
+  return { notes: carnet.notes, duree: t + MESURE };
+}
+
+function rythmeDifficile({ tonalite }) {
+  const carnet = creerCarnet();
+  const { tonique, mode } = tonalite;
+  let t = 0;
+
+  const courseD = courseGamme({ tonique, mode, octaves: 1 });
+  const courseG = courseGamme({ tonique: tonique - 12, mode, octaves: 1 });
+
+  // A — trois contre deux : triolets de croches à la droite, croches à la
+  // gauche. Seule la première note de chaque temps tombe avec l'autre main.
+  const finA = 5 * MESURE;
+  poserLigne(carnet, {
+    course: repeter(courseD, 5),
+    tick: t,
+    pas: TRIOLET_CROCHE,
+    main: "droite",
+    appuiTous: 3,
+    finTick: finA,
+  });
+  poserLigne(carnet, {
+    course: repeter(courseG, 3),
+    tick: t,
+    pas: CROCHE,
+    main: "gauche",
+    finTick: finA,
+  });
+  t = finA;
+  t = poserCharniere(carnet, { tick: t, tonique });
+
+  // B — l'inverse. Une main sait rarement faire les deux : c'est le même
+  // rapport, et il faut le réapprendre dans l'autre sens.
+  const finB = t + 5 * MESURE;
+  poserLigne(carnet, {
+    course: repeter(courseD, 3),
+    tick: t,
+    pas: CROCHE,
+    main: "droite",
+    finTick: finB,
+  });
+  poserLigne(carnet, {
+    course: repeter(courseG, 5),
+    tick: t,
+    pas: TRIOLET_CROCHE,
+    main: "gauche",
+    appuiTous: 3,
+    finTick: finB,
+  });
+  t = finB;
+  t = poserCharniere(carnet, { tick: t, tonique });
+
+  // C — trois contre deux en **sens opposé** : la gauche descend pendant que la
+  // droite monte. Deux rythmes et deux directions ; plus aucun repère commun.
+  const descendG = courseGamme({ tonique: tonique - 12, mode, octaves: 1, sens: -1 });
+  const finC = t + 5 * MESURE;
+  poserLigne(carnet, {
+    course: repeter(courseD, 5),
+    tick: t,
+    pas: TRIOLET_CROCHE,
+    main: "droite",
+    appuiTous: 3,
+    finTick: finC,
+  });
+  poserLigne(carnet, {
+    course: repeter(descendG, 3),
+    tick: t,
+    pas: CROCHE,
+    main: "gauche",
+    finTick: finC,
+  });
+  t = finC;
+
+  // Charnière de deux mesures : dix-huit mesures ne faisaient que 43 s à 100 à
+  // la noire, sous le plancher de 45 s du § 2.
+  t = poserCharniere(carnet, { tick: t, tonique, duree: 2 * MESURE - 60 });
+  return { notes: carnet.notes, duree: t + MESURE };
+}
+
+function rythmeTresDifficile({ tonalite }) {
+  const carnet = creerCarnet();
+  const { tonique, mode } = tonalite;
+  let t = 0;
+
+  const courseD = courseGamme({ tonique, mode, octaves: 1 });
+  const courseG = courseGamme({ tonique: tonique - 12, mode, octaves: 1 });
+
+  // A — quatre contre trois : doubles-croches à la droite, triolets à la
+  // gauche. Le plus petit commun multiple est douze : à l'intérieur du temps,
+  // aucune note ne retombe avec l'autre main. C'est le rapport où compter ne
+  // sert plus à rien.
+  const finA = 6 * MESURE;
+  poserLigne(carnet, {
+    course: repeter(courseD, 7),
+    tick: t,
+    pas: DOUBLE,
+    main: "droite",
+    finTick: finA,
+  });
+  poserLigne(carnet, {
+    course: repeter(courseG, 5),
+    tick: t,
+    pas: TRIOLET_CROCHE,
+    main: "gauche",
+    appuiTous: 3,
+    finTick: finA,
+  });
+  t = finA;
+  t = poserCharniere(carnet, { tick: t, tonique });
+
+  // B — l'inverse : triolets à la droite, doubles à la gauche.
+  const finB = t + 6 * MESURE;
+  poserLigne(carnet, {
+    course: repeter(courseD, 5),
+    tick: t,
+    pas: TRIOLET_CROCHE,
+    main: "droite",
+    appuiTous: 3,
+    finTick: finB,
+  });
+  poserLigne(carnet, {
+    course: repeter(courseG, 7),
+    tick: t,
+    pas: DOUBLE,
+    main: "gauche",
+    finTick: finB,
+  });
+  t = finB;
+  t = poserCharniere(carnet, { tick: t, tonique });
+
+  // C — quatre contre trois en sens opposé, ce que la famille cumule de plus
+  // dur : deux subdivisions incommensurables et deux directions.
+  const descendG = courseGamme({ tonique: tonique - 12, mode, octaves: 1, sens: -1 });
+  // Sept mesures et non six : vingt-deux mesures ne faisaient que 44 s à 120.
+  const finC = t + 7 * MESURE;
+  poserLigne(carnet, {
+    course: repeter(courseD, 8),
+    tick: t,
+    pas: DOUBLE,
+    main: "droite",
+    finTick: finC,
+  });
+  poserLigne(carnet, {
+    course: repeter(descendG, 6),
+    tick: t,
+    pas: TRIOLET_CROCHE,
+    main: "gauche",
+    appuiTous: 3,
+    finTick: finC,
+  });
+  t = finC;
+
+  t = poserCharniere(carnet, { tick: t, tonique, duree: 2 * MESURE - 60 });
+  return { notes: carnet.notes, duree: t + MESURE };
+}
+
+// ============================================================================
 //  Famille B3 — Sauts et déplacements
 //
 //  Ce qu'elle travaille : **viser sans regarder**, et le geste qui part avant
@@ -1622,6 +1889,31 @@ const CATALOGUE = [
           sautMax: 36,
           pourquoi: "les trois octaves et le croisement sont l'objet même de la famille (§ 5, B3)",
         },
+      },
+    },
+  },
+  {
+    famille: "d1-rythme",
+    fichier: "rythme",
+    titre: "Indépendance rythmique",
+    niveaux: {
+      moyen: {
+        tonalite: "do",
+        composer: rythmeMoyen,
+        objectif:
+          "Deux notes contre une, puis la main gauche à contretemps : le pied continue de battre le temps.",
+      },
+      difficile: {
+        tonalite: "do",
+        composer: rythmeDifficile,
+        objectif:
+          "Trois contre deux, dans les deux sens puis en mouvement contraire — seule la première note du temps tombe ensemble.",
+      },
+      "tres-difficile": {
+        tonalite: "do",
+        composer: rythmeTresDifficile,
+        objectif:
+          "Quatre contre trois : à l'intérieur du temps, aucune note ne retombe avec l'autre main. C'est là que compter ne sert plus.",
       },
     },
   },

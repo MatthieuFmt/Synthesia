@@ -245,7 +245,10 @@ leur niveau.
       30/07/2026** : trois fichiers, vérifiés et chargés dans le mode Morceau.
       Fiches ci-dessous. Écart toléré à l'octave au niveau moyen, comme la sixte
       de C1 : c'est la matière de la famille, pas un relâchement.
-- [ ] **D1 Indépendance rythmique** — les trois niveaux.
+- [x] **D1 Indépendance rythmique** — les trois niveaux. **Fait le 30/07/2026** :
+      trois fichiers, vérifiés et chargés dans le mode Morceau. Fiches
+      ci-dessous. Aucune tolérance : le rapport des mains n'est pas un axe que
+      le vérificateur mesure.
 - [ ] **E4 Pédale (CC 64)** — les trois niveaux ; débloque la famille
       Application de 09.
 
@@ -615,6 +618,87 @@ raisons qu'aucune relecture n'aurait données :
 Le second est instructif au-delà de C2 : une suite répétée en boucle a une
 **couture**, et la couture est un saut. Les familles à venir qui répètent une
 course devront la fermer sur elle-même, ou l'accepter comme un saut déclaré.
+
+#### `rythme-moyen-01.mid`
+
+| | |
+| --- | --- |
+| Famille · niveau | D1 Indépendance rythmique · **moyen** |
+| Tonalité · tempo | do majeur · 80 à la noire |
+| Forme | 15 mesures, 45 s, 131 notes |
+| Objectif | Deux notes contre une, puis la main gauche à contretemps : le pied continue de battre le temps. |
+| Structure | A (6 mes.) croches à la droite contre **noires** à la gauche · charnière · B (6 mes.) **contretemps** — la gauche joue entre les temps · charnière (2 mes.) |
+| Mesuré | débit 3/s · ambitus d'une main 12 · écart 7 · saut 2 |
+| Tolérance | aucune |
+| Critère | Deux exécutions propres au tempo cible, sur deux jours distincts. |
+
+Les deux sections sont le contraire l'une de l'autre, et c'est le but : en A
+**chaque** note de la gauche tombe avec une note de la droite (24 attaques
+communes sur 24) ; en B **aucune** ne le fait. Vérifié dans le fichier.
+
+#### `rythme-difficile-01.mid`
+
+| | |
+| --- | --- |
+| Famille · niveau | D1 Indépendance rythmique · **difficile** |
+| Tonalité · tempo | do majeur · 100 à la noire |
+| Forme | 19 mesures, 46 s, 318 notes |
+| Objectif | Trois contre deux, dans les deux sens puis en mouvement contraire — seule la première note du temps tombe ensemble. |
+| Structure | A (5 mes.) triolets à la droite contre croches à la gauche · B (5 mes.) **l'inverse** · C (5 mes.) trois contre deux en **sens opposé** · charnière (2 mes.) |
+| Mesuré | débit 5/s · ambitus d'une main 24 · écart 7 · saut 2 |
+| Tolérance | aucune |
+| Critère | Deux exécutions propres au tempo cible, sur deux jours distincts. |
+
+Le rapport est vérifié dans les **pas** du fichier et non dans le nombre de
+notes : la droite avance de 0,333 temps ×120 puis de 0,5 ×40, la gauche de 0,5
+×80 puis de 0,333 ×60. Les rôles s'échangent bien d'une section à l'autre — une
+main sait rarement faire les deux, et il faut réapprendre le même rapport dans
+l'autre sens.
+
+#### `rythme-tres-difficile-01.mid`
+
+| | |
+| --- | --- |
+| Famille · niveau | D1 Indépendance rythmique · **très difficile** |
+| Tonalité · tempo | do majeur · 120 à la noire |
+| Forme | 23 mesures, 46 s, 550 notes |
+| Objectif | Quatre contre trois : à l'intérieur du temps, aucune note ne retombe avec l'autre main. C'est là que compter ne sert plus. |
+| Structure | A (6 mes.) doubles-croches à la droite contre triolets à la gauche · B (6 mes.) l'inverse · C (7 mes.) quatre contre trois en **sens opposé** · charnière (2 mes.) |
+| Mesuré | débit 8/s · ambitus d'une main 24 · écart 7 · saut 2 |
+| Tolérance | aucune |
+| Critère | Deux exécutions propres au tempo cible, sur deux jours distincts. |
+
+Quatre contre trois n'est pas « trois contre deux en plus rapide » : le plus
+petit commun multiple est douze, et **aucune note ne retombe avec l'autre main à
+l'intérieur du temps**. Le fichier le confirme — 79 attaques communes seulement,
+sur 283 à la droite et 255 à la gauche, soit une par temps et rien d'autre.
+
+### Ce que D1 a demandé au générateur, et ce qu'elle n'a pas demandé
+
+Une seule addition : `poserLigne()`, qui pose une ligne dans **une** main avec
+son propre pas. `poserCourse()` avance les deux mains du même pas — c'est
+exactement ce que cette famille doit cesser de faire, et aucun paramètre
+supplémentaire ne l'aurait sauvée.
+
+Elle porte une option qui n'existait pas ailleurs : `etirerFin`. Les autres
+familles allongent la dernière note d'une section jusqu'à sa fin, pour fermer la
+phrase. Une ligne à **contretemps** ne le veut pas : sa dernière note sonnerait
+bien après que l'autre main s'est arrêtée, et le décalage qu'on travaille
+deviendrait un accident de rendu.
+
+Ce que D1 n'a **pas** demandé : de tolérance. Le § 4 classe « rythmes différents
+(3:2, 4:3) » en très difficile, et le niveau moyen de cette famille superpose
+déjà deux pulsations — mais le rapport des mains n'est pas un axe que
+`verifier()` mesure. Il ne compte que le débit, l'ambitus, l'écart et le saut.
+Le rapport des mains reste un choix d'écriture, décrit dans la fiche, comme la
+tonalité et le nombre de voix. Il n'y avait donc rien à desserrer, et il aurait
+été faux de déclarer une tolérance pour faire bonne mesure.
+
+Un détail hérité de C2 a servi tout de suite : **chaque section se termine par
+une charnière**. Sans elle, la reprise de la course au début de la section
+suivante formait un saut de septième — la couture d'une suite répétée, la même
+leçon que le trémolo. La charnière contient la tonique, donc la distance à la
+note précédente y est nulle.
 
 ## 10. Décisions tranchées avant la vague 1 — 28/07/2026
 
