@@ -3154,6 +3154,27 @@ body.force-landscape .song-info { margin-top: 6px; font-size: 12px; }
   max-width: 620px;
 }
 
+/* Ligne de pédale d'un morceau lu (famille Application) : un morceau de
+   quarante-cinq secondes a jusqu'à quatre-vingts changements, soit sept pixels
+   par segment sur une ligne fixe — illisible. Les segments prennent donc une
+   largeur minimale et la ligne défile, l'accord courant amené à gauche. */
+.pd-timeline--scroll {
+  overflow: hidden;
+  max-width: 100%;
+}
+
+.pd-timeline--scroll .pd-track {
+  display: flex;
+  align-items: stretch;
+  transition: transform .18s ease;
+  will-change: transform;
+}
+
+.pd-timeline--scroll .pd-seg {
+  flex: 0 0 auto;
+  min-width: 46px;
+}
+
 .pd-seg {
   flex: 1 1 0;
   min-width: 0;

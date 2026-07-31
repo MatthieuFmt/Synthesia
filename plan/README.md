@@ -38,7 +38,7 @@ pour avancer, pas avant.
 | 06 | Travail intelligent d'un morceau | Cinq outils en place — sous-mode de 01 | [06-travail-intelligent-morceau.md](06-travail-intelligent-morceau.md) |
 | 07 | Entraînement de l'oreille | Trois familles sur quatre ; mélodie hors MVP | [07-entrainement-oreille.md](07-entrainement-oreille.md) |
 | 08 | Lecture de partitions | Cinq étapes en place — suite de 02 | [08-lecture-partitions.md](08-lecture-partitions.md) |
-| 09 | Exercices de pédale | Directe et syncopée, trois niveaux ; Application débloquée, à coder | [09-pedale.md](09-pedale.md) |
+| 09 | Exercices de pédale | **Complet** : directe, syncopée et Application sur un vrai morceau | [09-pedale.md](09-pedale.md) |
 | 10 | Lecture de notes | Une ou deux portées défilantes, trois vitesses | [10-fluidite.md](10-fluidite.md) |
 
 Trois fonctionnalités prolongent une fonctionnalité existante plutôt que d'en

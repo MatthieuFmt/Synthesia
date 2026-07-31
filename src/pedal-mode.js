@@ -56,7 +56,127 @@ const FAMILIES = [
     label: "Pédale syncopée",
     description: "Lever au nouvel accord, réenfoncer juste après : lier sans mélanger.",
   },
+  {
+    id: "application",
+    label: "Application",
+    description: "Le même geste sur un vrai morceau, en suivant la pédale qui y est écrite.",
+  },
 ];
+
+// ----------------------------------------------------------------------------
+//  Famille Application — la pédale d'un vrai morceau (plan/09 § 5, étape E)
+//
+//  Les trois autres familles génèrent leurs accords ; celle-ci ne génère rien,
+//  elle **lit**. C'est ce qui l'a fait attendre : aucun des vingt-six fichiers
+//  du dépôt ne contient de CC 64, et un exercice de pédale sur un fichier sans
+//  pédale n'aurait rien eu à quoi se comparer. Les trois fichiers de la famille
+//  E4 des exercices générés ont levé ce blocage le 30/07/2026.
+//
+//  Rien du moteur ne change : le morceau est ramené à la **même** forme que les
+//  niveaux ci-dessus — une suite d'accords et leurs instants —, et le jugement,
+//  les consignes et la ligne de pédale s'appliquent tels quels. Seule différence,
+//  et elle est de fond : les accords n'y sont plus régulièrement espacés.
+// ----------------------------------------------------------------------------
+const APPLICATION_PIECES = [
+  {
+    id: "pedale-moyen",
+    label: "Cadence pédalée",
+    file: "morceaux-exercice/genere/pedale-moyen-01.mid",
+    description: "Pédale directe, un changement par mesure.",
+  },
+  {
+    id: "pedale-difficile",
+    label: "Harmonie par temps",
+    file: "morceaux-exercice/genere/pedale-difficile-01.mid",
+    description: "Pédale syncopée, un changement par temps.",
+  },
+  {
+    id: "pedale-tres-difficile",
+    label: "Chromatique",
+    file: "morceaux-exercice/genere/pedale-tres-difficile-01.mid",
+    description: "Harmonie chromatique et tenues longues à nettoyer.",
+  },
+];
+
+// Fenêtre pour rattacher un intervalle de pédale à l'accord qui le déclenche.
+// En pédale syncopée l'enfoncement suit l'accord d'un cheveu, en directe il
+// tombe avec lui : dans les deux cas l'attaque cherchée est **avant** ou tout
+// juste après le début de l'intervalle.
+const SNAP_BEFORE_S = 0.35;
+const SNAP_AFTER_S = 0.1;
+
+// Un morceau pédalé, ramené à la forme d'un niveau. `times` et `durations` sont
+// en secondes depuis le début du fichier ; le reste du mode les décale sur sa
+// propre grille.
+async function loadApplicationLevel(piece) {
+  const { Midi } = await import("https://cdn.jsdelivr.net/npm/@tonejs/midi@2.0.28/+esm");
+  const reponse = await fetch(piece.file);
+  if (!reponse.ok) throw new Error(`${piece.file} : ${reponse.status}`);
+  const midi = new Midi(await reponse.arrayBuffer());
+
+  // Les intervalles de pédale écrits dans le fichier : c'est la partition du
+  // pied, et c'est à elle que le jeu de l'utilisateur sera comparé.
+  const changements = [];
+  let enfoncee = false;
+  const evenements = midi.tracks
+    .flatMap((piste) => piste.controlChanges?.[64] ?? piste.controlChanges?.sustain ?? [])
+    .slice()
+    .sort((a, b) => a.time - b.time);
+  for (const evenement of evenements) {
+    const bas = evenement.value >= 0.5;
+    if (bas && !enfoncee) changements.push(evenement.time);
+    enfoncee = bas;
+  }
+  if (changements.length === 0) {
+    throw new Error(`${piece.file} ne contient aucune pédale`);
+  }
+
+  // Les attaques du morceau, groupées par instant.
+  const parInstant = new Map();
+  for (const piste of midi.tracks) {
+    for (const note of piste.notes) {
+      const clef = note.time.toFixed(4);
+      if (!parInstant.has(clef)) parInstant.set(clef, { time: note.time, midis: [] });
+      parInstant.get(clef).midis.push(note.midi);
+    }
+  }
+  const attaques = [...parInstant.values()].sort((a, b) => a.time - b.time);
+
+  // Chaque enfoncement de pédale est rattaché à l'attaque qui le déclenche.
+  const chords = [];
+  const times = [];
+  for (const quand of changements) {
+    let choisie = null;
+    for (const attaque of attaques) {
+      if (attaque.time > quand + SNAP_AFTER_S) break;
+      if (attaque.time >= quand - SNAP_BEFORE_S) choisie = attaque;
+    }
+    if (!choisie) continue;
+    // Un même accord ne compte qu'une fois : deux enfoncements sur la même
+    // attaque seraient un changement fantôme.
+    if (times.length > 0 && Math.abs(choisie.time - times[times.length - 1]) < 1e-3) continue;
+    times.push(choisie.time);
+    chords.push({ name: "", midis: [...choisie.midis].sort((a, b) => a - b) });
+  }
+  if (chords.length < 2) throw new Error(`${piece.file} : pédale illisible`);
+
+  const fin = midi.duration;
+  const durations = times.map((quand, i) => (i + 1 < times.length ? times[i + 1] - quand : fin - quand));
+  const bpm = midi.header.tempos[0]?.bpm ?? 80;
+
+  return {
+    id: piece.id,
+    label: piece.label,
+    piece: piece.label,
+    description: piece.description,
+    tempo: Math.round(bpm),
+    chords,
+    times,
+    durations,
+    // Le morceau impose son tempo : ce n'est plus un réglage.
+    fromFile: true,
+  };
+}
 
 // ----------------------------------------------------------------------------
 //  Les morceaux d'exercice, un par niveau (plan/09 § 8)
@@ -165,7 +285,15 @@ function createModeState() {
   return {
     stopped: false,
     audio: createAudio(),
-    settings: { family: "direct", level: "beginner", tempo: LEVELS[0].tempo },
+    settings: {
+      family: "direct",
+      level: "beginner",
+      tempo: LEVELS[0].tempo,
+      // Famille Application : le morceau lu remplace le niveau.
+      piece: APPLICATION_PIECES[0].id,
+    },
+    applicationLevel: null,  // morceau lu, pour la famille Application
+    applicationError: null,
     progress: createProgressStore(),
     practice: null,      // séance ouverte dans le journal
     click: null,         // synthé du métronome
@@ -185,7 +313,32 @@ function isAlive() {
 }
 
 function currentLevel() {
+  if (state.settings.family === "application") {
+    // Tant que le fichier n'est pas lu, on n'a pas de niveau : l'écran affiche
+    // « Chargement » plutôt qu'un niveau qui n'est pas celui qu'on va jouer.
+    return state.applicationLevel;
+  }
   return LEVELS.find((level) => level.id === state.settings.level) ?? LEVELS[0];
+}
+
+function currentPiece() {
+  return APPLICATION_PIECES.find((p) => p.id === state.settings.piece) ?? APPLICATION_PIECES[0];
+}
+
+// La durée de chaque accord. Les trois premiers niveaux les ont toutes égales —
+// `beatsPerChord` temps —, un morceau lu dans un fichier non : c'est la seule
+// chose que la famille Application change au moteur.
+function chordDurations(level, secondsPerBeat) {
+  if (Array.isArray(level.durations)) return level.durations;
+  return level.chords.map(() => level.beatsPerChord * secondsPerBeat);
+}
+
+// Les instants des accords, sur la grille du mode. Un morceau lu apporte les
+// siens ; un niveau généré les déduit de sa durée d'accord.
+function chordOffsets(level, secondsPerBeat) {
+  if (Array.isArray(level.times)) return level.times;
+  const duree = level.beatsPerChord * secondsPerBeat;
+  return level.chords.map((chord, index) => index * duree);
 }
 
 function currentFamily() {
@@ -246,18 +399,53 @@ function renderSetup() {
     choiceGroup("Exercice", FAMILIES, state.settings.family, (option) => {
       state.settings.family = option.id;
       renderSetup();
+      if (option.id === "application" && !state.applicationLevel) loadCurrentPiece();
     })
   );
 
-  // Changer de niveau reprend son tempo : « Difficile » à 40 bpm n'aurait pas
-  // de sens, et le pas de 5 bpm reste disponible juste en dessous.
-  root.appendChild(
-    choiceGroup("Niveau", LEVELS, state.settings.level, (option) => {
-      state.settings.level = option.id;
-      state.settings.tempo = clampTempo(option.tempo);
-      renderSetup();
-    })
-  );
+  if (state.settings.family === "application") {
+    // Le morceau remplace le niveau, et son tempo n'est pas un réglage : il est
+    // écrit dans le fichier. Proposer un curseur ici laisserait croire qu'on
+    // peut ralentir un morceau — c'est le sous-mode Travail de 01 qui sait le
+    // faire, pas celui-ci.
+    root.appendChild(
+      choiceGroup("Morceau", APPLICATION_PIECES, state.settings.piece, (option) => {
+        state.settings.piece = option.id;
+        state.applicationLevel = null;
+        renderSetup();
+        loadCurrentPiece();
+      })
+    );
+    if (state.applicationError) {
+      root.appendChild(el("p", "pd-notice", state.applicationError));
+    } else if (!level) {
+      root.appendChild(el("p", "pd-notice", "Lecture du morceau…"));
+    } else {
+      root.appendChild(
+        el(
+          "p",
+          "pd-notice",
+          `${level.chords.length} changements de pédale écrits dans le fichier, à ${level.tempo} bpm. ` +
+            "Ta pédale sera comparée à celle-là."
+        )
+      );
+    }
+  } else {
+    // Changer de niveau reprend son tempo : « Difficile » à 40 bpm n'aurait pas
+    // de sens, et le pas de 5 bpm reste disponible juste en dessous.
+    root.appendChild(
+      choiceGroup("Niveau", LEVELS, state.settings.level, (option) => {
+        state.settings.level = option.id;
+        state.settings.tempo = clampTempo(option.tempo);
+        renderSetup();
+      })
+    );
+  }
+
+  if (state.settings.family === "application") {
+    // Pas de stepper : le tempo vient du fichier.
+    return finishSetup(root, level);
+  }
 
   const tempoGroup = el("fieldset", "pd-choice");
   tempoGroup.appendChild(el("legend", "pd-choice-legend", "Tempo"));
@@ -279,20 +467,50 @@ function renderSetup() {
   tempoGroup.appendChild(stepper);
   root.appendChild(tempoGroup);
 
-  root.appendChild(
-    el("p", "pd-note", `Morceau joué : ${level.piece} — ${level.chords.map((c) => c.name).join(" · ")}.`)
-  );
+  return finishSetup(root, level);
+}
+
+// La fin de l'écran de réglages, commune aux quatre familles : ce qui est joué,
+// l'entrée utilisée, et le bouton de départ. Le bouton reste **désactivé** tant
+// qu'un morceau d'Application n'est pas lu — mieux vaut un bouton grisé qu'un
+// exercice qui démarre sur rien.
+function finishSetup(root, level) {
+  if (level) {
+    const noms = level.chords.map((c) => c.name).filter(Boolean).join(" · ");
+    root.appendChild(
+      el("p", "pd-note", `Morceau joué : ${level.piece}${noms ? ` — ${noms}` : ""}.`)
+    );
+  }
 
   // L'entrée utilisée, annoncée clairement (plan/09 § 9).
   root.appendChild(el("p", "pd-note", inputNotice()));
 
   const startBtn = el("button", "btn pd-primary", "Commencer");
   startBtn.type = "button";
-  onClick(startBtn, renderExercise);
+  startBtn.disabled = !level;
+  if (level) onClick(startBtn, renderExercise);
   root.appendChild(startBtn);
 
   container.replaceChildren(root);
   state.ui = null;
+}
+
+// Lit le morceau choisi, puis redessine l'écran. Une erreur est **affichée**,
+// pas avalée : un fichier introuvable doit se voir, sinon le bouton reste grisé
+// sans qu'on sache pourquoi.
+async function loadCurrentPiece() {
+  const piece = currentPiece();
+  state.applicationError = null;
+  try {
+    const level = await loadApplicationLevel(piece);
+    if (!isAlive() || state.settings.piece !== piece.id) return;
+    state.applicationLevel = level;
+  } catch (erreur) {
+    if (!isAlive()) return;
+    state.applicationLevel = null;
+    state.applicationError = `Morceau illisible : ${erreur.message}`;
+  }
+  if (state.settings.family === "application") renderSetup();
 }
 
 function clampTempo(bpm) {
@@ -323,7 +541,7 @@ function renderExercise() {
     el("span", "pd-family", family.label),
     el("span", "pd-meta", level.piece),
     phase,
-    el("span", "pd-meta", `${state.settings.tempo} bpm`)
+    el("span", "pd-meta", `${level.fromFile ? level.tempo : state.settings.tempo} bpm`)
   );
 
   const instruction = el(
@@ -336,7 +554,7 @@ function renderExercise() {
 
   // La ligne de pédale : le morceau à plat, un segment par accord, avec la
   // barre « pédale enfoncée » dessous et l'encoche du changement attendu.
-  const { timeline, segments } = renderTimeline(level, state.settings.family);
+  const { timeline, segments, piste } = renderTimeline(level, state.settings.family);
   const legend = el(
     "p",
     "pd-legend",
@@ -402,7 +620,7 @@ function renderExercise() {
   root.append(status, instruction, timeline, legend, cue, indicator, feedback, pedalBtn, hint, actions);
   container.replaceChildren(root);
 
-  state.ui = { phase, segments, cue, cueWord, cueSub, dot, indicatorText, feedback, pedalBtn, startBtn };
+  state.ui = { phase, segments, piste, cue, cueWord, cueSub, dot, indicatorText, feedback, pedalBtn, startBtn };
   setCue(IDLE_CUE);
   attachPedalInputs();
 }
@@ -420,21 +638,42 @@ function renderTimeline(level, family) {
   timeline.dataset.family = family;
   timeline.setAttribute("aria-hidden", "true"); // lu par la consigne, pas ici
 
+  // La largeur d'un segment suit la durée **réelle** de son accord : un morceau
+  // lu dans un fichier n'a pas des accords tous égaux, et une ligne à segments
+  // égaux mentirait sur l'endroit du changement.
+  const largeurs = Array.isArray(level.durations)
+    ? level.durations
+    : level.chords.map(() => level.beatsPerChord);
+  // Au-delà d'une douzaine d'accords, la ligne défile au lieu de se comprimer :
+  // un morceau lu peut en avoir quatre-vingts, et sept pixels par segment ne
+  // montrent plus où tombe le changement.
+  const defile = level.chords.length > 12;
+  const piste = defile ? el("div", "pd-track") : timeline;
+  if (defile) {
+    timeline.classList.add("pd-timeline--scroll");
+    timeline.appendChild(piste);
+  }
+
   const segments = level.chords.map((chord, index) => {
     const seg = el("div", "pd-seg");
-    seg.style.flexGrow = String(level.beatsPerChord);
+    if (defile) {
+      // Largeur proportionnelle à la durée, mais jamais sous le minimum du CSS.
+      seg.style.flexBasis = `${Math.max(46, Math.round(largeurs[index] * 46))}px`;
+    } else {
+      seg.style.flexGrow = String(Math.max(0.2, largeurs[index]));
+    }
     const lane = el("span", "pd-seg-lane");
     lane.appendChild(el("span", "pd-seg-bar"));
     seg.append(
       el("span", "pd-seg-name", chord.name),
-      el("span", "pd-seg-mark", family === "syncopated" && index > 0 ? "↑↓" : "↓"),
+      el("span", "pd-seg-mark", family !== "direct" && index > 0 ? "↑↓" : "↓"),
       lane
     );
-    timeline.appendChild(seg);
+    piste.appendChild(seg);
     return seg;
   });
 
-  return { timeline, segments };
+  return { timeline, segments, piste: defile ? piste : null };
 }
 
 function setCue({ state: cueState, word, sub }) {
@@ -452,11 +691,16 @@ function setCue({ state: cueState, word, sub }) {
 //  geste, puis le geste lui-même. Les instants sont choisis pour ne jamais se
 //  chevaucher, même au niveau Difficile où un accord ne dure que deux temps.
 // ----------------------------------------------------------------------------
-function buildCues(family, chordTimes, chordDuration, spb) {
+// `durations` est un tableau, une entrée par accord : depuis la famille
+// Application, deux accords voisins n'ont plus forcément la même durée.
+function buildCues(family, chordTimes, durations, spb) {
   const cues = [];
   const last = chordTimes.length - 1;
 
   chordTimes.forEach((time, index) => {
+    const chordDuration = durations[index];
+    // La famille Application reprend le geste **syncopé** : c'est celui qu'un
+    // vrai morceau demande, et c'est celui que les fichiers écrivent.
     if (family === "direct") {
       if (index === 0) {
         cues.push({ time: Math.max(0, time - spb), state: "ready", word: "Prépare-toi", sub: "enfonce sur le premier accord" });
@@ -588,16 +832,25 @@ async function runExercise() {
     const family = session.settings.family;
     const level = currentLevel();
     const chords = level.chords;
-    const grid = createBeatGrid({ bpm: session.settings.tempo, beatsPerBar: BEATS_PER_BAR });
-    const chordDuration = level.beatsPerChord * grid.secondsPerBeat;
-    const chordTimes = chords.map((chord, index) => grid.startTime + index * chordDuration);
-    const endTime = chordTimes[chordTimes.length - 1] + chordDuration;
+    // Un morceau lu impose son tempo. Le prendre dans les réglages donnerait une
+    // grille à 50 bpm pour un fichier à 120, et **les fenêtres de tolérance de
+    // `rhythm/timing.js` sont exprimées en fraction de temps** : elles auraient
+    // été deux fois et demie trop larges, et tous les gestes auraient été jugés
+    // propres. C'est un défaut de justesse, pas d'affichage.
+    const bpm = level.fromFile ? level.tempo : session.settings.tempo;
+    const grid = createBeatGrid({ bpm, beatsPerBar: BEATS_PER_BAR });
+    const durations = chordDurations(level, grid.secondsPerBeat);
+    const chordTimes = chordOffsets(level, grid.secondsPerBeat).map(
+      (offset) => grid.startTime + offset
+    );
+    const endTime = chordTimes[chordTimes.length - 1] + durations[durations.length - 1];
 
     session.attempt = {
       grid,
       level,
       chords,
       chordTimes,
+      durations,
       pedalEvents: [],
       results: [], // un verdict par changement attendu
       expected: family === "direct" ? chordTimes.length : chordTimes.length - 1,
@@ -608,6 +861,7 @@ async function runExercise() {
       family,
       level: level.id,
       piece: level.piece,
+      tempo: bpm,
       tempo: grid.bpm,
       chords: chords.map((chord) => chord.name).join("–"),
     });
@@ -663,6 +917,13 @@ async function runExercise() {
         session.ui.segments.forEach((seg, i) => {
           seg.dataset.state = i === index ? "current" : i < index ? "done" : "";
         });
+        // La ligne amène l'accord courant à gauche : on voit ce qui vient, pas
+        // ce qui est passé.
+        const piste = session.ui.piste;
+        if (piste) {
+          const courant = session.ui.segments[index];
+          piste.style.transform = `translateX(${-courant.offsetLeft}px)`;
+        }
       }, time);
     }, chordTimes.map((time, index) => [time, index]));
     chordPart.start(0);
@@ -681,7 +942,7 @@ async function runExercise() {
     session.parts.push(fingerPart);
 
     // Les consignes : ce qu'il faut faire, un temps avant de le faire.
-    const cues = buildCues(family, chordTimes, chordDuration, grid.secondsPerBeat);
+    const cues = buildCues(family, chordTimes, durations, grid.secondsPerBeat);
     const cuePart = new Tone.Part((time, cue) => {
       Tone.Draw.schedule(() => {
         if (isAlive()) setCue(cue);
@@ -692,16 +953,23 @@ async function runExercise() {
 
     // Verdict de chaque changement, rendu juste après sa fenêtre : le retour
     // est immédiat sans jamais juger un geste encore possible.
-    const judged = family === "direct" ? chordTimes : chordTimes.slice(1);
-    const verdictDelay = Math.min(
-      REPRESS_MAX_FRACTION * grid.secondsPerBeat * 1.6,
-      chordDuration - 0.1
-    );
+    // Le délai avant verdict se calcule **par accord** : à un changement par
+    // croche, attendre la durée d'un accord d'une mesure jugerait bien après que
+    // le suivant est passé.
+    const judgedIndexes = chordTimes
+      .map((time, index) => index)
+      .filter((index) => family === "direct" || index > 0);
     const verdictPart = new Tone.Part((time, chordTime) => {
       Tone.Draw.schedule(() => {
         if (isAlive()) judgeChange(chordTime);
       }, time);
-    }, judged.map((chordTime) => [chordTime + verdictDelay, chordTime]));
+    }, judgedIndexes.map((index) => {
+      const delai = Math.min(
+        REPRESS_MAX_FRACTION * grid.secondsPerBeat * 1.6,
+        Math.max(0.15, durations[index] - 0.1)
+      );
+      return [chordTimes[index] + delai, chordTimes[index]];
+    }));
     verdictPart.start(0);
     session.parts.push(verdictPart);
 
