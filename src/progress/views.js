@@ -97,6 +97,67 @@ export function sessionMinutes(session) {
 }
 
 // ----------------------------------------------------------------------------
+//  Ce qui n'a pas été travaillé depuis le plus longtemps
+//
+//  Écrite le 30/07/2026, et pas avant : c'est le catalogue de 99 exercices qui
+//  l'a rendue nécessaire. Tant qu'une famille en contenait un seul, « lequel
+//  proposer » ne se posait pas ; à trois par niveau, une application qui rouvre
+//  toujours le dernier en montre **un sur quatre-vingt-dix-neuf**, indéfiniment.
+//  C'est exactement le reproche fait à Hanon, retourné contre nous.
+//
+//  Générique à dessein : `clefDe` dit comment reconnaître un candidat dans le
+//  contexte d'une séance. Les exercices s'identifient par `exerciseId`, mais un
+//  morceau s'identifierait par son fichier et un stimulus d'oreille par sa
+//  famille — le jour où quelqu'un le demandera.
+//
+//  Un candidat jamais travaillé passe **avant** tous les autres : découvrir ce
+//  qu'on n'a jamais fait vaut mieux que revoir ce qu'on a fait il y a longtemps.
+// ----------------------------------------------------------------------------
+export function leastRecentlyPracticed(
+  log,
+  { candidates, featureIds = null, clefDe = (contexte) => contexte?.exerciseId ?? null, to = null } = {}
+) {
+  if (!Array.isArray(candidates) || candidates.length === 0) return null;
+
+  const vuLe = new Map();
+  for (const session of completedSessions(log, { featureIds, to })) {
+    const clef = clefDe(session.context);
+    if (clef === null || clef === undefined) continue;
+    const quand = session.endedAt ?? session.startedAt;
+    if (quand === null) continue;
+    // Les séances sont rendues dans l'ordre : la dernière écrite gagne.
+    vuLe.set(clef, quand);
+  }
+
+  let choisi = null;
+  let plusAncien = Infinity;
+  for (const candidat of candidates) {
+    const quand = vuLe.has(candidat) ? vuLe.get(candidat) : -Infinity;
+    if (quand < plusAncien) {
+      plusAncien = quand;
+      choisi = candidat;
+    }
+  }
+  return choisi;
+}
+
+// Quand a-t-on travaillé chaque candidat ? La même lecture que ci-dessus, mais
+// rendue en entier — l'écran Progression pourra la montrer sans la recalculer.
+export function practicedAt(
+  log,
+  { featureIds = null, clefDe = (contexte) => contexte?.exerciseId ?? null } = {}
+) {
+  const vuLe = new Map();
+  for (const session of completedSessions(log, { featureIds })) {
+    const clef = clefDe(session.context);
+    if (clef === null || clef === undefined) continue;
+    const quand = session.endedAt ?? session.startedAt;
+    if (quand !== null) vuLe.set(clef, quand);
+  }
+  return vuLe;
+}
+
+// ----------------------------------------------------------------------------
 //  Notes souvent confondues (plan/F3 § 6, première ligne)
 //
 //  Pour chaque cible ratée, les réponses données à la place — les plus

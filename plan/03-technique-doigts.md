@@ -4,8 +4,11 @@
 > Boucle complète pour les trois familles du MVP — famille → réglages → consigne
 > → décompte d'une mesure → répétitions dans un rouleau avec doigtés → bilan —
 > et, si un clavier est branché, un bilan qui dit quelles notes sont passées
-> (§ 17). Restent les trois familles hors MVP, les tonalités autres que Do
-> majeur, les niveaux au-delà de Débutant, et le test avec un vrai clavier.
+> (§ 17). Le sélecteur de niveau est en place depuis le 29/07/2026.
+> Le catalogue est complet depuis le 30/07/2026 : **onze familles, trois
+> niveaux, trois exercices chacun — 99 exercices**, tous avec doigté et source
+> citée ([exercices-catalogue.md](exercices-catalogue.md)). Ce qui reste : le
+> test avec un vrai clavier, et l'essai des doigtés sous les doigts.
 
 [Retour à la checklist générale](README.md)
 
@@ -25,9 +28,19 @@
 - [x] Valider la pratique avec et sans clavier MIDI.
   (les deux vérifiées le 26/07/2026 — la validation MIDI par une doublure du
   Web MIDI ; reste le test avec un vrai clavier, ligne de [F2](F2-entree-midi.md))
-- [ ] Ajouter le choix de difficulté.
-  (absent volontairement : le catalogue ne contient que des exercices Débutant,
-  un sélecteur à une seule valeur serait un faux choix — § 13 étape C)
+- [x] Ajouter le choix de difficulté.
+  (sélecteur famille → niveau → exercice en place, les niveaux vides restant
+  visibles et désactivés ; le catalogue a trois niveaux peuplés en Déliement et
+  en Gammes depuis le 29/07/2026)
+- [x] Remplir le catalogue : 11 familles × 3 niveaux × 3 exercices.
+  (**99 exercices le 30/07/2026**, aucune famille vide, vérifiés par
+  `tools/verifier-catalogue.js` — détail dans
+  [exercices-catalogue.md](exercices-catalogue.md))
+- [x] Faire tourner les exercices d'une séance à l'autre.
+  (le mode rouvrait le **dernier** exercice pratiqué : avec 99 au catalogue, il
+  en proposait un seul indéfiniment. Il garde désormais la famille et le niveau
+  et propose, dedans, le moins récemment travaillé —
+  `leastRecentlyPracticed()` de `progress/views.js`, vérifié sur quatre séances)
 
 ## 1. Objectif
 
@@ -91,17 +104,31 @@ peut être ajoutée ensuite sans changer le catalogue d'exercices.
 
 ## 4. Familles d'exercices
 
-| Famille | But | Contenu du MVP | Progression future |
-| --- | --- | --- | --- |
-| **Déliement** | Indépendance et égalité des doigts | Motifs de cinq notes, ascendants et descendants | Déplacements, rythmes variés et motifs plus complexes |
-| **Accords** | Placer plusieurs doigts ensemble avec précision | Accords majeurs simples et enchaînement Do–Fa–Sol–Do | Accords mineurs, renversements et changements de tonalité |
-| **Arpèges** | Enchaîner les notes d'un accord sans rupture | Arpège de Do majeur sur une octave | Plusieurs tonalités, renversements et plusieurs octaves |
-| **Gammes** | Passage du pouce et régularité | Hors MVP | Majeures, mineures, mouvement parallèle et contraire |
-| **Coordination** | Rendre les mains indépendantes | Hors MVP | Rythmes différents, réponses entre les mains et accents |
-| **Rythme** | Stabiliser la pulsation | Hors MVP | Notes répétées, syncopes et variantes rythmiques |
+Onze familles, chacune à trois niveaux et trois exercices par niveau. Le détail
+— sources citées, exercice par exercice, et les quatre sujets écartés avec leur
+raison — est dans
+[exercices-catalogue.md](exercices-catalogue.md).
 
-Le premier MVP doit proposer au moins un exercice complet dans chacune des
-trois premières familles : Déliement, Accords et Arpèges.
+| Famille | But | État |
+| --- | --- | --- |
+| **Déliement** | Un doigt tient pendant que les autres jouent | 9/9 |
+| **Égalité** | Même son, même durée ; accents déplacés | 9/9 |
+| **Notes répétées** | Rejouer une note en changeant de doigt | 9/9 |
+| **Gammes** | Passage du pouce sans trou ni accent | 9/9 |
+| **Arpèges** | Ouvrir la main sur l'accord et la garder ouverte | 9/9 |
+| **Accords** | Plusieurs doigts au même instant ; renversements | 9/9 |
+| **Doubles notes** | Tierces et sixtes : deux voix qui s'arrêtent ensemble | 9/9 |
+| **Octaves** | Le poignet, pas le bras | 9/9 |
+| **Trilles** | Battements entre deux doigts voisins | 9/9 |
+| **Extension** | Écarter, passer un doigt par-dessus le pouce | 9/9 |
+| **Coordination** | Deux rythmes, deux touchers, deux accentuations | 9/9 |
+
+Le MVP du 26/07/2026 n'en proposait que trois — Déliement, Accords et Arpèges,
+un exercice chacune. La famille **Rythme**, un temps déclarée « hors MVP », a
+été **retirée** le 30/07/2026 : [05](05-entrainement-rythmique.md) fait le même
+travail avec ce que ce mode n'a pas — un jugement à l'heure / en avance / en
+retard. Ce qui restait utile ici (rythme pointé, groupes irréguliers) vit
+maintenant comme variante d'un geste dans les autres familles.
 
 ## 5. Niveaux de difficulté
 

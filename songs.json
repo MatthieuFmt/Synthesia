@@ -53,5 +53,17 @@
 
   { "kind": "exercice", "title": "Exercice — Doubles notes (moyen)", "file": "morceaux-exercice/genere/doubles-moyen-01.mid" },
   { "kind": "exercice", "title": "Exercice — Doubles notes (difficile)", "file": "morceaux-exercice/genere/doubles-difficile-01.mid" },
-  { "kind": "exercice", "title": "Exercice — Doubles notes (très difficile)", "file": "morceaux-exercice/genere/doubles-tres-difficile-01.mid" }
+  { "kind": "exercice", "title": "Exercice — Doubles notes (très difficile)", "file": "morceaux-exercice/genere/doubles-tres-difficile-01.mid" },
+
+  { "kind": "exercice", "title": "Exercice — Octaves et accords plaqués (moyen)", "file": "morceaux-exercice/genere/octaves-moyen-01.mid" },
+  { "kind": "exercice", "title": "Exercice — Octaves et accords plaqués (difficile)", "file": "morceaux-exercice/genere/octaves-difficile-01.mid" },
+  { "kind": "exercice", "title": "Exercice — Octaves et accords plaqués (très difficile)", "file": "morceaux-exercice/genere/octaves-tres-difficile-01.mid" },
+
+  { "kind": "exercice", "title": "Exercice — Indépendance rythmique (moyen)", "file": "morceaux-exercice/genere/rythme-moyen-01.mid" },
+  { "kind": "exercice", "title": "Exercice — Indépendance rythmique (difficile)", "file": "morceaux-exercice/genere/rythme-difficile-01.mid" },
+  { "kind": "exercice", "title": "Exercice — Indépendance rythmique (très difficile)", "file": "morceaux-exercice/genere/rythme-tres-difficile-01.mid" },
+
+  { "kind": "exercice", "title": "Exercice — Pédale (moyen)", "file": "morceaux-exercice/genere/pedale-moyen-01.mid" },
+  { "kind": "exercice", "title": "Exercice — Pédale (difficile)", "file": "morceaux-exercice/genere/pedale-difficile-01.mid" },
+  { "kind": "exercice", "title": "Exercice — Pédale (très difficile)", "file": "morceaux-exercice/genere/pedale-tres-difficile-01.mid" }
 ]

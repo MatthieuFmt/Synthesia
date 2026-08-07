@@ -39,9 +39,10 @@ import {
   difficultiesOfFamily,
   exerciseById,
   exercisesOfFamily,
-  familyById,
+  FAMILIES,
   supportsHand,
 } from "./exercises/catalog.js";
+import { leastRecentlyPracticed } from "./progress/views.js";
 import {
   clampRepetitions,
   generateExercise,
@@ -70,7 +71,9 @@ const COLORS = {
   leftHandDark: "#177a40",
   active: "#ffffff",
   cursor: "#ffae57",
-  finger: "#0b1220",
+  finger: "#0b1220", // chiffre écrit **dans** la note, sur sa couleur claire
+  fingerOutside: "#e6edf3", // chiffre écrit à côté, sur le fond du rouleau
+  fingerOutsideBg: "rgba(13, 17, 23, .82)", // pastille derrière, pour rester lisible
   countIn: "#ffae57",
 };
 
@@ -341,11 +344,13 @@ function renderFamilyChoice() {
   return group;
 }
 
+// Toute famille déclarée qui ne contient pas encore d'exercice. La liste était
+// écrite en dur — coordination et rythme — et ne suivait donc pas le catalogue :
+// les familles ajoutées ensuite n'apparaissaient nulle part, ni jouables ni
+// annoncées. Elle se déduit maintenant de ce qui est réellement rempli.
 function familiesToCome() {
   const available = new Set(availableFamilies().map((family) => family.id));
-  return [familyById("coordination"), familyById("rhythm")].filter(
-    (family) => family && !available.has(family.id)
-  );
+  return FAMILIES.filter((family) => !available.has(family.id));
 }
 
 // ----------------------------------------------------------------------------
@@ -1025,17 +1030,59 @@ function drawNotes(h) {
       ctx.stroke();
     }
 
-    // Doigté sur la note (plan/03 § 8), tant qu'il reste lisible.
-    if (note.finger && height >= 16 && width >= 14) {
-      ctx.fillStyle = COLORS.finger;
-      ctx.font = "600 12px system-ui, sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(String(note.finger), g.centerX, yTop + height / 2);
-      ctx.textAlign = "left";
-      ctx.textBaseline = "alphabetic";
-    }
+    if (note.finger) drawFinger(note, g, yTop, height, width);
   }
+}
+
+// ----------------------------------------------------------------------------
+//  Le doigté chiffré — 1 le pouce, 5 l'auriculaire
+//
+//  Il s'écrit **dans** la note quand elle est assez grande, et juste **à côté**
+//  quand elle ne l'est pas. L'ancienne version renonçait en dessous de 16 px de
+//  haut : c'est-à-dire exactement sur une gamme en doubles-croches, là où
+//  l'élève a le plus besoin de savoir quel doigt vient. Un exercice technique
+//  sans doigté n'est plus un exercice technique.
+//
+//  À côté veut dire au-dessus pour la main droite, en dessous pour la gauche :
+//  les deux mains se croisent rarement dans un exercice, et chacune garde ainsi
+//  son côté sans que les deux chiffres se superposent.
+// ----------------------------------------------------------------------------
+const FINGER_INSIDE_MIN_HEIGHT = 15;
+const FINGER_OUTSIDE_GAP = 2;
+
+function drawFinger(note, g, yTop, height, width) {
+  // Une touche noire à trois octaves d'écart fait une quinzaine de pixels : le
+  // chiffre y tient encore. Seule une largeur vraiment minuscule le fait
+  // renoncer, et alors rien d'autre ne serait lisible non plus.
+  const size = width >= 18 ? 12 : width >= 11 ? 10 : 0;
+  if (size === 0) return;
+
+  ctx.font = `600 ${size}px system-ui, sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  const text = String(note.finger);
+
+  if (height >= FINGER_INSIDE_MIN_HEIGHT) {
+    ctx.fillStyle = COLORS.finger;
+    ctx.fillText(text, g.centerX, yTop + height / 2);
+  } else {
+    // Pastille derrière le chiffre : sans elle, un 3 posé sur une autre note du
+    // rouleau devient illisible dès que deux voix se croisent.
+    const radius = size * 0.72;
+    const cy =
+      note.hand === "right"
+        ? yTop - FINGER_OUTSIDE_GAP - radius
+        : yTop + height + FINGER_OUTSIDE_GAP + radius;
+    ctx.fillStyle = COLORS.fingerOutsideBg;
+    ctx.beginPath();
+    ctx.arc(g.centerX, cy, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = COLORS.fingerOutside;
+    ctx.fillText(text, g.centerX, cy);
+  }
+
+  ctx.textAlign = "left";
+  ctx.textBaseline = "alphabetic";
 }
 
 // Touches traversées par une note à la position de lecture.
@@ -1662,16 +1709,40 @@ async function loadStudyPieces() {
 
 // Reprend les réglages de la dernière séance, comme la Lecture de notes
 // (plan/02 étape D). Un réglage devenu invalide est ignoré plutôt que corrigé.
+//
+// **Sauf l'exercice lui-même**, depuis le 30/07/2026. Rouvrir le dernier était
+// juste tant qu'une famille n'en contenait qu'un ; à trois exercices par niveau
+// et onze familles, cela revenait à en proposer **un sur quatre-vingt-dix-neuf**,
+// tous les jours, indéfiniment. On garde donc la famille et le niveau — on ne
+// change pas de sujet sans le vouloir — et on propose, dedans, celui qui n'a pas
+// été travaillé depuis le plus longtemps. Celui qu'on n'a jamais fait passe en
+// premier.
+//
+// Le reste des réglages — tempo, main, métronome, démonstration — vient bien de
+// la dernière séance : ce sont des préférences, pas un contenu à faire tourner.
 function restoreSettings() {
   const last = lastSessionContext(state.progress.log(), exerciseFeature.id);
   if (!last) return;
 
-  const exercise = exerciseById(last.exerciseId);
-  if (!exercise) return;
+  const dernier = exerciseById(last.exerciseId);
+  if (!dernier) return;
+
+  const voisins = exercisesOfFamily(dernier.family, dernier.difficulty);
+  const propose = leastRecentlyPracticed(state.progress.log(), {
+    candidates: voisins.map((candidat) => candidat.id),
+    featureIds: [exerciseFeature.id],
+  });
+  const exercise = exerciseById(propose) ?? dernier;
   state.settings.exerciseId = exercise.id;
-  state.settings.tempo = clampTempo(last.tempo ?? exercise.defaultTempo);
+  // Le tempo et le nombre de répétitions de l'exercice **proposé** priment sur
+  // ceux de la séance passée quand on change d'exercice : un trille ne se
+  // travaille pas au tempo d'un accord.
+  const memeExercice = exercise.id === last.exerciseId;
+  state.settings.tempo = clampTempo(
+    memeExercice ? last.tempo ?? exercise.defaultTempo : exercise.defaultTempo
+  );
   state.settings.repetitions = clampRepetitions(
-    last.repetitions ?? exercise.defaultRepetitions
+    memeExercice ? last.repetitions ?? exercise.defaultRepetitions : exercise.defaultRepetitions
   );
   if (supportsHand(exercise, last.handMode)) state.settings.hand = last.handMode;
   if (typeof last.metronome === "boolean") state.settings.metronome = last.metronome;

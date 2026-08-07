@@ -60,10 +60,17 @@ mains, polyphonie, sauts, pédale, déchiffrage), c'est la route fichier.
 Quelques familles méritent les deux — elles sont marquées « les deux » au § 5,
 et la version catalogue vient alors en premier.
 
-Effet de bord utile : produire des entrées de catalogue à trois niveaux
-débloque la case encore ouverte de 03 dans
-[plan/README](README.md#feature-03--exercices-techniques-et-agilité-des-doigts)
-— « la difficulté attend un premier exercice Intermédiaire ».
+Effet de bord utile, **obtenu le 30/07/2026** : le sélecteur de difficulté de
+03 est actif, son catalogue comptant désormais 99 exercices à trois niveaux
+([exercices-catalogue.md](exercices-catalogue.md)).
+
+Une conséquence à ne pas perdre de vue : les deux catalogues se sont **éloignés**,
+et c'est voulu. Celui de 03 grade le *geste* à ambitus contenu, parce que son
+rouleau dessine son clavier sans défilement latéral et que le doigté chiffré doit
+tenir dans la note — il mesure donc l'ambitus **en total**. Les fichiers d'ici
+plafonnent des axes mesurables sur un morceau entier joué dans le rouleau de 88
+touches, et mesurent l'ambitus **par main**. Même vocabulaire de niveaux, deux
+échelles ; aucune n'est à aligner sur l'autre.
 
 ## 4. Les trois niveaux, en critères vérifiables
 
@@ -234,19 +241,46 @@ leur niveau.
       Route fichier seulement : le § 5 ne lui demande pas de doigté au
       catalogue, et un doigté de tierces (1-3 / 2-4) ne se note pas dans le
       format d'`exercises/catalog.js`, qui n'a qu'un doigt par note.
-- [ ] **C2 Octaves et accords plaqués** — les trois niveaux.
-- [ ] **D1 Indépendance rythmique** — les trois niveaux.
-- [ ] **E4 Pédale (CC 64)** — les trois niveaux ; débloque la famille
-      Application de 09.
+- [x] **C2 Octaves et accords plaqués** — les trois niveaux. **Fait le
+      30/07/2026** : trois fichiers, vérifiés et chargés dans le mode Morceau.
+      Fiches ci-dessous. Écart toléré à l'octave au niveau moyen, comme la sixte
+      de C1 : c'est la matière de la famille, pas un relâchement.
+- [x] **D1 Indépendance rythmique** — les trois niveaux. **Fait le 30/07/2026** :
+      trois fichiers, vérifiés et chargés dans le mode Morceau. Fiches
+      ci-dessous. Aucune tolérance : le rapport des mains n'est pas un axe que
+      le vérificateur mesure.
+- [x] **E4 Pédale (CC 64)** — les trois niveaux. **Fait le 30/07/2026** : les
+      **premiers fichiers pédalés du projet**, vérifiés en rejouant la logique
+      d'`extractPedalIntervals()` du mode Morceau, et les repères de pédale
+      contrôlés en capture d'écran. Fiches ci-dessous. Le blocage de la famille
+      Application de [09](09-pedale.md) est levé — le matériel existe ; la
+      famille reste à coder.
+
+**La vague 2 est complète** : quatre familles, douze fichiers — C1 Doubles
+notes, C2 Octaves, D1 Indépendance rythmique, E4 Pédale.
 
 ### Vague 3 — le reste du catalogue (33 fichiers)
 
 - [ ] A2, A3, A4 · B4 · D2, D3 · E1, E2, E3 · F1, F2 — trois niveaux chacune.
 
-### Route catalogue (03), en parallèle
+### Route catalogue (03) — **faite le 30/07/2026, et bien au-delà**
 
-- [ ] A1, A2, A3 et B1, B2 en entrées de `exercises/catalog.js`, avec doigté
-      et niveau — puis activer le sélecteur de difficulté de 03.
+- [x] ~~A1, A2, A3 et B1, B2 en entrées de `exercises/catalog.js`, avec doigté
+      et niveau — puis activer le sélecteur de difficulté de 03.~~
+
+  Le mode Exercices ne contient plus cinq familles mais **onze**, à trois
+  niveaux et trois exercices chacun : 99 exercices avec doigté chiffré, décrits
+  dans [exercices-catalogue.md](exercices-catalogue.md). Le sélecteur de
+  difficulté est actif.
+
+  Une chose vaut d'être notée pour la suite de *ce* plan-ci : les deux catalogues
+  se sont éloignés, et c'est voulu. Le catalogue de 03 grade le **geste** à
+  ambitus contenu — son rouleau dessine son clavier sans défilement latéral, et
+  le doigté chiffré doit tenir dans la note. Les fichiers MIDI d'ici plafonnent
+  des axes mesurables sur un morceau entier, joué dans le rouleau de 88 touches
+  du mode Morceau. Même vocabulaire de niveaux, deux échelles différentes :
+  l'ambitus se mesure **par main** ici et **en total** là-bas, pour cette raison
+  précise. Aucune des deux n'est à aligner sur l'autre.
 
 ### Fiches des exercices produits
 
@@ -512,6 +546,247 @@ suivante — écart de 14 demi-tons, impossible à jouer. `poserDoubles` coupe
 désormais sur `finTick` au lieu de poser toutes les paires reçues. Une
 famille dont la matière est justement l'écart entre deux voix n'aurait rien
 remarqué à la lecture ; c'est le refus qui l'a dit.
+
+#### `octaves-moyen-01.mid`
+
+| | |
+| --- | --- |
+| Famille · niveau | C2 Octaves et accords plaqués · **moyen** |
+| Tonalité · tempo | do majeur · 80 à la noire |
+| Forme | 16 mesures, 48 s, 244 notes |
+| Objectif | Octaves détachées en croches, une main à la fois : le relâchement entre deux octaves est ce qui permet d'en jouer beaucoup. |
+| Structure | A (7 mes.) octaves **détachées** à la droite sur une octave d'ambitus, la gauche tenant une basse · B (7 mes.) les mêmes à la **gauche**, celle qui les rencontre le plus dans le répertoire et se raidit le plus vite · charnière (2 mes.) |
+| Mesuré | débit 3/s · ambitus d'une main 24 · écart 12 · saut 2 |
+| Tolérance | écart porté de 7 à 12 — *l'octave est la matière même de la famille (§ 5, C2)* |
+| Critère | Deux exécutions propres au tempo cible, sur deux jours distincts. |
+
+Détachées et non liées, et c'est le sujet : le silence entre deux octaves est
+là où la main se relâche. Vérifié dans le fichier : **56 octaves par main, tous
+de 12 demi-tons exactement**, et aucun instant où les deux mains en jouent
+ensemble — le niveau moyen les prend une à la fois.
+
+#### `octaves-difficile-01.mid`
+
+| | |
+| --- | --- |
+| Famille · niveau | C2 Octaves et accords plaqués · **difficile** |
+| Tonalité · tempo | do majeur · 100 à la noire |
+| Forme | 19 mesures, 46 s, 312 notes |
+| Objectif | Gamme d'octaves liée, puis octaves chromatiques aux deux mains — là où le 5-4 sur les touches noires devient obligatoire. |
+| Structure | A (6 mes.) **gamme d'octaves liée** sur deux octaves à la droite · B (6 mes.) **octaves chromatiques** à la droite · C (6 mes.) les mêmes à la gauche · charnière |
+| Mesuré | débit 4/s · ambitus d'une main 36 · écart 12 · saut 5 |
+| Tolérance | aucune — le plafond du niveau difficile *est* l'octave |
+| Critère | Deux exécutions propres au tempo cible, sur deux jours distincts. |
+
+Le fichier MIDI ne porte pas de doigté, et ne peut donc pas *dire* « 5 sur les
+blanches, 4 sur les noires ». Il rend la contrainte **audible**, ce qui suffit :
+38 notes de la main droite tombent sur une touche noire, en séries de plusieurs
+d'affilée, et aucun repère de blanche ne vient aider. Vérifié aussi que les 144
+octaves du fichier font tous 12 demi-tons.
+
+#### `octaves-tres-difficile-01.mid`
+
+| | |
+| --- | --- |
+| Famille · niveau | C2 Octaves et accords plaqués · **très difficile** |
+| Tonalité · tempo | do majeur · 120 à la noire |
+| Forme | 24 mesures, 48 s, 691 notes |
+| Objectif | Trémolo d'octaves, accords de quatre sons répétés, puis trémolo aux deux mains en sens opposé. |
+| Structure | A (7 mes.) **trémolo d'octaves** en doubles-croches à la droite · charnière · B (7 mes.) **accords de quatre sons répétés** aux deux mains, une croche sur quatre silencieuse · C (7 mes.) trémolo aux **deux mains en sens opposé** · charnière |
+| Mesuré | débit 8/s · ambitus d'une main 24 · écart 12 · saut 16 |
+| Tolérance | aucune |
+| Critère | Deux exécutions propres au tempo cible, sur deux jours distincts. |
+
+Le trémolo est vérifié dans le fichier, pas seulement écrit : **les deux notes
+alternent et ne sonnent jamais ensemble** — do4 do5 do4 do5, jamais deux au même
+tick. C'est ce qui le distingue de l'octave plaquée, et c'est le geste qui permet
+de tenir un long passage : le poignet bascule au lieu de porter tout le poids.
+
+La section B est le contre-exemple : quarante-quatre accords de quatre sons où
+aucun relais de doigts n'est possible, la répétition ne pouvant venir que du
+poignet. Une croche sur quatre y est silencieuse, et c'est délibéré — sans ce
+souffle, l'exercice n'apprendrait qu'à se crisper.
+
+### Deux refus du générateur, et ce qu'ils ont appris
+
+Le premier jet du niveau très difficile a été **refusé deux fois**, pour deux
+raisons qu'aucune relecture n'aurait données :
+
+1. **MIDI 16, sous la borne lisible.** La main gauche de la section C descendait
+   depuis deux octaves sous sa tonique *et* parcourait une octave : elle
+   arrivait quatre octaves sous le do central. Une octave de base au lieu de
+   deux a suffi.
+2. **Un saut de 33 demi-tons à la mesure 20.** Les socles du trémolo montaient
+   jusqu'à l'octave puis la suite se **rebouclait** du sommet à la tonique — un
+   saut de trente et un demi-tons en une double-croche, qu'aucun poignet ne
+   fait. Les socles montent maintenant jusqu'à la quinte **puis redescendent**,
+   si bien que la fin de la suite est voisine de son début.
+
+Le second est instructif au-delà de C2 : une suite répétée en boucle a une
+**couture**, et la couture est un saut. Les familles à venir qui répètent une
+course devront la fermer sur elle-même, ou l'accepter comme un saut déclaré.
+
+#### `rythme-moyen-01.mid`
+
+| | |
+| --- | --- |
+| Famille · niveau | D1 Indépendance rythmique · **moyen** |
+| Tonalité · tempo | do majeur · 80 à la noire |
+| Forme | 15 mesures, 45 s, 131 notes |
+| Objectif | Deux notes contre une, puis la main gauche à contretemps : le pied continue de battre le temps. |
+| Structure | A (6 mes.) croches à la droite contre **noires** à la gauche · charnière · B (6 mes.) **contretemps** — la gauche joue entre les temps · charnière (2 mes.) |
+| Mesuré | débit 3/s · ambitus d'une main 12 · écart 7 · saut 2 |
+| Tolérance | aucune |
+| Critère | Deux exécutions propres au tempo cible, sur deux jours distincts. |
+
+Les deux sections sont le contraire l'une de l'autre, et c'est le but : en A
+**chaque** note de la gauche tombe avec une note de la droite (24 attaques
+communes sur 24) ; en B **aucune** ne le fait. Vérifié dans le fichier.
+
+#### `rythme-difficile-01.mid`
+
+| | |
+| --- | --- |
+| Famille · niveau | D1 Indépendance rythmique · **difficile** |
+| Tonalité · tempo | do majeur · 100 à la noire |
+| Forme | 19 mesures, 46 s, 318 notes |
+| Objectif | Trois contre deux, dans les deux sens puis en mouvement contraire — seule la première note du temps tombe ensemble. |
+| Structure | A (5 mes.) triolets à la droite contre croches à la gauche · B (5 mes.) **l'inverse** · C (5 mes.) trois contre deux en **sens opposé** · charnière (2 mes.) |
+| Mesuré | débit 5/s · ambitus d'une main 24 · écart 7 · saut 2 |
+| Tolérance | aucune |
+| Critère | Deux exécutions propres au tempo cible, sur deux jours distincts. |
+
+Le rapport est vérifié dans les **pas** du fichier et non dans le nombre de
+notes : la droite avance de 0,333 temps ×120 puis de 0,5 ×40, la gauche de 0,5
+×80 puis de 0,333 ×60. Les rôles s'échangent bien d'une section à l'autre — une
+main sait rarement faire les deux, et il faut réapprendre le même rapport dans
+l'autre sens.
+
+#### `rythme-tres-difficile-01.mid`
+
+| | |
+| --- | --- |
+| Famille · niveau | D1 Indépendance rythmique · **très difficile** |
+| Tonalité · tempo | do majeur · 120 à la noire |
+| Forme | 23 mesures, 46 s, 550 notes |
+| Objectif | Quatre contre trois : à l'intérieur du temps, aucune note ne retombe avec l'autre main. C'est là que compter ne sert plus. |
+| Structure | A (6 mes.) doubles-croches à la droite contre triolets à la gauche · B (6 mes.) l'inverse · C (7 mes.) quatre contre trois en **sens opposé** · charnière (2 mes.) |
+| Mesuré | débit 8/s · ambitus d'une main 24 · écart 7 · saut 2 |
+| Tolérance | aucune |
+| Critère | Deux exécutions propres au tempo cible, sur deux jours distincts. |
+
+Quatre contre trois n'est pas « trois contre deux en plus rapide » : le plus
+petit commun multiple est douze, et **aucune note ne retombe avec l'autre main à
+l'intérieur du temps**. Le fichier le confirme — 79 attaques communes seulement,
+sur 283 à la droite et 255 à la gauche, soit une par temps et rien d'autre.
+
+### Ce que D1 a demandé au générateur, et ce qu'elle n'a pas demandé
+
+Une seule addition : `poserLigne()`, qui pose une ligne dans **une** main avec
+son propre pas. `poserCourse()` avance les deux mains du même pas — c'est
+exactement ce que cette famille doit cesser de faire, et aucun paramètre
+supplémentaire ne l'aurait sauvée.
+
+Elle porte une option qui n'existait pas ailleurs : `etirerFin`. Les autres
+familles allongent la dernière note d'une section jusqu'à sa fin, pour fermer la
+phrase. Une ligne à **contretemps** ne le veut pas : sa dernière note sonnerait
+bien après que l'autre main s'est arrêtée, et le décalage qu'on travaille
+deviendrait un accident de rendu.
+
+Ce que D1 n'a **pas** demandé : de tolérance. Le § 4 classe « rythmes différents
+(3:2, 4:3) » en très difficile, et le niveau moyen de cette famille superpose
+déjà deux pulsations — mais le rapport des mains n'est pas un axe que
+`verifier()` mesure. Il ne compte que le débit, l'ambitus, l'écart et le saut.
+Le rapport des mains reste un choix d'écriture, décrit dans la fiche, comme la
+tonalité et le nombre de voix. Il n'y avait donc rien à desserrer, et il aurait
+été faux de déclarer une tolérance pour faire bonne mesure.
+
+Un détail hérité de C2 a servi tout de suite : **chaque section se termine par
+une charnière**. Sans elle, la reprise de la course au début de la section
+suivante formait un saut de septième — la couture d'une suite répétée, la même
+leçon que le trémolo. La charnière contient la tonique, donc la distance à la
+note précédente y est nulle.
+
+#### `pedale-moyen-01.mid`
+
+| | |
+| --- | --- |
+| Famille · niveau | E4 Pédale · **moyen** |
+| Tonalité · tempo | do majeur · 80 à la noire |
+| Forme | 16 mesures, 48 s, 118 notes, **30 évènements CC 64** |
+| Objectif | Pédale directe, un changement par mesure : le pied descend avec l'accord. |
+| Structure | A (8 mes.) cadence I-IV-V-I, **pédale directe** — le pied descend avec la basse et se lève juste avant la mesure suivante · B (6 mes.) la même, mélodie tenue · charnière (2 mes.) |
+| Mesuré | débit 2/s · ambitus d'une main 19 · écart 7 · saut 0 |
+| Tolérance | aucune |
+| Critère | Deux exécutions propres au tempo cible, sur deux jours distincts. |
+
+**15 intervalles de pédale**, retrouvés un par un par la logique du mode
+Morceau : 8 pour A, 6 pour B, 1 pour la charnière. Tenues de 2,90 s — une mesure
+à 80 moins le souffle — et 5,86 s pour la charnière de deux mesures.
+
+#### `pedale-difficile-01.mid`
+
+| | |
+| --- | --- |
+| Famille · niveau | E4 Pédale · **difficile** |
+| Tonalité · tempo | do majeur · 100 à la noire |
+| Forme | 19 mesures, 46 s, 262 notes, **118 évènements CC 64** |
+| Objectif | Pédale syncopée, un changement par temps : le pied se lève sur l'accord suivant et se réenfonce juste après. |
+| Structure | A (6 mes.) une harmonie par temps, **pédale syncopée** · B (6 mes.) une note de mélodie s'ajoute à contretemps — le pied ne doit pas la suivre · C (5 mes.) un changement par demi-mesure · charnière (2 mes.) |
+| Mesuré | débit 4/s · ambitus d'une main 23 · écart 7 · saut 5 |
+| Tolérance | aucune |
+| Critère | Deux exécutions propres au tempo cible, sur deux jours distincts. |
+
+**59 intervalles** : 24 + 24 + 10 + 1, exactement ce que la partition écrit. La
+plus courte tenue fait 0,52 s — le temps moins le retard du réenfoncement.
+
+#### `pedale-tres-difficile-01.mid`
+
+| | |
+| --- | --- |
+| Famille · niveau | E4 Pédale · **très difficile** |
+| Tonalité · tempo | do majeur · 120 à la noire |
+| Forme | 23 mesures, 46 s, 326 notes, **162 évènements CC 64** |
+| Objectif | Harmonie chromatique, où deux accords voisins n'ont aucune note commune, et des tenues de deux mesures à nettoyer. |
+| Structure | A (7 mes.) syncopée sur **harmonie chromatique**, un changement par temps · charnière · B (8 mes.) **tenues de deux mesures à nettoyer** · C (6 mes.) chromatique et syncopée à la **croche** — deux fois plus rapide que A · charnière (2 mes.) |
+| Mesuré | débit 4/s · ambitus d'une main 19 · écart 7 · saut 7 |
+| Tolérance | aucune |
+| Critère | Deux exécutions propres au tempo cible, sur deux jours distincts. |
+
+**81 intervalles** : 28 + 4 + 48 + 1. La plus courte tenue fait 0,21 s — une
+croche à 120 moins le retard —, la plus longue 3,91 s, soit les deux mesures de
+la section B. C'est l'harmonie chromatique qui fait la difficulté : deux accords
+voisins n'ayant aucune note commune, rien ne rattrape une pédale mal levée.
+
+### E4 a demandé trois choses au générateur, et en a appris une quatrième
+
+1. **Le carnet porte la pédale.** `creerCarnet()` a un tableau `pedales` et une
+   méthode `pedale(tick, enfoncee)`, tout-ou-rien comme `midi-input.js` à la
+   lecture. Un composeur retourne désormais `{ notes, duree, pedales }`.
+2. **`pisteNotes()` écrit le CC 64**, sur la piste de la main gauche — celle qui
+   porte l'harmonie que le pied suit. Les rangs d'ordonnancement à un même tick
+   sont devenus explicites : note-off, levé, enfoncé, note-on. C'est cet ordre
+   qui rend la pédale directe correcte, le pied descendant *avec* l'accord.
+3. **`verifierPedale()`** refuse une pédalisation incohérente : deux enfoncés de
+   suite, un premier évènement qui est un levé, un dernier qui est un enfoncé
+   (la pédale resterait baissée jusqu'à la fin), un évènement après la fin, une
+   tenue de plus de quatre mesures. Il a attrapé trois fichiers sur trois au
+   premier jet.
+
+Et la quatrième, qu'aucun de ces contrôles n'aurait vue : **ce qui est écrit
+n'était pas ce qui était lu**. Aux jointures de section, le levé de la
+précédente et l'enfoncé de la suivante tombaient au même tick.
+`extractPedalIntervals()` du mode Morceau regroupe les évènements de même temps
+— pour qu'un relâchement et un nouvel appui simultanés ne fassent pas une
+coupure visuelle — et ne fermait donc pas l'intervalle : il en dessinait
+**trois de moins** que la partition n'en écrivait. Un tick de décalage à
+l'enfoncement suffit, et les comptes tombent juste : 15, 59, 81.
+
+C'est la première fois qu'un contrôle du générateur ne suffisait pas : il
+fallait rejouer la lecture de l'application sur le fichier produit. La leçon
+vaut pour toute famille qui écrira des données que l'application interprète —
+il ne suffit pas qu'un fichier soit correct, il faut qu'il soit **lu** comme il
+est écrit.
 
 ## 10. Décisions tranchées avant la vague 1 — 28/07/2026
 

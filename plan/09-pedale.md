@@ -48,8 +48,10 @@
   (la ligne de pédale de la section 9 et la consigne du moment — la décision
   « ni *Ped.* ni ligne » de la section 15 est renversée)
 - [x] Retirer la famille Écoute, qui ne servait pas.
-- [ ] Implémenter la famille Application (passage réel) — après le reste,
-  comme prévu en section 5.
+- [x] Implémenter la famille Application (passage réel). **Faite le
+  30/07/2026**, une fois son blocage matériel levé par la famille E4 des
+  [exercices générés](exercices-generes.md) — trois fichiers réellement
+  pédalés, les premiers du projet. Voir la section 20.
 
 ## 1. Problème utilisateur
 
@@ -105,7 +107,7 @@ laisser croire que le geste du pied est travaillé.
 | ~~**Écoute**~~ | ~~Entendre la différence : même accord avec et sans pédale, puis pédale gardée trop longtemps~~ | **Retirée** le 27/07/2026 au soir — [§ 19](#19-refonte-du-27-juillet-2026-au-soir) |
 | **Pédale directe** | Enfoncer la pédale en même temps que la note, la lever avec elle | Faite |
 | **Pédale syncopée** | Lever la pédale **au** nouvel accord et la réenfoncer **juste après** | Faite — c'est le cœur de la fonctionnalité |
-| **Application** | Utiliser la pédale sur un vrai passage, en s'appuyant sur les indices de pédale déjà affichés | Non — après le reste |
+| **Application** | Utiliser la pédale sur un vrai passage, en s'appuyant sur les indices de pédale déjà affichés | **Faite** le 30/07/2026 — § 20 |
 
 L'Écoute était quatre boutons de démonstration sans exercice derrière. Elle
 avait sa place tant que rien ne se jouait dans les deux autres familles ; depuis
@@ -271,10 +273,12 @@ src/
 
 ### Étape E — Application
 
-- [ ] Réutiliser les intervalles de pédale d'un morceau importé
-  (`extractPedalIntervals`) comme exercice guidé.
-- [ ] Comparer la pédale jouée à celle du fichier sans imposer une seule
-  interprétation valable.
+- [x] Réutiliser les intervalles de pédale d'un morceau comme exercice guidé.
+  `genere/pedale-{moyen,difficile,tres-difficile}-01.mid` — 15, 59 et 81
+  changements, du changement par mesure au changement par croche.
+- [x] Comparer la pédale jouée à celle du fichier sans imposer une seule
+  interprétation valable. Ce sont les quatre verdicts du § 7 qui jugent, avec
+  les mêmes fenêtres qu'ailleurs : rien de nouveau n'a été inventé pour ça.
 
 ## 13. Critères d'acceptation
 
@@ -442,3 +446,55 @@ son vrai audio (pas de doublure cette fois) :
   erreur de page ;
 - mise en page : aucun débordement en largeur sur 390×844, 844×390 et
   1280×800 ; ligne de pédale entière, consigne ≥ 58 px, pédale ≥ 64 px partout.
+
+## 20. Famille Application — faite le 30/07/2026
+
+Les trois autres familles **génèrent** leurs accords ; celle-ci ne génère rien,
+elle **lit**. C'est ce qui l'a fait attendre depuis le début : aucun des
+vingt-six fichiers du dépôt ne contient de CC 64, et un exercice de pédale sur
+un fichier sans pédale n'a rien à quoi se comparer.
+
+### Ce qui n'a pas changé, et c'est l'essentiel
+
+Le moteur de ce mode est piloté par **deux** choses : une suite d'accords et
+leurs instants. Tout le reste — les consignes un temps à l'avance, la ligne de
+pédale, les quatre verdicts, le bilan, le journal — en découle. La famille
+Application ramène donc un fichier MIDI à cette même forme, et rien du moteur
+n'a été réécrit.
+
+`loadApplicationLevel()` lit les enfoncements de pédale du fichier, puis
+rattache chacun à l'attaque qui le déclenche — avant, ou tout juste après :
+en pédale syncopée l'enfoncement suit l'accord d'un cheveu, en directe il tombe
+avec lui. Ce sont ces attaques qui deviennent les « accords » de l'exercice.
+
+### La seule chose que le moteur a dû apprendre
+
+**Des accords de durées inégales.** Les trois niveaux générés ont un
+`beatsPerChord` unique ; un morceau lu n'en a pas. Trois endroits en dépendaient
+et ont été généralisés : les consignes, la largeur des segments de la ligne, et
+le délai avant verdict — ce dernier étant le plus important, car attendre la
+durée d'un accord d'une mesure pour juger un changement à la croche aurait rendu
+le verdict après que le suivant est passé.
+
+### Deux défauts trouvés à l'écran, pas dans le code
+
+1. **Le tempo.** L'en-tête affichait « 50 bpm » sur un fichier à 120, et surtout
+   la grille de pulsation battait à 50. Or **les fenêtres de tolérance de
+   `rhythm/timing.js` sont exprimées en fraction de temps** : elles auraient été
+   deux fois et demie trop larges, et tous les gestes auraient été jugés propres.
+   C'était un défaut de justesse, pas d'affichage. Un morceau lu impose son
+   tempo, et celui-ci n'est donc plus un réglage — ralentir un morceau est
+   l'affaire du sous-mode Travail de [01](01-apprentissage-morceau.md).
+2. **La ligne de pédale.** Quatre-vingt-un changements sur une ligne de 620 px
+   font sept pixels par segment : on ne voit plus où tombe le changement. Au-delà
+   de douze accords, la ligne **défile** désormais — largeur minimale par
+   segment, et l'accord courant amené à gauche à chaque changement, de sorte
+   qu'on voie ce qui vient plutôt que ce qui est passé.
+
+### Ce qui reste vrai
+
+L'application joue les accords, pas le fichier note à note : ce qui se travaille
+est le pied, et un morceau réduit à ses changements d'harmonie suffit pour ça.
+Et comme partout ailleurs, **aucune mesure n'est affichée si aucune pédale n'a
+été reçue** — la barre d'espace reste annoncée comme une substitution, pas comme
+le geste du pied.

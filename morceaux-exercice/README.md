@@ -75,25 +75,30 @@ compilés le 27/07/2026 ; les 5 Hanon ont été retirés depuis — voir plus ba
 - les 18 nouveaux ont de plus été **parsés avec `@tonejs/midi`** — la
   bibliothèque exacte de l'application — : pistes, comptes de notes et durées
   cohérents pour chacun ;
-- **aucun fichier ne contient d'évènement de pédale (CC 64) : zéro sur les
-  trente et un.**
+- **aucun de ces fichiers ne contient d'évènement de pédale (CC 64) : zéro sur
+  les trente et un.** Les fichiers **générés** de `genere/`, eux, en
+  contiennent depuis le 30/07/2026 — voir plus bas.
 
-### Limite importante pour la feature 09 (pédale)
+### Limite pour la feature 09 (pédale) — **levée le 30/07/2026**
 
 Les Gnossiennes sont musicalement des pièces à pédale, mais leur rendu MIDI
-Mutopia ne contient **aucune** donnée de pédale. Deux conséquences :
+Mutopia ne contient **aucune** donnée de pédale. Deux conséquences, qui
+valaient jusqu'au 30/07/2026 :
 
-1. `extractPedalIntervals()` ne trouvera rien et `drawPedalCues()`
-   n'affichera aucun repère sur ces fichiers ;
+1. `extractPedalIntervals()` ne trouve rien et `drawPedalCues()` n'affiche
+   aucun repère sur ces fichiers — c'est toujours vrai des vingt-six ;
 2. la famille **Application** de
    [09 — Exercices de pédale](../plan/09-pedale.md#5-quatre-familles-dexercices),
-   qui prévoit de réutiliser les intervalles de pédale d'un morceau importé,
-   ne peut donc pas s'appuyer sur ces fichiers en l'état.
+   qui prévoit de réutiliser les intervalles de pédale d'un morceau, ne pouvait
+   s'appuyer sur aucun fichier.
 
-Les trois autres familles de 09 (Écoute, Pédale directe, Pédale syncopée)
-n'ont pas besoin de fichier : elles génèrent leurs accords. La famille
-Application demandera soit un fichier MIDI contenant réellement du CC 64,
-soit une pédalisation saisie à la main dans l'application.
+**Le second point ne tient plus.** La famille **E4** des
+[exercices générés](../plan/exercices-generes.md) produit depuis le 30/07/2026
+trois fichiers réellement pédalés — `genere/pedale-moyen-01.mid`,
+`-difficile-01.mid`, `-tres-difficile-01.mid` — soit 30, 118 et 162 évènements
+CC 64, que le mode Morceau relit en 15, 59 et 81 intervalles de pédale et dont
+il dessine les repères (vérifié en capture d'écran). Le matériel de la famille
+Application existe donc ; il reste à coder la famille elle-même.
 
 ## La décision Hanon, tranchée en trois temps — retrait le 28/07/2026
 
@@ -129,9 +134,10 @@ Les vingt-six fichiers restants sont référencés dans `songs.json` (les treize
 premiers depuis le 25/07/2026, les treize autres depuis le 27/07/2026). Le
 bouton d'import de fichier a été retiré de l'application : tout le répertoire
 est livré avec le dépôt. Les exercices générés de `genere/` s'y ajoutent au
-fur et à mesure de leur production : quinze depuis le 28/07/2026 — la vague 1
-complète (A1 Déliage, B1 Gammes, B2 Arpèges, B3 Sauts) et la première famille
-de la vague 2 (C1 Doubles notes), chacune à ses trois niveaux.
+fur et à mesure de leur production : **vingt-quatre** à ce jour — les vagues 1
+et 2 complètes (A1 Déliage, B1 Gammes, B2 Arpèges, B3 Sauts ; C1 Doubles notes,
+C2 Octaves, D1 Indépendance rythmique, E4 Pédale), chacune à ses trois niveaux.
+Les trois de E4 sont les seuls fichiers pédalés du dépôt.
 
 ### Séparés du répertoire depuis le 07/08/2026
 

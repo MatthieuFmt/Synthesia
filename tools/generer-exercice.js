@@ -142,10 +142,18 @@ const MOTIF_TROIS_QUATRE_CINQ = [4, 5, 6, 5, 6, 4, 5, 6];
 
 function creerCarnet() {
   const notes = [];
+  // Les changements de pédale, dans l'ordre où ils arrivent. Tout-ou-rien : le
+  // CC 64 est ramené à un booléen, comme `midi-input.js` le fait à la lecture
+  // (plan § 7 — la demi-pédale reste hors de portée).
+  const pedales = [];
   return {
     notes,
+    pedales,
     poser(tick, duree, hauteur, velocite, main) {
       notes.push({ tick, duree, hauteur, velocite, main });
+    },
+    pedale(tick, enfoncee) {
+      pedales.push({ tick, enfoncee });
     },
   };
 }
@@ -244,6 +252,42 @@ function poserCourse(carnet, { droite, gauche, tick, pas, appuiTous = 4, finTick
     carnet.poser(quand, combien, gauche[i], velocite, "gauche");
   });
   return finTick ?? tick + droite.length * pas;
+}
+
+// Pose une ligne dans **une seule** main, avec son propre pas. `poserCourse`
+// ne sait pas le faire : elle avance les deux mains du même pas, ce qui est
+// exactement ce que la famille D1 doit cesser de faire — deux pulsations dans
+// une seule tête supposent deux pas différents au même instant.
+//
+// `etirerFin` allonge la dernière note jusqu'à `finTick`, pour fermer une
+// phrase. Une ligne à contretemps ne le veut pas : sa dernière note doit garder
+// sa durée, sinon elle sonne bien après que l'autre main s'est arrêtée.
+function poserLigne(
+  carnet,
+  {
+    course,
+    tick,
+    pas,
+    main = "droite",
+    appuiTous = 4,
+    finTick = null,
+    legato = false,
+    etirerFin = true,
+  }
+) {
+  const duree = legato ? pas : Math.max(30, pas - Math.round(pas * 0.12));
+  const combien =
+    finTick === null
+      ? course.length
+      : Math.min(course.length, Math.max(1, Math.floor((finTick - tick) / pas)));
+  for (let i = 0; i < combien; i++) {
+    const quand = tick + i * pas;
+    const dernier = i === combien - 1;
+    const tenue =
+      dernier && finTick && etirerFin ? Math.max(duree, finTick - quand - 40) : duree;
+    carnet.poser(quand, tenue, course[i], i % appuiTous === 0 ? VEL_APPUI : VEL_COURANTE, main);
+  }
+  return finTick ?? tick + combien * pas;
 }
 
 // Les mains à l'octave : la suite de la gauche est celle de la droite, plus
@@ -886,6 +930,38 @@ function poserDoubles(carnet, { paires, tick, pas, main = "droite", finTick = nu
   return finTick ?? tick + combien * pas;
 }
 
+// ---- Octaves et accords plaqués (C2) -----------------------------------
+//
+//  Une octave est une paire dont l'écart ne varie jamais : c'est ce qui la rend
+//  différente d'une tierce ou d'une sixte, dont l'écart change avec le degré.
+//  `courseDoubles` ne convient donc pas — elle raisonne en degrés —, et une
+//  fonction à part est plus juste qu'un paramètre de plus.
+function courseOctaves(course) {
+  return course.map((hauteur) => [hauteur, hauteur + 12]);
+}
+
+// La gamme chromatique en octaves : le doigté 5-4 sur les touches noires est le
+// sujet du niveau difficile, et l'écriture ne peut pas le dire — le fichier MIDI
+// ne porte pas de doigté. Elle le rend **audible** en revanche : quatre notes
+// noires d'affilée s'entendent.
+function courseOctavesChromatiques({ depart, demiTons = 12 }) {
+  const course = [];
+  for (let d = 0; d <= demiTons; d++) course.push(depart + d);
+  for (let d = demiTons - 1; d >= 0; d--) course.push(depart + d);
+  return courseOctaves(course);
+}
+
+// Trémolo d'octaves : les deux notes alternent au lieu de sonner ensemble.
+// C'est ce qui permet de tenir un long passage — le poignet bascule d'un côté
+// puis de l'autre au lieu de porter tout le poids à chaque fois.
+function courseTremolo({ hauteurs, battements = 4 }) {
+  const suite = [];
+  for (const hauteur of hauteurs) {
+    for (let i = 0; i < battements; i++) suite.push(i % 2 === 0 ? hauteur : hauteur + 12);
+  }
+  return suite;
+}
+
 // ============================================================================
 //  Famille C1 — Doubles notes
 //
@@ -1064,6 +1140,702 @@ function doublesTresDifficile({ tonalite, gamme }) {
     pas: CROCHE,
     main: "gauche",
     legato: true,
+    finTick: finC,
+  });
+  t = finC;
+
+  t = poserCharniere(carnet, { tick: t, tonique, duree: 2 * MESURE - 60 });
+  return { notes: carnet.notes, duree: t + MESURE };
+}
+
+// ============================================================================
+//  Famille C2 — Octaves et accords plaqués
+//
+//  Ce qu'elle travaille : **le poignet souple et l'avant-bras qui porte**
+//  (plan § 5, C2). L'octave n'est pas difficile à trouver, elle est difficile à
+//  répéter : c'est la fatigue qui fait échouer un passage d'octaves, pas la
+//  justesse.
+//
+//    moyen          — octaves détachées en croches, une octave d'ambitus ;
+//    difficile      — octaves legato et gamme d'octaves chromatique, où le
+//                     doigté 5-4 sur les noires devient nécessaire ;
+//    très difficile — trémolo d'octaves, puis accords de quatre sons répétés.
+//
+//  L'écart de l'octave est la matière de la famille : le niveau moyen desserre
+//  ce seul axe, l'octave dépassant la quinte du § 4. Le difficile n'a besoin
+//  d'aucune tolérance — son plafond est déjà l'octave.
+// ============================================================================
+
+function octavesMoyen({ tonalite, gamme }) {
+  const carnet = creerCarnet();
+  const { tonique, mode } = tonalite;
+  let t = 0;
+
+  // A — octaves **détachées** à la droite, sur une octave d'ambitus. Détachées
+  // et non liées : c'est le relâchement entre deux octaves qui fait qu'on peut
+  // en jouer beaucoup, et il s'entend dans le silence entre les deux.
+  const octavesDroite = courseOctaves(courseGamme({ tonique, mode, octaves: 1 }));
+  const finA = 7 * MESURE;
+  poserDoubles(carnet, {
+    paires: repeter(octavesDroite, 4),
+    tick: t,
+    pas: CROCHE,
+    main: "droite",
+    finTick: finA,
+  });
+  for (let mesure = 0; mesure < 7; mesure++) {
+    carnet.poser(t + mesure * MESURE, MESURE - 60, gamme(mesure % 4) - 12, VEL_TENUE, "gauche");
+  }
+  t = finA;
+
+  // B — les mêmes octaves à la gauche. C'est la main qui les rencontre le plus
+  // dans le répertoire, et celle qui se raidit le plus vite.
+  const octavesGauche = courseOctaves(
+    courseGamme({ tonique: tonique - 24, mode, octaves: 1 })
+  );
+  const finB = t + 7 * MESURE;
+  poserDoubles(carnet, {
+    paires: repeter(octavesGauche, 4),
+    tick: t,
+    pas: CROCHE,
+    main: "gauche",
+    finTick: finB,
+  });
+  for (let mesure = 0; mesure < 7; mesure++) {
+    carnet.poser(t + mesure * MESURE, MESURE - 60, gamme(mesure % 4 + 7), VEL_TENUE, "droite");
+  }
+  t = finB;
+
+  t = poserCharniere(carnet, { tick: t, tonique, duree: 2 * MESURE - 60 });
+  return { notes: carnet.notes, duree: t + MESURE };
+}
+
+function octavesDifficile({ tonalite, gamme }) {
+  const carnet = creerCarnet();
+  const { tonique, mode } = tonalite;
+  let t = 0;
+
+  // A — gamme d'octaves **liée**, à la droite : les deux notes se relâchent
+  // ensemble et l'octave suivante enchaîne sans trou.
+  const gammeOctaves = courseOctaves(courseGamme({ tonique, mode, octaves: 2 }));
+  const finA = 6 * MESURE;
+  poserDoubles(carnet, {
+    paires: repeter(gammeOctaves, 3),
+    tick: t,
+    pas: CROCHE,
+    main: "droite",
+    legato: true,
+    finTick: finA,
+  });
+  for (let mesure = 0; mesure < 6; mesure++) {
+    carnet.poser(t + mesure * MESURE, MESURE - 60, gamme(mesure % 4) - 24, VEL_TENUE, "gauche");
+  }
+  t = finA;
+
+  // B — octaves **chromatiques** : c'est ici que le 5-4 sur les noires devient
+  // obligatoire. Le fichier MIDI ne porte pas de doigté, mais il rend la
+  // contrainte audible — cinq noires d'affilée, aucun repère de touche blanche.
+  const chromatiques = courseOctavesChromatiques({ depart: tonique, demiTons: 12 });
+  const finB = t + 6 * MESURE;
+  poserDoubles(carnet, {
+    paires: repeter(chromatiques, 3),
+    tick: t,
+    pas: CROCHE,
+    main: "droite",
+    legato: true,
+    finTick: finB,
+  });
+  for (let mesure = 0; mesure < 6; mesure++) {
+    carnet.poser(t + mesure * MESURE, MESURE - 60, gamme(mesure % 4) - 24, VEL_TENUE, "gauche");
+  }
+  t = finB;
+
+  // C — les mêmes octaves à la gauche, pour que le poignet faible y passe aussi.
+  const chromatiquesGauche = courseOctavesChromatiques({
+    depart: tonique - 24,
+    demiTons: 12,
+  });
+  const finC = t + 6 * MESURE;
+  poserDoubles(carnet, {
+    paires: repeter(chromatiquesGauche, 3),
+    tick: t,
+    pas: CROCHE,
+    main: "gauche",
+    legato: true,
+    finTick: finC,
+  });
+  for (let mesure = 0; mesure < 6; mesure++) {
+    carnet.poser(t + mesure * MESURE, MESURE - 60, gamme(mesure % 4 + 7), VEL_TENUE, "droite");
+  }
+  t = finC;
+
+  t = poserCharniere(carnet, { tick: t, tonique });
+  return { notes: carnet.notes, duree: t };
+}
+
+function octavesTresDifficile({ tonalite, gamme }) {
+  const carnet = creerCarnet();
+  const { tonique } = tonalite;
+  let t = 0;
+
+  // A — **trémolo d'octaves** à la droite, en doubles-croches : les deux notes
+  // alternent au lieu de sonner ensemble. C'est le geste qui permet de tenir un
+  // long passage, et il n'a plus rien à voir avec l'octave plaquée.
+  const socles = [0, 2, 4, 5, 7, 5, 4, 2].map((degre) => gamme(degre));
+  const tremolo = courseTremolo({ hauteurs: socles, battements: 8 });
+  const finA = 7 * MESURE;
+  for (let i = 0; i < (finA - t) / DOUBLE; i++) {
+    const hauteur = tremolo[i % tremolo.length];
+    carnet.poser(
+      t + i * DOUBLE,
+      DOUBLE - 20,
+      hauteur,
+      i % 8 === 0 ? VEL_APPUI : VEL_COURANTE,
+      "droite"
+    );
+  }
+  for (let mesure = 0; mesure < 7; mesure++) {
+    carnet.poser(t + mesure * MESURE, MESURE - 60, gamme(mesure % 4) - 24, VEL_TENUE, "gauche");
+  }
+  t = finA;
+
+  t = poserCharniere(carnet, { tick: t, tonique });
+
+  // B — **accords de quatre sons répétés vite**, aux deux mains. Ici aucun
+  // relais de doigts n'est possible : la répétition ne peut venir que du
+  // poignet, et c'est l'épreuve de fatigue de la famille.
+  const finB = t + 7 * MESURE;
+  const quatreSons = [0, 2, 4, 7].map((degre) => gamme(degre));
+  for (let i = 0; i < (finB - t) / CROCHE; i++) {
+    const quand = t + i * CROCHE;
+    // Une croche sur quatre est silencieuse : la main s'y replace. Sans ce
+    // souffle, l'exercice n'apprendrait qu'à se crisper.
+    if (i % 4 === 3) continue;
+    for (const hauteur of quatreSons) {
+      carnet.poser(quand, CROCHE - 60, hauteur, i % 4 === 0 ? VEL_APPUI : VEL_COURANTE, "droite");
+      carnet.poser(quand, CROCHE - 60, hauteur - 24, i % 4 === 0 ? VEL_APPUI : VEL_COURANTE, "gauche");
+    }
+  }
+  t = finB;
+
+  // C — trémolo aux **deux** mains en sens opposé : la droite monte pendant que
+  // la gauche descend, chacune en trémolo d'octaves.
+  const finC = t + 7 * MESURE;
+  // Les socles montent jusqu'à la quinte **puis redescendent** : sans ce
+  // retour, la suite se rebouclait du sommet à la tonique et le générateur y
+  // voyait — à raison — un saut de trente et un demi-tons qu'aucun poignet ne
+  // fait en une double-croche. La gauche reste à une octave sous sa tonique
+  // habituelle et non deux : deux l'emmenaient sous la borne lisible.
+  const monte = [0, 2, 4, 5, 7, 5, 4, 2].map((degre) => gamme(degre));
+  const descend = [0, -2, -4, -5, -7, -5, -4, -2].map((degre) => gamme(degre) - 12);
+  const tremoloDroite = courseTremolo({ hauteurs: monte, battements: 8 });
+  const tremoloGauche = courseTremolo({ hauteurs: descend, battements: 8 });
+  for (let i = 0; i < (finC - t) / DOUBLE; i++) {
+    const quand = t + i * DOUBLE;
+    const appui = i % 8 === 0 ? VEL_APPUI : VEL_COURANTE;
+    carnet.poser(quand, DOUBLE - 20, tremoloDroite[i % tremoloDroite.length], appui, "droite");
+    carnet.poser(quand, DOUBLE - 20, tremoloGauche[i % tremoloGauche.length], appui, "gauche");
+  }
+  t = finC;
+
+  t = poserCharniere(carnet, { tick: t, tonique, duree: 2 * MESURE - 60 });
+  return { notes: carnet.notes, duree: t + MESURE };
+}
+
+// ---- Pédale (E4) ---------------------------------------------------------
+//
+//  Deux gestes, et ils sont opposés. La pédale **directe** descend *avec*
+//  l'accord ; la **syncopée** se lève *sur* l'accord suivant et se réenfonce
+//  juste après. C'est la seule différence, et c'est tout le sujet de 09.
+
+//  L'appui tombe **un tick après** le début, et ce détail d'un millième de temps
+//  a une conséquence visible. Aux jointures de section, le levé de la précédente
+//  et l'appui de la suivante tombaient au même instant ; `extractPedalIntervals()`
+//  du mode Morceau regroupe les évènements de même temps, si bien qu'il ne
+//  fermait pas l'intervalle et en dessinait **un de moins** que la partition n'en
+//  écrit. Un tick de décalage suffit à ce que ce qui est lu soit ce qui est écrit.
+const AVANCE_PEDALE = 1;
+
+function poserPedaleDirecte(carnet, { tick, mesures, pas = MESURE, souffle = 60 }) {
+  for (let m = 0; m < mesures; m++) {
+    const debut = tick + m * pas;
+    carnet.pedale(debut + AVANCE_PEDALE, true);
+    carnet.pedale(debut + pas - souffle, false);
+  }
+  return tick + mesures * pas;
+}
+
+// `changements` compte les levés, donc les changements d'harmonie. Le dernier ne
+// réenfonce pas : une section se termine pédale levée, sinon la suivante
+// commencerait sur le brouillard de la précédente.
+function poserPedaleSyncopee(carnet, { tick, changements, pas = TEMPS, retard = 60 }) {
+  carnet.pedale(tick + AVANCE_PEDALE, true);
+  for (let i = 1; i <= changements; i++) {
+    const quand = tick + i * pas;
+    carnet.pedale(quand, false);
+    if (i < changements) carnet.pedale(quand + retard, true);
+  }
+  return tick + changements * pas;
+}
+
+// Une harmonie où la basse et l'accord sont **successifs** : la basse au premier
+// temps, l'accord au second, tous deux courts. Ce n'est pas un choix d'écriture
+// mais la conséquence d'un refus du générateur — basse et accord au même instant
+// écartaient la main gauche de dix-neuf demi-tons, injouable. Et c'est mieux
+// ainsi : la pédale doit tenir la basse **après** que la main l'a quittée, ce qui
+// est exactement sa raison d'être.
+function poserHarmonieLarge(carnet, { tick, gamme, degre, accord, melodie, pas = TEMPS }) {
+  const bref = Math.round(pas / 2);
+  carnet.poser(tick, bref, gamme(degre) - 24, VEL_APPUI, "gauche");
+  for (const d of accord) {
+    carnet.poser(tick + pas, bref, gamme(d) - 12, VEL_COURANTE, "gauche");
+  }
+  melodie.forEach((d, i) => {
+    carnet.poser(tick + i * pas, pas - 40, gamme(d), i === 0 ? VEL_APPUI : VEL_COURANTE, "droite");
+  });
+  return tick + melodie.length * pas;
+}
+
+// À une harmonie par temps, il n'y a plus de place pour deux gestes successifs :
+// la basse va à la gauche, l'accord à la droite. Chaque main garde alors un écart
+// de quinte, et la pédale tient toujours la basse après que le doigt l'a lâchée.
+function poserHarmonieBreve(carnet, { tick, basse, accord, duree, ecarts = [0, 2, 4] }) {
+  carnet.poser(tick, duree, basse - 12, VEL_APPUI, "gauche");
+  accord.forEach((hauteur, i) => {
+    carnet.poser(tick, duree, hauteur, i === 0 ? VEL_APPUI : VEL_COURANTE, "droite");
+  });
+  void ecarts;
+}
+
+// ============================================================================
+//  Famille E4 — Pédale (CC 64)
+//
+//  Ce qu'elle travaille : **le pied qui suit l'harmonie, pas les doigts**
+//  (plan § 5, E4). Ce sont les premiers fichiers pédalés du projet — aucun des
+//  26 fichiers Mutopia ne contient de CC 64 —, et c'est ce qui débloque la
+//  famille Application de plan/09.
+//
+//    moyen          — pédale directe, un changement par mesure ;
+//    difficile      — pédale syncopée, un changement par temps ;
+//    très difficile — harmonie chromatique, et des tenues longues à nettoyer.
+//
+//  Dans chaque niveau, les accords sont **courts** : les doigts lâchent, et seule
+//  la pédale lie. C'est le seul moyen d'entendre si le pied a fait son travail —
+//  sinon les doigts le font à sa place sans qu'on le sache.
+// ============================================================================
+
+// I – IV – V – I. Les trois accords sont à l'**état fondamental** : leurs trois
+// notes tiennent alors dans une quinte, le plafond d'écart du niveau moyen. Les
+// deux premiers renversements l'auraient dépassé — do-fa-la fait une sixte —, et
+// desserrer cet axe aurait été malhonnête : cette famille travaille le pied, pas
+// l'ouverture de la main.
+//
+// IV et V sont posés **sous** la tonique plutôt qu'au-dessus. Ce n'est pas une
+// coquetterie : au-dessus, l'accord de dominante montait à ré4 et la main gauche
+// couvrait vingt-six demi-tons avec sa basse, deux de trop.
+const CADENCE_E4 = [
+  { degre: 0, accord: [0, 2, 4], melodie: [4, 2, 4, 5] },      // do mi sol
+  { degre: 3, accord: [-4, -2, 0], melodie: [5, 5, 3, 2] },    // fa la do
+  { degre: 4, accord: [-3, -1, 1], melodie: [4, 6, 4, 2] },    // sol si ré
+  { degre: 0, accord: [0, 2, 4], melodie: [4, 2, 4, 0] },      // do mi sol
+];
+
+function pedaleMoyen({ gamme, tonalite }) {
+  const carnet = creerCarnet();
+  const { tonique } = tonalite;
+  let t = 0;
+
+  // A — pédale directe : le pied descend avec la basse et se lève juste avant la
+  // mesure suivante. Un changement par mesure, le geste le plus simple.
+  for (let m = 0; m < 8; m++) {
+    const h = CADENCE_E4[m % 4];
+    poserHarmonieLarge(carnet, {
+      tick: t + m * MESURE,
+      gamme,
+      degre: h.degre,
+      accord: h.accord,
+      melodie: h.melodie,
+    });
+  }
+  poserPedaleDirecte(carnet, { tick: t, mesures: 8 });
+  t += 8 * MESURE;
+
+  // B — la même cadence, mais la mélodie tient la note pendant toute la mesure :
+  // on entend alors si la pédale a coupé la basse trop tôt.
+  for (let m = 0; m < 6; m++) {
+    const h = CADENCE_E4[m % 4];
+    poserHarmonieLarge(carnet, {
+      tick: t + m * MESURE,
+      gamme,
+      degre: h.degre,
+      accord: h.accord,
+      melodie: [h.melodie[0], h.melodie[1], h.melodie[2], h.melodie[3]],
+    });
+  }
+  poserPedaleDirecte(carnet, { tick: t, mesures: 6 });
+  t += 6 * MESURE;
+
+  const charniere = t;
+  t = poserCharniere(carnet, { tick: charniere, tonique, duree: 2 * MESURE - 60 });
+  carnet.pedale(charniere + AVANCE_PEDALE, true);
+  carnet.pedale(charniere + 2 * MESURE - 90, false);
+  return { notes: carnet.notes, pedales: carnet.pedales, duree: charniere + 2 * MESURE };
+}
+
+function pedaleDifficile({ gamme, tonalite }) {
+  const carnet = creerCarnet();
+  const { tonique } = tonalite;
+  let t = 0;
+
+  // Une harmonie par **temps** : quatre changements de pédale par mesure. C'est
+  // là que le geste syncopé devient un réflexe ou ne l'est pas.
+  const PAR_TEMPS = [0, 5, 3, 4]; // I – vi – IV – V
+
+  // A — pédale syncopée, un accord par temps, tout court.
+  const mesuresA = 6;
+  for (let temps = 0; temps < mesuresA * 4; temps++) {
+    const d = PAR_TEMPS[temps % 4];
+    poserHarmonieBreve(carnet, {
+      tick: t + temps * TEMPS,
+      basse: gamme(d),
+      accord: [gamme(d), gamme(d + 2), gamme(d + 4)],
+      duree: Math.round(TEMPS / 2),
+    });
+  }
+  poserPedaleSyncopee(carnet, { tick: t, changements: mesuresA * 4 });
+  t += mesuresA * MESURE;
+
+  // B — une note de mélodie s'ajoute à contretemps. Le pied ne doit pas la
+  // suivre : il suit l'harmonie, qui ne change qu'au temps.
+  const mesuresB = 6;
+  for (let temps = 0; temps < mesuresB * 4; temps++) {
+    const d = PAR_TEMPS[temps % 4];
+    poserHarmonieBreve(carnet, {
+      tick: t + temps * TEMPS,
+      basse: gamme(d),
+      accord: [gamme(d), gamme(d + 2), gamme(d + 4)],
+      duree: Math.round(TEMPS / 2),
+    });
+    // La note de contretemps appartient à l'accord en cours : sans cela, le saut
+    // vers l'accord suivant dépassait l'octave que le niveau autorise.
+    carnet.poser(t + temps * TEMPS + CROCHE, CROCHE - 30, gamme(d + 2), VEL_COURANTE, "droite");
+  }
+  poserPedaleSyncopee(carnet, { tick: t, changements: mesuresB * 4 });
+  t += mesuresB * MESURE;
+
+  // C — un changement par **demi-mesure** : le pied tient plus longtemps sans
+  // que l'harmonie se brouille. Plus long ne veut pas dire plus facile.
+  const mesuresC = 5;
+  for (let demi = 0; demi < mesuresC * 2; demi++) {
+    const h = CADENCE_E4[demi % 4];
+    poserHarmonieBreve(carnet, {
+      tick: t + demi * 2 * TEMPS,
+      basse: gamme(h.degre),
+      accord: h.accord.map((d) => gamme(d)),
+      duree: TEMPS,
+    });
+  }
+  poserPedaleSyncopee(carnet, { tick: t, changements: mesuresC * 2, pas: 2 * TEMPS });
+  t += mesuresC * MESURE;
+
+  const charniere = t;
+  t = poserCharniere(carnet, { tick: charniere, tonique, duree: 2 * MESURE - 60 });
+  carnet.pedale(charniere + AVANCE_PEDALE, true);
+  carnet.pedale(charniere + 2 * MESURE - 90, false);
+  return { notes: carnet.notes, pedales: carnet.pedales, duree: charniere + 2 * MESURE };
+}
+
+function pedaleTresDifficile({ gamme, tonalite }) {
+  const carnet = creerCarnet();
+  const { tonique } = tonalite;
+  let t = 0;
+
+  // Harmonie **chromatique** : la basse descend par demi-tons. Aucun degré de
+  // gamme ne la décrit, d'où les écarts en demi-tons bruts — et c'est le cas où
+  // le pied ne peut plus se fier à l'habitude : deux harmonies voisines n'ont
+  // aucune note commune, donc rien ne rattrape une pédale mal levée.
+  const CHROMATIQUE = [0, -1, -2, -3, -4, -5, -6, -7];
+
+  // A — syncopée sur harmonie chromatique, un changement par temps.
+  const mesuresA = 7;
+  for (let temps = 0; temps < mesuresA * 4; temps++) {
+    const bas = tonique + CHROMATIQUE[temps % CHROMATIQUE.length];
+    poserHarmonieBreve(carnet, {
+      tick: t + temps * TEMPS,
+      basse: bas,
+      accord: [bas, bas + 4, bas + 7],
+      duree: Math.round(TEMPS / 2),
+    });
+  }
+  poserPedaleSyncopee(carnet, { tick: t, changements: mesuresA * 4 });
+  t += mesuresA * MESURE;
+
+  // B — **tenues longues à nettoyer** : deux mesures par pédale. Le levé doit
+  // tomber exactement au changement d'harmonie. Une demi-pédale ferait mieux,
+  // mais le CC 64 est tout-ou-rien (plan § 7) — l'exercice s'écrit donc avec le
+  // geste que l'application sait lire.
+  const paires = 4;
+  for (let paire = 0; paire < paires; paire++) {
+    const h = CADENCE_E4[paire % 4];
+    for (let m = 0; m < 2; m++) {
+      poserHarmonieLarge(carnet, {
+        tick: t + (paire * 2 + m) * MESURE,
+        gamme,
+        degre: h.degre,
+        accord: h.accord,
+        melodie: h.melodie,
+      });
+    }
+  }
+  poserPedaleDirecte(carnet, { tick: t, mesures: paires, pas: 2 * MESURE, souffle: 90 });
+  t += paires * 2 * MESURE;
+
+  // C — chromatique **et** syncopée à la croche : le geste doit être deux fois
+  // plus rapide que la section A pour la même harmonie. C'est le plus dur que
+  // cette famille produise.
+  const mesuresC = 6;
+  for (let croche = 0; croche < mesuresC * 8; croche++) {
+    const bas = tonique + CHROMATIQUE[croche % CHROMATIQUE.length];
+    poserHarmonieBreve(carnet, {
+      tick: t + croche * CROCHE,
+      basse: bas,
+      accord: [bas, bas + 7],
+      duree: CROCHE - 40,
+    });
+  }
+  poserPedaleSyncopee(carnet, { tick: t, changements: mesuresC * 8, pas: CROCHE, retard: 40 });
+  t += mesuresC * MESURE;
+
+  const charniere = t;
+  t = poserCharniere(carnet, { tick: charniere, tonique, duree: 2 * MESURE - 60 });
+  carnet.pedale(charniere + AVANCE_PEDALE, true);
+  carnet.pedale(charniere + 2 * MESURE - 90, false);
+  return { notes: carnet.notes, pedales: carnet.pedales, duree: charniere + 2 * MESURE };
+}
+
+// ============================================================================
+//  Famille D1 — Indépendance rythmique
+//
+//  Ce qu'elle travaille : **deux pulsations dans une seule tête** (plan § 5,
+//  D1). Les notes n'y sont qu'un support — ce sont des gammes qui se referment
+//  sur elles-mêmes —, et c'est le rapport des deux mains qui fait la
+//  difficulté.
+//
+//    moyen          — croches contre noires, puis contretemps ;
+//    difficile      — trois contre deux, dans les deux sens, puis en contraire ;
+//    très difficile — quatre contre trois, puis triolets contre doubles.
+//
+//  Le § 4 classe « rythmes différents (3:2, 4:3) » en très difficile. C'est le
+//  rapport que cette famille **travaille**, pas un axe qu'elle subit : sa propre
+//  ligne du § 5 le gradue, comme les sauts graduent B3. Aucune tolérance n'est
+//  nécessaire pour autant — le vérificateur ne mesure que le débit, l'ambitus,
+//  l'écart et le saut, et le rapport des mains est un choix d'écriture.
+//
+//  Chaque section se termine par une charnière, et ce n'est pas décoratif : sans
+//  elle, la reprise de la course au début de la section suivante formait un saut
+//  de septième que le niveau moyen interdit. La charnière contient la tonique,
+//  donc la distance à la note précédente y est nulle.
+// ============================================================================
+
+function rythmeMoyen({ tonalite }) {
+  const carnet = creerCarnet();
+  const { tonique, mode } = tonalite;
+  let t = 0;
+
+  const courseD = courseGamme({ tonique, mode, octaves: 1 });
+  const courseG = courseGamme({ tonique: tonique - 12, mode, octaves: 1 });
+
+  // A — deux notes contre une : croches à la droite, noires à la gauche. Le
+  // rapport le plus simple, et le seul où chaque note de la gauche tombe
+  // **avec** une note de la droite.
+  const finA = 6 * MESURE;
+  poserLigne(carnet, {
+    course: repeter(courseD, 4),
+    tick: t,
+    pas: CROCHE,
+    main: "droite",
+    finTick: finA,
+  });
+  poserLigne(carnet, {
+    course: repeter(courseG, 2),
+    tick: t,
+    pas: TEMPS,
+    main: "gauche",
+    finTick: finA,
+  });
+  t = finA;
+  t = poserCharniere(carnet, { tick: t, tonique });
+
+  // B — contretemps : la gauche joue **entre** les temps. Plus aucune note ne
+  // tombe avec l'autre main, et c'est là que le pied doit continuer de battre.
+  const finB = t + 6 * MESURE;
+  poserLigne(carnet, {
+    course: repeter(courseD, 2),
+    tick: t,
+    pas: TEMPS,
+    main: "droite",
+    finTick: finB,
+  });
+  poserLigne(carnet, {
+    course: repeter(courseG, 2),
+    tick: t + CROCHE,
+    pas: TEMPS,
+    main: "gauche",
+    finTick: finB,
+    etirerFin: false, // une note à contretemps ne se prolonge pas jusqu'à la fin
+  });
+  t = finB;
+
+  t = poserCharniere(carnet, { tick: t, tonique, duree: 2 * MESURE - 60 });
+  return { notes: carnet.notes, duree: t + MESURE };
+}
+
+function rythmeDifficile({ tonalite }) {
+  const carnet = creerCarnet();
+  const { tonique, mode } = tonalite;
+  let t = 0;
+
+  const courseD = courseGamme({ tonique, mode, octaves: 1 });
+  const courseG = courseGamme({ tonique: tonique - 12, mode, octaves: 1 });
+
+  // A — trois contre deux : triolets de croches à la droite, croches à la
+  // gauche. Seule la première note de chaque temps tombe avec l'autre main.
+  const finA = 5 * MESURE;
+  poserLigne(carnet, {
+    course: repeter(courseD, 5),
+    tick: t,
+    pas: TRIOLET_CROCHE,
+    main: "droite",
+    appuiTous: 3,
+    finTick: finA,
+  });
+  poserLigne(carnet, {
+    course: repeter(courseG, 3),
+    tick: t,
+    pas: CROCHE,
+    main: "gauche",
+    finTick: finA,
+  });
+  t = finA;
+  t = poserCharniere(carnet, { tick: t, tonique });
+
+  // B — l'inverse. Une main sait rarement faire les deux : c'est le même
+  // rapport, et il faut le réapprendre dans l'autre sens.
+  const finB = t + 5 * MESURE;
+  poserLigne(carnet, {
+    course: repeter(courseD, 3),
+    tick: t,
+    pas: CROCHE,
+    main: "droite",
+    finTick: finB,
+  });
+  poserLigne(carnet, {
+    course: repeter(courseG, 5),
+    tick: t,
+    pas: TRIOLET_CROCHE,
+    main: "gauche",
+    appuiTous: 3,
+    finTick: finB,
+  });
+  t = finB;
+  t = poserCharniere(carnet, { tick: t, tonique });
+
+  // C — trois contre deux en **sens opposé** : la gauche descend pendant que la
+  // droite monte. Deux rythmes et deux directions ; plus aucun repère commun.
+  const descendG = courseGamme({ tonique: tonique - 12, mode, octaves: 1, sens: -1 });
+  const finC = t + 5 * MESURE;
+  poserLigne(carnet, {
+    course: repeter(courseD, 5),
+    tick: t,
+    pas: TRIOLET_CROCHE,
+    main: "droite",
+    appuiTous: 3,
+    finTick: finC,
+  });
+  poserLigne(carnet, {
+    course: repeter(descendG, 3),
+    tick: t,
+    pas: CROCHE,
+    main: "gauche",
+    finTick: finC,
+  });
+  t = finC;
+
+  // Charnière de deux mesures : dix-huit mesures ne faisaient que 43 s à 100 à
+  // la noire, sous le plancher de 45 s du § 2.
+  t = poserCharniere(carnet, { tick: t, tonique, duree: 2 * MESURE - 60 });
+  return { notes: carnet.notes, duree: t + MESURE };
+}
+
+function rythmeTresDifficile({ tonalite }) {
+  const carnet = creerCarnet();
+  const { tonique, mode } = tonalite;
+  let t = 0;
+
+  const courseD = courseGamme({ tonique, mode, octaves: 1 });
+  const courseG = courseGamme({ tonique: tonique - 12, mode, octaves: 1 });
+
+  // A — quatre contre trois : doubles-croches à la droite, triolets à la
+  // gauche. Le plus petit commun multiple est douze : à l'intérieur du temps,
+  // aucune note ne retombe avec l'autre main. C'est le rapport où compter ne
+  // sert plus à rien.
+  const finA = 6 * MESURE;
+  poserLigne(carnet, {
+    course: repeter(courseD, 7),
+    tick: t,
+    pas: DOUBLE,
+    main: "droite",
+    finTick: finA,
+  });
+  poserLigne(carnet, {
+    course: repeter(courseG, 5),
+    tick: t,
+    pas: TRIOLET_CROCHE,
+    main: "gauche",
+    appuiTous: 3,
+    finTick: finA,
+  });
+  t = finA;
+  t = poserCharniere(carnet, { tick: t, tonique });
+
+  // B — l'inverse : triolets à la droite, doubles à la gauche.
+  const finB = t + 6 * MESURE;
+  poserLigne(carnet, {
+    course: repeter(courseD, 5),
+    tick: t,
+    pas: TRIOLET_CROCHE,
+    main: "droite",
+    appuiTous: 3,
+    finTick: finB,
+  });
+  poserLigne(carnet, {
+    course: repeter(courseG, 7),
+    tick: t,
+    pas: DOUBLE,
+    main: "gauche",
+    finTick: finB,
+  });
+  t = finB;
+  t = poserCharniere(carnet, { tick: t, tonique });
+
+  // C — quatre contre trois en sens opposé, ce que la famille cumule de plus
+  // dur : deux subdivisions incommensurables et deux directions.
+  const descendG = courseGamme({ tonique: tonique - 12, mode, octaves: 1, sens: -1 });
+  // Sept mesures et non six : vingt-deux mesures ne faisaient que 44 s à 120.
+  const finC = t + 7 * MESURE;
+  poserLigne(carnet, {
+    course: repeter(courseD, 8),
+    tick: t,
+    pas: DOUBLE,
+    main: "droite",
+    finTick: finC,
+  });
+  poserLigne(carnet, {
+    course: repeter(descendG, 6),
+    tick: t,
+    pas: TRIOLET_CROCHE,
+    main: "gauche",
+    appuiTous: 3,
     finTick: finC,
   });
   t = finC;
@@ -1400,6 +2172,87 @@ const CATALOGUE = [
     },
   },
   {
+    famille: "e4-pedale",
+    fichier: "pedale",
+    titre: "Pédale",
+    niveaux: {
+      moyen: {
+        tonalite: "do",
+        composer: pedaleMoyen,
+        objectif:
+          "Pédale directe, un changement par mesure : le pied descend avec l'accord. La seconde section joue les accords courts, pour que la pédale seule les lie.",
+      },
+      difficile: {
+        tonalite: "do",
+        composer: pedaleDifficile,
+        objectif:
+          "Pédale syncopée, un changement par temps : le pied se lève sur l'accord suivant et se réenfonce juste après.",
+      },
+      "tres-difficile": {
+        tonalite: "do",
+        composer: pedaleTresDifficile,
+        objectif:
+          "Harmonie chromatique, où deux accords voisins n'ont aucune note commune, et des tenues de deux mesures à nettoyer.",
+      },
+    },
+  },
+  {
+    famille: "d1-rythme",
+    fichier: "rythme",
+    titre: "Indépendance rythmique",
+    niveaux: {
+      moyen: {
+        tonalite: "do",
+        composer: rythmeMoyen,
+        objectif:
+          "Deux notes contre une, puis la main gauche à contretemps : le pied continue de battre le temps.",
+      },
+      difficile: {
+        tonalite: "do",
+        composer: rythmeDifficile,
+        objectif:
+          "Trois contre deux, dans les deux sens puis en mouvement contraire — seule la première note du temps tombe ensemble.",
+      },
+      "tres-difficile": {
+        tonalite: "do",
+        composer: rythmeTresDifficile,
+        objectif:
+          "Quatre contre trois : à l'intérieur du temps, aucune note ne retombe avec l'autre main. C'est là que compter ne sert plus.",
+      },
+    },
+  },
+  {
+    famille: "c2-octaves",
+    fichier: "octaves",
+    titre: "Octaves et accords plaqués",
+    niveaux: {
+      moyen: {
+        tonalite: "do",
+        composer: octavesMoyen,
+        objectif:
+          "Octaves détachées en croches, une main à la fois : le relâchement entre deux octaves est ce qui permet d'en jouer beaucoup.",
+        // L'octave fait douze demi-tons par définition. C'est la matière de la
+        // famille, pas un relâchement du niveau.
+        tolerances: {
+          ecartMax: 12,
+          pourquoi: "l'octave est la matière même de la famille (§ 5, C2)",
+        },
+      },
+      difficile: {
+        tonalite: "do",
+        composer: octavesDifficile,
+        objectif:
+          "Gamme d'octaves liée, puis octaves chromatiques aux deux mains — là où le 5-4 sur les touches noires devient obligatoire.",
+      },
+      "tres-difficile": {
+        tonalite: "do",
+        composer: octavesTresDifficile,
+        objectif:
+          "Trémolo d'octaves, accords de quatre sons répétés, puis trémolo aux deux mains en sens opposé.",
+      },
+    },
+  },
+  {
     famille: "c1-doubles",
     fichier: "doubles",
     titre: "Doubles notes",
@@ -1450,6 +2303,52 @@ const CRITERE_COMMUN =
 //  contient une quarte par construction, que le niveau moyen plafonne à la
 //  tierce. Chaque tolérance porte sa raison, s'affiche dans le rapport et est
 //  recopiée dans la fiche du § 9 — elle n'est jamais silencieuse.
+//  La pédale se vérifie séparément des quatre axes du § 4 : elle n'est pas une
+//  difficulté qu'on plafonne, c'est une donnée qui doit être **cohérente**. Un
+//  fichier pédalé dont les évènements ne s'alternent pas produit une pédale
+//  restée baissée jusqu'à la fin du morceau — et le mode Morceau dessinerait un
+//  seul intervalle long au lieu de la pédalisation écrite.
+function verifierPedale(pedales, duree) {
+  if (pedales.length === 0) return [];
+  const problemes = [];
+  const tries = pedales.slice().sort((a, b) => a.tick - b.tick);
+
+  if (!tries[0].enfoncee) problemes.push("pédale : le premier évènement est un levé");
+  if (tries[tries.length - 1].enfoncee) {
+    problemes.push("pédale : le dernier évènement est un enfoncé — elle resterait baissée");
+  }
+
+  for (let i = 1; i < tries.length; i++) {
+    if (tries[i].enfoncee === tries[i - 1].enfoncee) {
+      const quoi = tries[i].enfoncee ? "enfoncés" : "levés";
+      problemes.push(
+        `pédale : deux ${quoi} de suite (mesure ${Math.floor(tries[i].tick / MESURE) + 1})`
+      );
+      break; // un suffit à dire que la suite est fausse
+    }
+  }
+
+  const dernier = tries[tries.length - 1].tick;
+  if (dernier > duree) {
+    problemes.push(`pédale : un évènement après la fin (${dernier} > ${duree})`);
+  }
+
+  // Une pédale tenue plus de quatre mesures ne nettoie plus rien : ce n'est plus
+  // une pédalisation, c'est un oubli. Le niveau très difficile demande des
+  // « tenues longues à nettoyer » (§ 5, E4), pas des tenues infinies.
+  for (let i = 0; i + 1 < tries.length; i += 2) {
+    const tenue = tries[i + 1].tick - tries[i].tick;
+    if (tenue > 4 * MESURE) {
+      problemes.push(
+        `pédale : tenue de ${(tenue / MESURE).toFixed(1)} mesures (mesure ${Math.floor(tries[i].tick / MESURE) + 1})`
+      );
+      break;
+    }
+  }
+
+  return problemes;
+}
+
 function verifier(notes, duree, niveau, tolerances = null) {
   const hauteurs = notes.map((note) => note.hauteur);
   const ambitus = Math.max(...hauteurs) - Math.min(...hauteurs);
@@ -1663,14 +2562,47 @@ function pisteReglages({ nom, objectif, tempo, alterations, mineur = false }) {
   ]);
 }
 
-function pisteNotes(nom, canal, notes) {
+//  Les rangs d'ordonnancement, à un même tick. Le levé de pédale passe avant
+//  l'enfoncé, et les deux entre les note-off et les note-on : c'est ce qui rend
+//  la pédale **directe** correcte — le pied descend avec l'accord, pas après —
+//  et la pédale **syncopée** lisible, le levé précédant d'un cheveu l'accord
+//  suivant.
+const ORDRE_NOM = 0;
+const ORDRE_PROGRAMME = 1;
+const ORDRE_NOTE_OFF = 2;
+const ORDRE_PEDALE_LEVEE = 3;
+const ORDRE_PEDALE_ENFONCEE = 4;
+const ORDRE_NOTE_ON = 5;
+
+// Valeurs de CC 64. Le seuil de `midi-input.js` est à mi-course : 0 et 127 sont
+// les deux valeurs sans ambiguïté possible.
+const CC_PEDALE = 64;
+const CC_ENFONCEE = 127;
+const CC_LEVEE = 0;
+
+function pisteNotes(nom, canal, notes, pedales = []) {
   const evenements = [
-    { tick: 0, ordre: 0, octets: metaTexte(0x03, nom) },
-    { tick: 0, ordre: 1, octets: [0xc0 | canal, 0] }, // programme 0 : piano
+    { tick: 0, ordre: ORDRE_NOM, octets: metaTexte(0x03, nom) },
+    { tick: 0, ordre: ORDRE_PROGRAMME, octets: [0xc0 | canal, 0] }, // programme 0 : piano
   ];
   for (const note of notes) {
-    evenements.push({ tick: note.tick, ordre: 3, octets: [0x90 | canal, note.hauteur, note.velocite] });
-    evenements.push({ tick: note.tick + note.duree, ordre: 2, octets: [0x80 | canal, note.hauteur, 0x40] });
+    evenements.push({
+      tick: note.tick,
+      ordre: ORDRE_NOTE_ON,
+      octets: [0x90 | canal, note.hauteur, note.velocite],
+    });
+    evenements.push({
+      tick: note.tick + note.duree,
+      ordre: ORDRE_NOTE_OFF,
+      octets: [0x80 | canal, note.hauteur, 0x40],
+    });
+  }
+  for (const { tick, enfoncee } of pedales) {
+    evenements.push({
+      tick,
+      ordre: enfoncee ? ORDRE_PEDALE_ENFONCEE : ORDRE_PEDALE_LEVEE,
+      octets: [0xb0 | canal, CC_PEDALE, enfoncee ? CC_ENFONCEE : CC_LEVEE],
+    });
   }
   return piste(evenements);
 }
@@ -1687,8 +2619,9 @@ function produire(entree, niveauId, { dossier = DOSSIER } = {}) {
   const tonalite = TONALITES[variante.tonalite];
   const gamme = creerGamme(tonalite.tonique);
 
-  const { notes, duree } = variante.composer({ gamme, niveau, tonalite });
+  const { notes, duree, pedales = [] } = variante.composer({ gamme, niveau, tonalite });
   const { mesures, problemes, tolere } = verifier(notes, duree, niveau, variante.tolerances);
+  problemes.push(...verifierPedale(pedales, duree));
 
   const nom = `${entree.titre} (${niveau.libelle})`;
   const chemin = path.join(dossier, `${entree.fichier}-${niveauId}-01.mid`);
@@ -1712,7 +2645,16 @@ function produire(entree, niveauId, { dossier = DOSSIER } = {}) {
       mineur: Boolean(tonalite.mineur),
     }),
     pisteNotes("Main droite", CANAL_DROITE, notes.filter((note) => note.main === "droite")),
-    pisteNotes("Main gauche", CANAL_GAUCHE, notes.filter((note) => note.main === "gauche")),
+    // La pédale va sur la piste de la main gauche : c'est elle qui porte
+    // l'harmonie que le pied suit. `extractPedalIntervals()` du mode Morceau lit
+    // le CC 64 de **n'importe quelle** piste, donc le choix n'a d'effet que sur
+    // la lisibilité du fichier dans un autre logiciel.
+    pisteNotes(
+      "Main gauche",
+      CANAL_GAUCHE,
+      notes.filter((note) => note.main === "gauche"),
+      pedales
+    ),
   ]);
 
   const rapport = {
@@ -1726,6 +2668,7 @@ function produire(entree, niveauId, { dossier = DOSSIER } = {}) {
     objectif: variante.objectif,
     critere: CRITERE_COMMUN,
     notes: notes.length,
+    pedales: pedales.length,
     ...mesures,
     problemes,
     tolere,

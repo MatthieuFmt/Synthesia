@@ -32,7 +32,7 @@ pour avancer, pas avant.
 | --- | --- | --- | --- |
 | 01 | Apprentissage d'un morceau | Lecteur + clavier MIDI ; travail guidé via 06 | [01-apprentissage-morceau.md](01-apprentissage-morceau.md) |
 | 02 | Ancienne lecture de notes | Retirée, historique fusionné dans 10 | [02-lecture-notes.md](02-lecture-notes.md) |
-| 03 | Exercices techniques et agilité des doigts | MVP complet, avec validation MIDI | [03-technique-doigts.md](03-technique-doigts.md) |
+| 03 | Exercices techniques et agilité des doigts | Complet : 99 exercices avec doigté, 11 familles × 3 niveaux | [03-technique-doigts.md](03-technique-doigts.md) |
 | 04 | Programme d'entraînement | Séance composée pour un budget quotidien — lit le journal de F3 | [04-programme-entrainement.md](04-programme-entrainement.md) |
 | 05 | Entraînement rythmique | Retirée le 07/08/2026 ; historique conservé | [05-entrainement-rythmique.md](05-entrainement-rythmique.md) |
 | 06 | Travail intelligent d'un morceau | Cinq outils en place — sous-mode de 01 | [06-travail-intelligent-morceau.md](06-travail-intelligent-morceau.md) |
@@ -58,7 +58,8 @@ exercice, à trois niveaux.
 
 | Sujet | État actuel | Plan détaillé |
 | --- | --- | --- |
-| Exercices générés | Catalogue de 19 familles écrit ; production à faire | [exercices-generes.md](exercices-generes.md) |
+| Exercices générés (fichiers MIDI, mode Morceau) | Catalogue de 19 familles écrit ; vagues 1 et 2 faites — 8 familles sur 19 | [exercices-generes.md](exercices-generes.md) |
+| Catalogue d'exercices (mode Exercices) | **Complet** : 99 exercices, 11 familles × 3 niveaux × 3 | [exercices-catalogue.md](exercices-catalogue.md) |
 | Fichiers MIDI du dépôt | 26 fichiers Mutopia, licences vérifiées | [morceaux-exercice/README.md](../morceaux-exercice/README.md) |
 
 ## Checklist générale
