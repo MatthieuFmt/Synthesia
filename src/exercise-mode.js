@@ -52,6 +52,8 @@ import { summarizeMidiRun, validateRepetition } from "./exercises/validate-run.j
 import { midiInput } from "./midi-input.js";
 import { createProgressStore } from "./progress/store.js";
 import { lastSessionContext } from "./progress/review.js";
+import { entriesOfKind, groupByPrefix, loadSongCatalog } from "./song-library.js";
+import { switchTo } from "./navigation.js";
 
 // Couleurs alignées sur celles du mode Morceau : la main droite en bleu, la
 // main gauche en vert. Un exercice et un morceau doivent se lire de la même
@@ -96,8 +98,8 @@ const HAND_CHOICES = [
 const HAND_LABEL = { right: "Main droite", left: "Main gauche", both: "Les deux mains" };
 
 // Ce que la régularité rythmique dit de la pratique, quand le clavier MIDI l'a
-// mesurée (plan/03 § 9). Mêmes catégories que la Reproduction rythmique : c'est
-// le même bilan de `rhythm/timing.js` qui les produit.
+// mesurée (plan/03 § 9). Les catégories viennent du bilan de
+// `rhythm/timing.js`, seul jugement avance/retard du projet.
 const TIMING_TEXT = {
   steady: "Rythme régulier : tes notes tombent avec la pulsation.",
   early: "Tu anticipes presque toujours : laisse la pulsation arriver.",
@@ -162,6 +164,12 @@ function createModeState() {
 
     run: null,         // exercice généré (notes, séries, grille)
     grid: null,
+
+    // Morceaux d'étude : les fichiers MIDI de `songs.json` marqués « exercice ».
+    // Chargés une fois pour la session ; vides tant que le catalogue n'a pas
+    // répondu, et l'écran de réglages s'en passe alors sans rien annoncer.
+    studyPieces: [],
+    studyFile: null,   // fichier choisi dans la liste, retenu entre deux rendus
 
     // Validation MIDI (plan/03 étape D). `null` en pratique libre : rien n'est
     // reçu, donc rien n'est mesuré et rien n'est affiché.
@@ -284,6 +292,11 @@ function renderSetup() {
       "Commence lentement, garde la main détendue, et arrête-toi en cas de douleur."
     )
   );
+
+  // La bibliothèque d'études ferme l'écran : c'est l'autre façon de travailler
+  // sa technique, pas le chemin principal — et elle emmène dans un autre mode.
+  const study = renderStudyLibrary();
+  if (study) root.appendChild(study);
 
   container.replaceChildren(root);
   state.ui = null;
@@ -551,6 +564,67 @@ function renderMidiChoice() {
         : "Vérification coupée : le bilan ne dira rien de tes notes, comme en pratique libre."
     )
   );
+  return group;
+}
+
+// ----------------------------------------------------------------------------
+//  Morceaux d'étude
+//
+//  Les exercices ci-dessus sont **générés** à partir de degrés de gamme, et se
+//  jouent sur le rouleau étroit de ce mode. Les fichiers MIDI marqués
+//  « exercice » dans `songs.json` — Czerny, Burgmüller, Clementi, Satie, et les
+//  exercices produits par `tools/generer-exercice.js` — sont d'une autre nature :
+//  ce sont des pièces entières, écrites pour être jouées sur les 88 touches avec
+//  la boucle, l'attente et la montée de tempo du sous-mode Travail (plan/06).
+//  Ils appartiennent donc au travail technique, mais pas à cet écran : on les
+//  ouvre dans le mode Morceau, qui est le lecteur de fichiers de l'application.
+//
+//  C'est la seule raison pour laquelle ils quittaient auparavant la bibliothèque
+//  du mode Morceau : ils y noyaient les quatre morceaux du répertoire.
+// ----------------------------------------------------------------------------
+function renderStudyLibrary() {
+  if (state.studyPieces.length === 0) return null;
+
+  const group = el("fieldset", "ex-choice ex-study");
+  group.appendChild(el("legend", "ex-choice-legend", "Morceaux d'étude"));
+  group.appendChild(
+    el(
+      "p",
+      "ex-hint",
+      "Des études et pièces courtes en MIDI, à travailler sur le rouleau complet du mode Morceau."
+    )
+  );
+
+  const row = el("div", "ex-study-row");
+
+  const select = el("select", "ex-study-select");
+  select.setAttribute("aria-label", "Morceau d'étude");
+  for (const { label, entries } of groupByPrefix(state.studyPieces)) {
+    const optgroup = document.createElement("optgroup");
+    optgroup.label = label;
+    for (const { song } of entries) {
+      optgroup.appendChild(new Option(song.title, song.file));
+    }
+    select.appendChild(optgroup);
+  }
+  select.value = state.studyFile ?? state.studyPieces[0].song.file;
+  state.studyFile = select.value;
+  select.addEventListener(
+    "change",
+    () => {
+      state.studyFile = select.value;
+    },
+    { signal: listeners.signal }
+  );
+
+  const open = el("button", "btn ex-study-open", "Ouvrir");
+  open.type = "button";
+  // `switchTo` arrête ce mode avant de démarrer le suivant : rien de ce qui
+  // tourne ici ne survit au changement, comme pour n'importe quel autre.
+  onClick(open, () => switchTo("song", { songFile: state.studyFile }));
+
+  row.append(select, open);
+  group.appendChild(row);
   return group;
 }
 
@@ -1571,6 +1645,19 @@ function start(host) {
   });
 
   renderSetup();
+  loadStudyPieces();
+}
+
+// Le catalogue arrive après le premier rendu : l'écran de réglages ne doit pas
+// attendre un `fetch` pour s'afficher. La liste apparaît quand elle est prête,
+// et seulement si l'utilisateur est encore sur cet écran — un rendu de réglages
+// par-dessus une séance en cours l'effacerait.
+async function loadStudyPieces() {
+  const session = state;
+  await loadSongCatalog();
+  if (session.stopped || state !== session) return;
+  session.studyPieces = entriesOfKind("exercice");
+  if (session.studyPieces.length > 0 && session.run === null) renderSetup();
 }
 
 // Reprend les réglages de la dernière séance, comme la Lecture de notes

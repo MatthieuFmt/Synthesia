@@ -1,5 +1,5 @@
 // ============================================================================
-//  Clavier de piano en DOM — partagé par Lecture de notes, 07 et 08
+//  Clavier de piano en DOM — partagé par la Lecture de notes et l'Oreille (07)
 //
 //  Une rangée de touches blanches en `<button>` et une rangée de noires posées
 //  par-dessus, limitées à l'étendue utile de l'exercice. Rien n'y défile, donc
@@ -13,11 +13,11 @@
 //  renvoie explicitement à celui de 02).
 //
 //  Ce n'est donc pas le `piano.js` universel que le dossier a toujours refusé :
-//  les 88 touches en Canvas du mode Morceau, le rouleau des Exercices et
-//  l'octave sans hauteur du Rythme n'ont toujours rien à voir avec celui-ci.
+//  les 88 touches en Canvas du mode Morceau et le rouleau des Exercices n'ont
+//  toujours rien à voir avec celui-ci.
 //
 //  Le préfixe de classes CSS est un paramètre : chaque mode garde sa famille de
-//  styles (`fl-…`, `ear-…`, `sr-…`) comme le reste du dossier.
+//  styles (`fl-…`, `ear-…`) comme le reste du dossier.
 // ============================================================================
 
 import { isWhite, noteDegreeName, octaveOf, pitchClass } from "./music.js";

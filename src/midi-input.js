@@ -36,13 +36,10 @@ const DEFAULT_VELOCITY = 0.8;
 const NOTE_ON = 0x90;
 const NOTE_OFF = 0x80;
 
-// Changement de contrôleur : seul le CC 64 (pédale de sustain) est écouté,
-// depuis que les Exercices de pédale (plan/09 étape A) en ont eu besoin. La
-// convention MIDI est binaire à mi-course : ≥ 64 = enfoncée. Beaucoup de
-// pédales n'envoient d'ailleurs que 0 ou 127 (plan/09 § 15).
-const CONTROL_CHANGE = 0xb0;
-const SUSTAIN_CONTROLLER = 64;
-const SUSTAIN_THRESHOLD = 64;
+// Le CC 64 (pédale de sustain) a été écouté ici tant qu'ont existé les
+// Exercices de pédale (plan/09) ; il est retiré avec eux le 07/08/2026, faute
+// d'abonné. Le point d'entrée reste le même le jour où il faudra le remettre :
+// un `command === 0xb0` dans `handleMessage`, seuil à mi-course.
 
 function defaultRequestAccess() {
   if (typeof navigator === "undefined" || !navigator.requestMIDIAccess) return null;
@@ -67,7 +64,6 @@ export function createMidiInput({
   now = defaultNow,
 } = {}) {
   const noteListeners = new Set();
-  const pedalListeners = new Set();
   const stateListeners = new Set();
 
   let access = null;
@@ -82,10 +78,6 @@ export function createMidiInput({
   // Notes actuellement tenues, par hauteur. Sert à filtrer les rebonds de touche
   // et à ne jamais laisser une note « collée » derrière soi.
   const held = new Set();
-
-  // État courant de la pédale de sustain : seuls les changements sont émis,
-  // une pédale progressive qui répète sa valeur ne produit donc rien.
-  let pedalDown = false;
 
   function supported() {
     return typeof navigator !== "undefined" && Boolean(navigator.requestMIDIAccess);
@@ -112,7 +104,6 @@ export function createMidiInput({
       // Vrai seulement si tout est réuni : permission, appareil, activation.
       listening: enabled && activeDeviceId !== null && currentStatus() === MIDI_STATUS.ready,
       heldNotes: [...held],
-      pedalDown,
     };
   }
 
@@ -139,16 +130,6 @@ export function createMidiInput({
     }
   }
 
-  function emitPedal(event) {
-    for (const listener of pedalListeners) {
-      try {
-        listener(event);
-      } catch (failure) {
-        console.error("Écouteur de pédale MIDI en échec.", failure);
-      }
-    }
-  }
-
   // --------------------------------------------------------------------------
   //  Normalisation d'un message
   //
@@ -166,24 +147,6 @@ export function createMidiInput({
     if (!data || data.length < 2) return;
 
     const command = data[0] & 0xf0;
-
-    // Pédale de sustain (CC 64), au format normalisé de plan/09 § 10. Le même
-    // horodatage que les notes : les verdicts de pédale sont des jugements de
-    // timing, à quelques dizaines de millisecondes près.
-    if (command === CONTROL_CHANGE) {
-      if (data[1] !== SUSTAIN_CONTROLLER || data.length < 3) return;
-      const down = data[2] >= SUSTAIN_THRESHOLD;
-      if (down === pedalDown) return;
-      pedalDown = down;
-      emitPedal({
-        type: "pedal",
-        down,
-        timestamp: Number.isFinite(message.timeStamp) ? message.timeStamp : now(),
-        source: MIDI_SOURCE,
-      });
-      return;
-    }
-
     const midi = data[1];
     const rawVelocity = data.length >= 3 ? data[2] : null;
     if (!Number.isFinite(midi) || midi < 0 || midi > 127) return;
@@ -232,14 +195,9 @@ export function createMidiInput({
     return Math.min(1, raw / 127);
   }
 
-  // Relâche ce qui est tenu — notes et pédale : sans ça, une fonctionnalité qui
-  // attend la fin d'une note (ou un lever de pédale) resterait suspendue après
-  // un débranchement ou une désactivation.
+  // Relâche les notes tenues : sans ça, une fonctionnalité qui attend la fin
+  // d'une note resterait suspendue après un débranchement ou une désactivation.
   function releaseHeld() {
-    if (pedalDown) {
-      pedalDown = false;
-      emitPedal({ type: "pedal", down: false, timestamp: now(), source: MIDI_SOURCE });
-    }
     if (held.size === 0) return;
     const stuck = [...held];
     held.clear();
@@ -327,15 +285,6 @@ export function createMidiInput({
     },
     offNote(listener) {
       noteListeners.delete(listener);
-    },
-
-    // Abonnement aux changements de pédale (CC 64), même contrat que les notes.
-    onPedal(listener) {
-      pedalListeners.add(listener);
-      return () => pedalListeners.delete(listener);
-    },
-    offPedal(listener) {
-      pedalListeners.delete(listener);
     },
 
     onStateChange(listener) {
@@ -429,8 +378,6 @@ export function createMidiInput({
       disposed = true;
       detach();
       held.clear();
-      pedalDown = false;
-      pedalListeners.clear();
       if (access) access.onstatechange = null;
       access = null;
       enabled = false;
@@ -456,14 +403,6 @@ export function onMidiNote(listener) {
 
 export function offMidiNote(listener) {
   midiInput.offNote(listener);
-}
-
-export function onMidiPedal(listener) {
-  return midiInput.onPedal(listener);
-}
-
-export function offMidiPedal(listener) {
-  midiInput.offPedal(listener);
 }
 
 export function midiState() {

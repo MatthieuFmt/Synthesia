@@ -34,11 +34,11 @@ pour avancer, pas avant.
 | 02 | Ancienne lecture de notes | Retirée, historique fusionné dans 10 | [02-lecture-notes.md](02-lecture-notes.md) |
 | 03 | Exercices techniques et agilité des doigts | MVP complet, avec validation MIDI | [03-technique-doigts.md](03-technique-doigts.md) |
 | 04 | Programme d'entraînement | Séance composée pour un budget quotidien — lit le journal de F3 | [04-programme-entrainement.md](04-programme-entrainement.md) |
-| 05 | Entraînement rythmique | Trois familles, trois entrées | [05-entrainement-rythmique.md](05-entrainement-rythmique.md) |
+| 05 | Entraînement rythmique | Retirée le 07/08/2026 ; historique conservé | [05-entrainement-rythmique.md](05-entrainement-rythmique.md) |
 | 06 | Travail intelligent d'un morceau | Cinq outils en place — sous-mode de 01 | [06-travail-intelligent-morceau.md](06-travail-intelligent-morceau.md) |
 | 07 | Entraînement de l'oreille | Trois familles sur quatre ; mélodie hors MVP | [07-entrainement-oreille.md](07-entrainement-oreille.md) |
-| 08 | Lecture de partitions | Cinq étapes en place — suite de 02 | [08-lecture-partitions.md](08-lecture-partitions.md) |
-| 09 | Exercices de pédale | Directe et syncopée, trois niveaux ; Application à venir | [09-pedale.md](09-pedale.md) |
+| 08 | Lecture de partitions | Retirée le 07/08/2026 ; historique conservé | [08-lecture-partitions.md](08-lecture-partitions.md) |
+| 09 | Exercices de pédale | Retirée le 07/08/2026 ; historique conservé | [09-pedale.md](09-pedale.md) |
 | 10 | Lecture de notes | Une ou deux portées défilantes, trois vitesses | [10-fluidite.md](10-fluidite.md) |
 
 Trois fonctionnalités prolongent une fonctionnalité existante plutôt que d'en
@@ -234,6 +234,13 @@ Voir [le plan détaillé du Programme d'entraînement](04-programme-entrainement
 
 ### Feature 05 — Entraînement rythmique
 
+> Mode retiré le 07/08/2026, avec la Pédale (09). Ce qui en survit est ce qui
+> avait déjà un second consommateur : `metronome.js` (la grille de pulsation
+> des exercices techniques) et `rhythm/timing.js` (le jugement avance/retard de
+> la validation MIDI de 03). `rhythm/patterns.js`, la portée SVG et les trois
+> entrées de frappe partent avec le mode ; le plan ci-dessous reste comme
+> historique.
+
 - [x] Définir le principe et les trois familles d'exercices.
 - [x] Définir la mesure de précision temporelle (à l'heure / avance / retard).
 - [x] Définir un MVP qui ne dépend pas du clavier MIDI physique.
@@ -296,6 +303,14 @@ Voir [le plan détaillé de l'Entraînement de l'oreille](07-entrainement-oreill
 
 ### Feature 08 — Lecture de partitions
 
+> Mode retiré le 07/08/2026 : à l'usage il ne servait pas, et la
+> [Lecture de notes](10-fluidite.md) suffit au déchiffrage quotidien. Les
+> fichiers `src/sheet-reading-mode.js`, `src/sheet/` et la famille de styles
+> `.sr-` sont supprimés ; le plan ci-dessous reste comme historique. Rien
+> n'était partagé depuis 08 : le vocabulaire de figures reste dans
+> `rhythm/patterns.js` (05), le clavier de réponse dans `piano-dom.js` et le
+> moteur de session dans `session-engine.js`, tous encore consommés ailleurs.
+
 - [x] Définir la progression note unique → mesure → double portée.
 - [x] Définir l'ordre d'introduction des nouveautés (une seule à la fois).
 - [x] Définir la frontière avec la Lecture de notes et l'Entraînement rythmique.
@@ -315,6 +330,14 @@ Voir [le plan détaillé de l'Entraînement de l'oreille](07-entrainement-oreill
 Voir [le plan détaillé de la Lecture de partitions](08-lecture-partitions.md).
 
 ### Feature 09 — Exercices de pédale
+
+> Mode retiré le 07/08/2026, avec le Rythme (05). `pedal/timing.js` n'avait
+> qu'un consommateur : il part avec le mode, et l'écoute du CC 64 quitte
+> `midi-input.js` faute d'abonné (la décision de F2 § 13 redevient donc
+> ouverte). À ne pas confondre avec les **repères de pédale du mode Morceau**,
+> qui appartiennent à 01 et restent en place : ils se lisent dans le fichier
+> MIDI et se dessinent sur le rouleau, sans rien devoir à 09. Le plan ci-dessous
+> reste comme historique.
 
 - [x] Définir les quatre familles d'exercices de pédale.
 - [x] Définir la pédale syncopée comme technique centrale.

@@ -126,13 +126,33 @@ Reste inchangé :
 ## Intégration à la bibliothèque — faite
 
 Les vingt-six fichiers restants sont référencés dans `songs.json` (les treize
-premiers depuis le 25/07/2026, les treize autres depuis le 27/07/2026) et
-apparaissent dans le sélecteur de morceaux, groupés par compositeur. Le
+premiers depuis le 25/07/2026, les treize autres depuis le 27/07/2026). Le
 bouton d'import de fichier a été retiré de l'application : tout le répertoire
 est livré avec le dépôt. Les exercices générés de `genere/` s'y ajoutent au
 fur et à mesure de leur production : quinze depuis le 28/07/2026 — la vague 1
 complète (A1 Déliage, B1 Gammes, B2 Arpèges, B3 Sauts) et la première famille
 de la vague 2 (C1 Doubles notes), chacune à ses trois niveaux.
+
+### Séparés du répertoire depuis le 07/08/2026
+
+Ces quarante et un fichiers **n'apparaissent plus dans le sélecteur du mode
+Morceau**, qui ne montre plus que les quatre morceaux de `midi/`. Ils portent
+`"kind": "exercice"` dans `songs.json` et vivent dans la liste **Morceaux
+d'étude**, en bas de l'écran de réglages du mode **Exercices**, groupés par
+série.
+
+Rien ne change à la façon de les jouer : « Ouvrir » les charge dans le mode
+Morceau — le rouleau 88 touches et le sous-mode Travail (boucle, attente,
+tempo), ce pour quoi ils ont été choisis. Le sélecteur propose alors les
+autres exercices, pas les morceaux.
+
+La séparation est **dans la donnée, pas dans le dossier** : c'est le champ
+`kind` qui décide, et un fichier peut donc changer de camp sans déménager. La
+frontière retenue est celle de l'usage — « ce que je veux apprendre » d'un
+côté, « ce que je joue pour progresser » de l'autre. C'est pourquoi
+Burgmüller, Clementi et les Gnossiennes, qui sont musicalement de vraies
+pièces, restent du côté des exercices : c'est à ce titre qu'ils ont été
+téléchargés.
 
 L'attribution des fichiers CC BY-SA (Gnossiennes) n'est **pas**
 affichée dans l'application : celle-ci est un usage personnel, sur le dépôt

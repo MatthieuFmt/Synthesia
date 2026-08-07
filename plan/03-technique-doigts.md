@@ -669,3 +669,28 @@ métronome et le bilan. La suite propre à cette fonctionnalité est la
 **validation MIDI** (étape D), qui attend [F2](F2-entree-midi.md), puis les
 familles Gammes, Coordination et Rythme — et, avec le premier exercice
 Intermédiaire, le choix de difficulté et les tonalités de Sol et Fa majeur.
+
+## 19. Les morceaux d'étude arrivent ici (07/08/2026)
+
+Le § 11 tranchait qu'un exercice est **décrit**, jamais stocké comme fichier
+MIDI : c'est toujours vrai de tout ce qui se joue sur le rouleau étroit de ce
+mode. Mais quarante et un fichiers MIDI d'entraînement existent par ailleurs
+(Czerny, Burgmüller, Clementi, Satie, et les exercices produits par
+`tools/generer-exercice.js`), et ils traînaient jusqu'ici dans la bibliothèque
+du mode Morceau, où ils noyaient les quatre morceaux du répertoire.
+
+Ils sont désormais listés en bas de l'écran de réglages, sous **Morceaux
+d'étude**, groupés par série. Ce n'est pas une contradiction avec le § 11 :
+
+- ce mode ne les **lit** pas. Ce sont des pièces entières, écrites pour les 88
+  touches et pour la boucle, l'attente et la montée de tempo de
+  [06](06-travail-intelligent-morceau.md) ; « Ouvrir » les charge donc dans le
+  mode [Morceau](01-apprentissage-morceau.md), qui est le lecteur de fichiers
+  de l'application. Rien de la mécanique de ce mode-ci ne les touche ;
+- il ne fait que les **désigner**. C'est l'écran où l'on vient travailler sa
+  technique : c'est là qu'on les cherche, même si on les joue ailleurs.
+
+La liste vient de `songs.json` via `song-library.js` (les entrées de nature
+`"exercice"`), et arrive après le premier rendu : l'écran de réglages ne doit
+pas attendre un `fetch` pour s'afficher, ni se redessiner par-dessus une séance
+en cours.

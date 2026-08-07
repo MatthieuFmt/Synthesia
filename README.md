@@ -59,14 +59,25 @@ Case **Notation** dans la barre d'outils pour activer/désactiver l'affichage.
 
 ```json
 [
-  { "title": "Démo — Gamme & accords", "builtin": "demo" },
-  { "title": "Frère Jacques",          "file": "midi/frere-jacques.mid" },
-  { "title": "Ode à la joie",          "file": "midi/ode-to-joy.mid" }
+  { "kind": "song",     "title": "Frère Jacques",       "file": "midi/frere-jacques.mid" },
+  { "kind": "song",     "title": "Ode à la joie",       "file": "midi/ode-to-joy.mid" },
+  { "kind": "exercice", "title": "Czerny — Op. 840 nº 1", "file": "morceaux-exercice/czerny-op840-01.mid" }
 ]
 ```
 
 Le champ `"builtin": "demo"` est réservé à la démo générée en interne.
 Pour tes propres morceaux, utilise `"file"` avec le chemin relatif.
+
+Le champ **`"kind"`** dit *où* le fichier apparaît, et c'est la seule chose qui
+le décide (le dossier n'y change rien) :
+
+| `kind` | Où on le trouve |
+| --- | --- |
+| `"song"` (défaut) | Bibliothèque du mode **Morceau** — le répertoire, ce qu'on veut apprendre |
+| `"exercice"` | Liste **Morceaux d'étude** du mode **Exercices** — le matériel de travail |
+
+Un exercice s'ouvre dans le même lecteur que les morceaux : le mode Exercices y
+envoie, et le sélecteur propose alors les autres exercices.
 
 ## Mode performance
 
@@ -111,7 +122,7 @@ Puis ouvrir <http://localhost:8000>.
 index.html     # structure de la page + contrôles
 style.css      # mise en forme (thème sombre)
 src/main.js    # parsing MIDI, calcul des repères, rendu Canvas, défilement
-songs.json     # catalogue des morceaux de la bibliothèque
+songs.json     # catalogue : morceaux (kind "song") et exercices (kind "exercice")
 midi/          # tes fichiers .mid
 ```
 

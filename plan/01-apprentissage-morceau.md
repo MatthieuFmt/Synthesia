@@ -16,8 +16,9 @@ jouer et, à terme, de s'entraîner jusqu'à pouvoir le jouer lui-même.
 
 ## Ce qui existe
 
-- [x] Bibliothèque alimentée par `songs.json` (17 morceaux fournis avec
-  l'application).
+- [x] Bibliothèque alimentée par `songs.json`, filtrée sur les fichiers de
+  nature « morceau » (les quatre de `midi/`). Les quarante et un fichiers
+  d'entraînement en ont été retirés le 07/08/2026 — voir plus bas.
 - [x] ~~Import d'un fichier `.mid` ou `.midi`.~~ Retiré : tout le répertoire
   est livré dans le dépôt, l'utilisateur n'a rien à charger.
 - [x] Analyse des pistes MIDI.
@@ -30,6 +31,32 @@ jouer et, à terme, de s'entraîner jusqu'à pouvoir le jouer lui-même.
 - [x] Notation activable sur les notes.
 - [x] Piano à l'écran jouable à la souris ou au toucher.
 - [x] Plein écran.
+
+## Séparation morceaux / exercices (07/08/2026)
+
+Le sélecteur mélangeait deux choses qui n'ont jamais eu la même vocation : les
+quatre morceaux qu'on veut **apprendre**, et quarante et un fichiers qu'on joue
+pour **progresser** (Czerny, Burgmüller, Clementi, Satie, exercices générés).
+Les seconds noyaient les premiers, et le choix « quel morceau je travaille
+aujourd'hui » était devenu un défilement de quarante-cinq lignes.
+
+Chaque entrée de `songs.json` porte donc une **nature** (`kind`) :
+
+| `kind` | Où on la trouve |
+| --- | --- |
+| `"song"` (défaut) | Bibliothèque de ce mode |
+| `"exercice"` | Liste « Morceaux d'étude » du mode [Exercices](03-technique-doigts.md) |
+
+Trois points qui n'ont *pas* changé, et c'est voulu :
+
+- **le lecteur reste unique.** Un exercice s'ouvre dans ce mode-ci, avec le
+  rouleau 88 touches et le sous-mode Travail — c'est ce pour quoi ces fichiers
+  ont été téléchargés. Le mode Exercices y envoie
+  (`switchTo("song", { songFile })`), il ne les lit pas lui-même ;
+- **la nature vit dans la donnée**, pas dans le chemin du fichier. Un fichier
+  change de camp en changeant son `kind`, sans quitter son dossier ;
+- **le dernier morceau ouvert est retenu par nature.** Aller voir un exercice
+  ne fait pas perdre la place où on en était dans son morceau, et inversement.
 
 ## Limite levée le 26/07/2026
 

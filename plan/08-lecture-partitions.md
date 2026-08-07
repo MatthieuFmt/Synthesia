@@ -1,9 +1,27 @@
 # Feature 08 — Lecture de partitions
 
-> Statut : **implémentée** (27/07/2026) — les cinq étapes fonctionnent de bout
-> en bout, du réglage au bilan. Voir la [validation](#16-validation-effectuée-27-juillet-2026).
+> Statut : **retirée le 07/08/2026**. Le mode fonctionnait — les cinq étapes
+> allaient du réglage au bilan, cf. la
+> [validation](#16-validation-effectuée-27-juillet-2026) — mais il ne servait
+> pas à l'usage : la [Lecture de notes](10-fluidite.md) couvre le déchiffrage
+> quotidien, et une mesure figée à répondre en QCM n'ajoutait rien qu'on
+> pratiquait vraiment.
+>
+> Supprimés : `src/sheet-reading-mode.js`, `src/sheet/exercises.js`,
+> `src/sheet/staff-render.js`, la famille de styles `.sr-` et les mentions du
+> mode dans le registre (`main.js`), la navigation, le professeur de 04 et
+> l'écran Progression. Rien n'a été extrait *depuis* 08, donc rien n'est
+> devenu orphelin : `rhythm/patterns.js` (figures), `piano-dom.js` (clavier de
+> réponse), `session-engine.js` (déroulé), `note-reading-engine.js`
+> (`CLEF_BY_HAND`) et `music.js` (`CLEF_GLYPH`, `staffStep`) gardent tous
+> d'autres consommateurs.
+>
+> Le plan ci-dessous est conservé tel quel comme historique : c'est lui qui
+> documente le rendu de portée au pixel et la frontière avec 05, utiles si un
+> mode de déchiffrage revient un jour.
+>
 > Suite directe de [02 — Lecture de notes](02-lecture-notes.md), dont elle
-> reprend et poursuit l'étape D.
+> reprenait et poursuivait l'étape D.
 
 [Retour à la checklist générale](README.md)
 

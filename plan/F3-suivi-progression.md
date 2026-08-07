@@ -179,26 +179,39 @@ const end = {
 };
 ```
 
-### Les cinq `type`
+### Les `type`
+
+Le tableau donne l'état après les retraits du 07/08/2026 (05, 08, 09). Le
+vocabulaire n'est **fermé qu'à l'écriture** : `progress/store.js` refuse une
+valeur inconnue au moment d'ajouter un évènement, mais ne valide rien à la
+lecture. C'est ce qui permet de le rétrécir sans rendre illisibles les séances
+déjà enregistrées — les anciens `beat` d'une séance de Rythme se relisent
+comme avant, plus personne n'en écrit.
 
 | `type` | Signification | Produit par |
 | --- | --- | --- |
-| `answer` | **Une tentative** de réponse, juste ou fausse | 02, **05** (Reconnaissance), 07, 08 |
-| `beat` | Un jugement de timing sur une frappe ou un changement de pédale | 05, 09 |
+| `answer` | **Une tentative** de réponse, juste ou fausse | 07, 10 |
 | `repetition` | Une répétition d'exercice effectuée | 03 |
 | `run` | Une exécution complète d'un exercice ou d'un passage | 03, 06 |
 | `session-start` / `session-end` | Bornes d'une séance | toutes |
+| ~~`beat`~~ | ~~Un jugement de timing sur une frappe ou un changement de pédale~~ | retiré avec 05 et 09 |
 
 ### Le vocabulaire fermé des `outcome`
 
 | Famille | Valeurs | Utilisée par |
 | --- | --- | --- |
-| Réponse jugée | `correct`, `wrong` | 02, 07, 08 |
-| Timing | `on-time`, `early`, `late`, `missed` | 05, 09 |
+| Réponse jugée | `correct`, `wrong` | 07, 10 |
+| Cible laissée passer | `missed` | 10 |
 | Exécution | `clean`, `flawed` | 03, 06 |
-| Pédale | `blurred`, `gap` (+ `missed`) | 09 |
 | Séance | `done`, `abandoned` | toutes |
 | Non mesuré | `none` | 03 en pratique libre |
+| ~~Timing~~ | ~~`on-time`, `early`, `late`~~ | retiré avec 05 et 09 |
+| ~~Pédale~~ | ~~`blurred`, `gap`~~ | retiré avec 09 |
+
+Les jugements à l'heure / avance / retard continuent d'exister **en mémoire** :
+`rhythm/timing.js` les calcule pour la validation MIDI de 03, qui les résume
+dans son bilan de série. Ils ne sont simplement plus journalisés un par un —
+c'est le `run` qui l'est, avec son `clean` ou son `flawed`.
 
 `target` reste libre selon la fonctionnalité (une note, un exercice, un
 passage, un intervalle, un changement de pédale) : c'est ce qui permet

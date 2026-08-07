@@ -7,10 +7,10 @@
 //  parce qu'elle n'en a aucune.
 //
 //  L'appariement et le jugement de timing viennent de `rhythm/timing.js`, écrit
-//  pour l'Entraînement rythmique : les seuils « à l'heure / avance / retard »
-//  sont les mêmes partout, comme le prévoyait
-//  plan/05 § 5. Ici s'ajoute seulement la hauteur — une note juste au bon moment
-//  n'est pas la même chose qu'une note juste tout court.
+//  à l'origine pour l'Entraînement rythmique (retiré le 07/08/2026) : les
+//  seuils « à l'heure / avance / retard » y restent définis une seule fois.
+//  Ici s'ajoute seulement la hauteur — une note juste au bon moment n'est pas
+//  la même chose qu'une note juste tout court.
 //
 //  Aucun DOM, aucun Canvas : testable dans Node.
 // ============================================================================

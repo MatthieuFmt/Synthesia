@@ -7,7 +7,7 @@
 //  ensuite (plan/06-travail-intelligent-morceau.md).
 //
 //  Rien ici ne connaît le DOM, le Canvas ni Tone.js : ce module se teste dans
-//  Node, comme `exercises/generate-exercise.js` ou `rhythm/patterns.js`. Le
+//  Node, comme `exercises/generate-exercise.js` ou `session-engine.js`. Le
 //  stockage et l'horloge sont injectables pour la même raison.
 //
 //  Ce qu'il ne refait pas :

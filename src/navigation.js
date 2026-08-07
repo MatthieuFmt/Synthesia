@@ -2,7 +2,7 @@
 //  Navigation entre les fonctionnalités (fondation F1)
 //
 //  Une fonctionnalité est décrite par une fiche :
-//      { id, title, description, status, start(container), stop() }
+//      { id, title, description, status, start(container, options?), stop() }
 //  Le registre est la simple liste de ces fiches ; cet écran ne connaît rien
 //  d'autre d'une fonctionnalité. `switchTo()` garantit qu'une seule
 //  fonctionnalité est active à la fois : la précédente est complètement
@@ -34,9 +34,9 @@ const HOME_TITLE = "Accueil";
 // ----------------------------------------------------------------------------
 const GROUPS = [
   { id: "program", title: "Ma séance", featureIds: ["training", "progress"] },
-  { id: "read", title: "Lire", featureIds: ["fluency", "sheet-reading"] },
+  { id: "read", title: "Lire", featureIds: ["fluency"] },
   { id: "play", title: "Jouer", featureIds: ["song", "technique"] },
-  { id: "feel", title: "Écouter et sentir", featureIds: ["rhythm", "ear-training", "pedal"] },
+  { id: "feel", title: "Écouter et sentir", featureIds: ["ear-training"] },
   { id: "other", title: "Autres", featureIds: [] },
 ];
 
@@ -78,7 +78,11 @@ export function availableFeatures() {
 }
 
 // Point de passage unique : `null` revient à l'écran d'accueil.
-export function switchTo(featureId) {
+//
+// `options` est passé tel quel à `start(container, options)` : la navigation
+// n'en connaît pas le contenu, c'est un mot que l'appelant adresse au mode
+// (le mode Exercices ouvre ainsi le mode Morceau sur un fichier précis).
+export function switchTo(featureId, options) {
   const next =
     featureId === null
       ? null
@@ -103,7 +107,7 @@ export function switchTo(featureId) {
   }
   currentFeature = next;
   updateModeNavigation();
-  next.start(stage);
+  next.start(stage, options);
 }
 
 // ----------------------------------------------------------------------------

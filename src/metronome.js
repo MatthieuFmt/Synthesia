@@ -3,10 +3,12 @@
 //
 //  Deux couches nettement séparées, comme ailleurs dans le projet : une grille
 //  de pulsation purement arithmétique et un ordonnanceur qui la joue. La grille
-//  ne connaît ni le DOM, ni le Canvas, ni Tone.js : elle est testable dans Node
-//  et c'est elle que réutilisera l'Entraînement rythmique (plan/05) pour situer
-//  une frappe par rapport à la pulsation — `nearestBeat()` existe pour lui, pas
-//  pour les exercices techniques.
+//  ne connaît ni le DOM, ni le Canvas, ni Tone.js : elle est testable dans Node.
+//
+//  `nearestBeat()`, écrite d'avance *pour* l'Entraînement rythmique (05), a été
+//  retirée le 07/08/2026 avec lui : 05 ne s'en était jamais servi (il situait
+//  ses frappes avec `rhythm/timing.js`). Le seul consommateur du module est
+//  désormais les exercices techniques (plan/03).
 //
 //  Convention de temps : `t = 0` est la **première pulsation du décompte**, pas
 //  la première note. L'exercice commence donc à `grid.startTime`. Une seule
@@ -85,15 +87,6 @@ export function createBeatGrid({
       return this.beatInBar(beat) + 1;
     },
   };
-}
-
-// Pulsation la plus proche d'un instant, avec l'écart signé en millisecondes
-// (négatif = en avance). Destinée à plan/05 § 5 : les seuils avance légère /
-// avance nette appartiennent à la vue, pas à cette mesure (plan/F3 § 7).
-export function nearestBeat(grid, seconds) {
-  const beat = Math.max(0, Math.round(seconds / grid.secondsPerBeat));
-  const time = grid.timeOf(beat);
-  return { beat, time, deviationMs: (seconds - time) * 1000 };
 }
 
 // ----------------------------------------------------------------------------

@@ -206,10 +206,13 @@ n'auront qu'à s'abonner : elles n'ont pas à porter l'interface de connexion.
   `try` pour une réponse prévisible)
 - [x] Écouter les messages note on/off et les normaliser en `noteEvent`.
   (canal ignoré, vélocité 0 traitée comme un relâchement, tout le reste
-  ignoré. Le CC 64 a rejoint l'écoute le 27/07/2026, quand [09](09-pedale.md)
-  en a eu besoin : évènements `{ type: "pedal", down, timestamp, source }` sur
-  un abonnement séparé `onPedal`, seuil binaire à mi-course, seuls les
-  changements émis, et la pédale relâchée au débranchement comme les notes)
+  ignoré. Le CC 64 avait rejoint l'écoute le 27/07/2026 pour
+  [09](09-pedale.md) — évènements `{ type: "pedal", down, timestamp, source }`
+  sur un abonnement séparé `onPedal`, seuil binaire à mi-course, seuls les
+  changements émis ; il en est reparti le **07/08/2026** avec le mode, faute
+  d'abonné. La décision de § 13 redevient donc ouverte, et le point d'entrée
+  est signalé en commentaire dans `midi-input.js` : un `command === 0xb0` dans
+  `handleMessage`)
 - [x] Gérer le branchement et le débranchement en cours de session.
   (repli sur l'appareil restant, et les notes tenues sont **relâchées** pour ne
   pas laisser une fonctionnalité suspendue à une note qui ne reviendra pas)

@@ -18,10 +18,14 @@ Application web type *Synthesia* pour l'apprentissage du piano. Lit des fichiers
 Chaque fonctionnalité (mode) est un objet avec cette signature :
 
 ```js
-{ id, title, description, status: "available"|"soon", start(container), stop() }
+{ id, title, description, status: "available"|"soon", start(container, options?), stop() }
 ```
 
 - `start(container)` reçoit un élément DOM (`#stage`), y injecte son interface, attache ses écouteurs.
+- `options` est facultatif et **opaque pour la navigation** : `switchTo(id, options)` le passe tel
+  quel à `start()`. C'est un mot qu'un mode adresse à un autre — le mode Exercices s'en sert pour
+  ouvrir le mode Morceau sur un fichier précis (`{ songFile }`). La navigation n'en lit jamais le
+  contenu, et un mode doit rester correct quand il ne reçoit rien.
 - `stop()` nettoie TOUT : listeners (via `AbortController`), audio, timers, animation frames, DOM dans le container.
 - La navigation (`src/navigation.js`) ne garde aucun état des modes : tout est recréé à chaque `start()`.
 - `AbortController` est obligatoire pour tous les écouteurs (DOM, events customs). `stop()` appelle `controller.abort()`.
@@ -46,31 +50,23 @@ src/note-reading-engine.js  # groupes de notes par niveau et par main, clés (sa
 src/fluency-mode.js         # unique mode Lecture de notes : une ou deux portées
                             # défilantes en Canvas, trois vitesses
 src/fluency-engine.js       # série alternée et géométrie des portées, sans DOM
-src/sheet-reading-mode.js   # mode Lecture de partitions (08) : cinq étapes, suite de 02
-src/sheet/exercises.js      # mesures et questions de 08 par étape ; les mesures de
-                            # « Valeurs et silences » sont les motifs 4/4 de 05 (sans DOM)
-src/sheet/staff-render.js   # rendu SVG d'une mesure : clé, armure, chiffrage, figures,
-                            # empilements, silences, curseur, double portée
 src/ear-training-mode.js    # mode Oreille : écoute + clavier ou propositions (DOM)
 src/ear/questions.js        # stimuli de 07 par famille et niveau, et sa session (sans DOM)
-src/session-engine.js       # PARTAGÉ (02, 07) : déroulé d'une session — tentatives,
+src/session-engine.js       # PARTAGÉ (10, 07) : déroulé d'une session — tentatives,
                             # série, erreurs par cible, pondération, bilan (sans DOM)
-src/piano-dom.js            # PARTAGÉ (02, 07) : clavier de réponse en <button>,
+src/piano-dom.js            # PARTAGÉ (10, 07) : clavier de réponse en <button>,
                             # étendue déduite d'un groupe de notes, préfixe CSS injecté
+src/song-library.js         # PARTAGÉ (01, 03) : catalogue songs.json chargé une fois,
+                            # filtré par nature — morceau ou exercice (sans DOM)
 src/exercise-mode.js        # mode Exercices : rouleau Canvas étroit + transport + bilan
+                            # + liste des morceaux d'étude (ouverts dans 01)
 src/exercises/catalog.js    # définition des exercices (degrés de gamme, doigtés)
 src/exercises/generate-exercise.js  # motif → notes de la forme du mode Morceau (sans DOM)
 src/exercises/validate-run.js  # verdict d'une série jouée au clavier MIDI (sans DOM)
-src/rhythm-mode.js          # mode Rythme : métronome, reconnaissance, reproduction
-src/rhythm/patterns.js      # figures (durées/silences), motifs par niveau (sans DOM)
-src/rhythm/timing.js        # jugement à l'heure/avance/retard, appariement (sans DOM)
-src/pedal-mode.js           # mode Pédale (09) : directe et syncopée, trois niveaux,
-                            # un morceau joué + ligne de pédale et consigne anticipée
-src/pedal/timing.js         # verdicts propre/brouillé/trou/oubliée, fenêtres de
-                            # rhythm/timing.js (sans DOM)
-src/metronome.js            # PARTAGÉ (03, 05, 09) : grille de pulsation + décompte, sans DOM
-src/midi-input.js           # PARTAGÉ (F2) : Web MIDI, appareils, notes normalisées
-                            # + pédale CC 64 depuis 09 (sans DOM)
+src/rhythm/timing.js        # jugement à l'heure/avance/retard, appariement (sans DOM) —
+                            # reste du Rythme retiré ; sert la validation MIDI de 03
+src/metronome.js            # grille de pulsation + décompte pour 03, sans DOM
+src/midi-input.js           # PARTAGÉ (F2) : Web MIDI, appareils, notes normalisées (sans DOM)
 src/midi-controls.js        # PARTAGÉ (F2) : panneau de connexion, affiché sur l'accueil
 src/progress/store.js       # PARTAGÉ (F3) : journal d'évènements dans localStorage,
                             # export, compaction (les bornes de séance survivent)
@@ -86,7 +82,7 @@ src/perf.js                 # PARTAGÉ : profil de l'appareil (canvas bridé, au
 src/viewport.js             # PARTAGÉ : plein écran + mode paysage forcé (rotation CSS)
 style.css                   # thème sombre, responsive <900px, paysage forcé, Canvas
 index.html                  # coquille HTML : appbar commune + contrôles mode + scène #stage
-songs.json                  # catalogue des morceaux (titres + chemins)
+songs.json                  # catalogue (titres + chemins + nature : "song" ou "exercice")
 ```
 
 Les briques marquées PARTAGÉ ont été extraites de `song-mode.js` seulement au
@@ -102,25 +98,22 @@ l'application (88 touches Canvas, étendue d'un exercice en Canvas, une octave d
 `piano-dom.js` **a** été extrait le 27/07/2026, parce que 02 et 07 affichent
 littéralement *le même* clavier : une à deux octaves de `<button>` dont
 l'étendue se déduit d'un groupe de notes. Le préfixe de classes CSS y est un
-paramètre (`fl-`, `ear-`, `sr-`), donc chaque mode garde sa famille de styles.
-L'ancien préfixe `nr-` appartenait au mode fixe retiré le 28/07/2026. Même
-histoire pour
+paramètre (`fl-`, `ear-`), donc chaque mode garde sa famille de styles.
+L'ancien préfixe `nr-` appartenait au mode fixe retiré le 28/07/2026, et `sr-`
+à la Lecture de partitions retirée le 07/08/2026. Même histoire pour
 `session-engine.js`, extrait de `note-reading-engine.js` le même jour, sans que
 la surface publique de ce dernier change.
 
 **Le piano roll, lui, n'est toujours pas mutualisé** : le mode Morceau
 et le mode Exercices gardent chacun le leur, pour la raison écrite dans
-[plan/03 § 12](plan/03-technique-doigts.md#le-rouleau-na-pas-été-mutualisé-avec-le-mode-morceau) ;
-même chose pour les portées. La Lecture de notes défilante en Canvas, celle de
-05 (une ligne SVG) et celle de 08 (`sheet/staff-render.js` : une mesure complète,
-armure, figures, double portée SVG) ne partagent aucune coordonnée.
+[plan/03 § 12](plan/03-technique-doigts.md#le-rouleau-na-pas-été-mutualisé-avec-le-mode-morceau).
+Il ne reste d'ailleurs qu'un seul rouleau et une seule portée depuis les
+retraits du 07/08/2026 : la question ne se pose plus.
 
-Deux briques *sont* partagées dès le premier jour, parce qu'un second
-consommateur en avait besoin de la **même** version, pas d'une variante :
-`metronome.js` (la grille de pulsation de 03 et 05) et le vocabulaire de figures
-de `rhythm/patterns.js`, que reprendra la Lecture de partitions (08). Contre-exemple
-instructif : `nearestBeat()`, écrite d'avance *pour* 05, n'est pas ce dont 05 a eu
-besoin — cf. [plan/05 § 11](plan/05-entrainement-rythmique.md#metronomejs-na-eu-besoin-daucune-extension).
+`metronome.js` et `rhythm/timing.js` ont été partagés dès le premier jour,
+parce qu'un second consommateur en avait besoin de la **même** version, pas
+d'une variante : la grille de pulsation de 03 et 05, le jugement
+avance/retard de 05 et de la validation MIDI de 03.
 
 Troisième cas, apparu avec le Travail d'un morceau (06) : **réutiliser sans
 déplacer**. `exercises/validate-run.js` juge un passage de morceau exactement
@@ -151,6 +144,45 @@ harnais doit être réécrit pour passer, il ne mesure plus la non-régression.
 Quand un mode a besoin de sa propre variante d'un module partagé, on lui donne
 un paramètre (ici le préfixe de classes CSS) plutôt qu'une copie.
 
+Sixième cas, avec les retraits du 07/08/2026 (08 — Lecture de partitions,
+05 — Rythme, 09 — Pédale) : **ce qu'un mode supprimé laisse derrière lui**. La
+règle est symétrique de l'extraction — on ne garde pas plus par précaution
+qu'on n'extrait par anticipation :
+
+- un module partagé **survit** au mode qui l'a fait naître s'il lui reste un
+  consommateur. `metronome.js` et `rhythm/timing.js` restent parce que les
+  exercices techniques (03) s'en servent toujours, `session-engine.js` et
+  `piano-dom.js` parce que 07 et 10 s'en servent. `rhythm/timing.js` reste
+  aussi *à sa place* : un fichier ne déménage pas parce que son dossier a
+  changé de sens, seulement quand cette place devient trompeuse ;
+- un module à **un seul** consommateur part avec lui : `rhythm/patterns.js`,
+  `pedal/timing.js`, `sheet/*` ;
+- ce qui n'avait **aucun** consommateur part aussi, et c'est là que le retrait
+  révèle ce qu'une extraction préventive avait coûté. `nearestBeat()`, écrite
+  d'avance *pour* 05, n'a jamais servi à 05 : elle disparaît sans que rien ne
+  s'en aperçoive (cf. [plan/05 § 11](plan/05-entrainement-rythmique.md#metronomejs-na-eu-besoin-daucune-extension)).
+  Même sort pour le CC 64 de `midi-input.js`, dont 09 était l'unique abonné ;
+- le **vocabulaire du journal** (F3) se rétrécit aussi, mais avec précaution :
+  il n'est fermé qu'à l'écriture, donc retirer `beat`, `blurred` ou `gap` de
+  `progress/store.js` ne rend pas illisibles les séances déjà enregistrées.
+
+Septième cas, avec la séparation morceaux / exercices du 07/08/2026 :
+**une distinction qui existait déjà dans la tête finit par exister dans la
+donnée**. Les fichiers de `midi/` et ceux de `morceaux-exercice/` n'ont jamais
+eu la même vocation — le README du second le disait dès le premier jour — mais
+un seul `<select>` les mélangeait, et quatre morceaux s'y noyaient dans
+quarante et un exercices. Trois conséquences qui valent pour la suite :
+
+- la nature est écrite dans `songs.json` (`kind`), pas déduite du chemin du
+  fichier. Deviner le sens d'une donnée à partir de l'endroit où elle est
+  rangée marche jusqu'au jour où on veut la ranger ailleurs ;
+- `song-library.js` est sorti de `song-mode.js` au moment habituel : quand un
+  **deuxième** consommateur (03) a eu besoin du même catalogue. Rien n'y a été
+  ajouté pour l'avenir ;
+- un mode peut désormais en ouvrir un autre sur quelque chose de précis
+  (`switchTo("song", { songFile })`). La navigation ne comprend pas ce message,
+  elle le transmet : elle ne connaît toujours rien des modes.
+
 ### Ajouter une fonctionnalité
 
 1. Créer un fichier `src/mon-mode.js` qui exporte `{ id, title, description, status, start, stop }`.
@@ -164,17 +196,17 @@ Tous les plans sont dans `plan/`. Le backlog maître est `plan/README.md`.
 | # | Statut |
 |---|---|
 | F1 — Navigation | ✅ Implémenté + menu des modes (barre) et accueil par famille |
-| F2 — Entrée MIDI clavier | ✅ Fondation + notes (01, 03, 05, 08) + pédale CC 64 (09) |
+| F2 — Entrée MIDI clavier | ✅ Fondation + notes (01, 03, 07, 10) |
 | F3 — Suivi progression | ✅ Complet : journal, 6 vues, écran Progression, export/effacement, compaction |
 | 01 — Apprentissage morceau | ✅ Lecteur + clavier MIDI ; travail guidé via 06 |
 | 02 — Ancienne lecture fixe | Retirée le 28/07/2026 ; historique conservé |
 | 03 — Technique doigts | ✅ MVP + validation MIDI |
 | 04 — Programme entraînement | ✅ Séance composée pour un budget quotidien (20 min par défaut) ; lit le journal F3 |
-| 05 — Rythme | ✅ 3 familles × 3 entrées (tap, piano, MIDI) |
+| 05 — Rythme | Retirée le 07/08/2026 ; historique conservé |
 | 06 — Travail intelligent morceau | ✅ 5 outils : passages, mains, boucle, attente, tempo |
 | 07 — Oreille | ✅ 3 familles × 3 niveaux ; mélodie hors MVP |
-| 08 — Lecture partitions | ✅ 5 étapes : mesures, valeurs/silences, altérations, empilements, double portée |
-| 09 — Pédale | ✅ Directe + syncopée, 3 entrées, 3 niveaux, morceau joué et geste annoncé à l'avance ; famille Application → plus tard |
+| 08 — Lecture partitions | Retirée le 07/08/2026 ; historique conservé |
+| 09 — Pédale | Retirée le 07/08/2026 ; historique conservé |
 | 10 — Lecture de notes | ✅ 1 ou 2 portées défilantes (Canvas), 3 vitesses ; altérations → plus tard |
 
 ## Contraintes matérielles (CRITIQUE)
@@ -187,7 +219,7 @@ L'app tourne sur une **vieille tablette Android** avec un petit écran et peu de
 - **Pas de framework lourd**. Pas de React, Vue, Svelte, etc. Vanilla JS uniquement.
 - **Pas de build step**. Pas de webpack, vite, etc. Modules ES natifs chargés directement par le navigateur.
 - **Pas de bibliothèque externe superflue**. Actuellement les seules dépendances sont Tone.js et @tonejs/midi (CDN), strictement nécessaires à l'audio et au parsing MIDI.
-- **Canvas, pas de DOM pour le rendu principal**. Le piano roll et le clavier sont dessinés sur un seul `<canvas>` — c'est le cas du mode Morceau, du mode Exercices et de la **Lecture de notes** (les portées qui défilent vers la ligne d'arrivée). Ne pas introduire de rendu DOM pour la partie temps réel *qui défile*. Le **Rythme** reste une exception assumée : sa portée fixe utilise un SVG et des `<button>`, et ce qui bouge est planifié à l'avance sur le Transport puis rendu par `Tone.Draw`.
+- **Canvas, pas de DOM pour le rendu principal**. Le piano roll et le clavier sont dessinés sur un seul `<canvas>` — c'est le cas du mode Morceau, du mode Exercices et de la **Lecture de notes** (les portées qui défilent vers la ligne d'arrivée). Ne pas introduire de rendu DOM pour la partie temps réel *qui défile*. Depuis le retrait du Rythme (07/08/2026), plus aucun mode n'y déroge : ce qui reste en DOM (Oreille, Programme, Progression) ne défile pas.
 - **`requestAnimationFrame` avec throttling**. Ne pas dépasser 30 FPS sur profil bas. Toujours annuler les rAF dans `stop()`.
 - **Éviter les allocations dans la boucle de rendu**. Pré-calculer les géométries, réutiliser les tableaux typés (`Int16Array` pour WHITE_INDEX_BY_MIDI).
 - **Pas d'animations CSS lourdes**. Les transitions sont limitées à `background .15s ease`.
@@ -239,9 +271,9 @@ L'app tourne sur une **vieille tablette Android** avec un petit écran et peu de
 - **Contrairement à l'audio, l'état MIDI survit à `stop()`** : une permission accordée et un appareil choisi n'ont aucune raison d'être redemandés à chaque changement de mode. C'est l'exception assumée à la règle « rien ne survit à stop() ».
 - **Un mode s'abonne, il ne configure rien** : `onMidiNote(cb)` rend sa fonction de désabonnement, à appeler dans `stop()`. Le panneau de connexion vit sur l'accueil, pas dans les modes.
 - **Le MIDI est toujours optionnel.** Aucun mode ne doit devenir inutilisable sans clavier branché, sans permission, ou dans un navigateur sans Web MIDI.
-- **Le CC 64 (pédale) est écouté depuis 09** : `midi-input.js` émet des évènements `{ type: "pedal", down, timestamp, source }` sur un abonnement séparé (`onPedal`/`onMidiPedal`). Tout-ou-rien (seuil à mi-course), seuls les changements sont émis, et la pédale est relâchée au débranchement comme les notes tenues. `midi-input.js` reste le seul endroit qui écoute le MIDI.
+- **Le CC 64 (pédale) n'est plus écouté** : il l'a été pour les Exercices de pédale (09), retirés le 07/08/2026 avec leur unique abonnement. `midi-input.js` ne traite plus que les notes, et reste le seul endroit qui écoute le MIDI.
 - **Utiliser `event.timestamp`, pas « maintenant »**, dès qu'un jugement de timing est en jeu : quelques millisecondes séparent l'arrivée d'un message de son traitement, et c'est l'ordre de grandeur que la fenêtre de tolérance mesure. Conversion vers l'horloge du Transport : `Tone.Transport.seconds − (performance.now() − event.timestamp) / 1000`.
-- **Les seuils de timing vivent dans `rhythm/timing.js`**, pour 05 comme pour 03 (et 09 plus tard). Son `matchByTime` accepte un critère d'appariement supplémentaire : le rythme n'en met aucun, la validation MIDI y met l'égalité des hauteurs. Ne pas réécrire un second jugement avance/retard.
+- **Les seuils de timing vivent dans `rhythm/timing.js`**, écrits pour 05 et restés après son retrait : c'est la validation MIDI de 03 qui les utilise, via `exercises/validate-run.js`. Son `matchByTime` accepte un critère d'appariement supplémentaire — la validation MIDI y met l'égalité des hauteurs. Ne pas réécrire un second jugement avance/retard.
 
 ## Servir en local
 
@@ -256,6 +288,11 @@ Puis <http://localhost:8000>. Ne pas ouvrir `index.html` en `file://` (modules E
 ## Règles diverses
 
 - **Ne jamais modifier `songs.json` sans demander**. Les chemins contiennent des URL-encoded spaces (`%20`).
+- **La nature d'un fichier est dans la donnée, pas dans son dossier** : `kind: "song"` (le
+  répertoire, mode Morceau) ou `kind: "exercice"` (le matériel de travail, liste « Morceaux
+  d'étude » du mode Exercices). Une entrée sans `kind` est un morceau. Un fichier change de camp
+  en changeant ce champ, sans être déplacé — c'est `src/song-library.js` qui tranche, et lui seul
+  lit `songs.json`.
 - **Le dossier `midi/` contient les vrais morceaux** (fichiers binaires). Ne pas les modifier.
 - **La démo intégrée** (`buildin: "demo"`) est générée en code, pas depuis un fichier.
 - **Séparation des mains** : si ≥2 pistes avec notes → tri par pitch moyen, la plus grave = main gauche. Sinon, split au Do central (MIDI 60).

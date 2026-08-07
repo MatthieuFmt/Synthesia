@@ -51,6 +51,13 @@ import {
   WHOLE_SONG_ID,
 } from "./song-practice.js";
 import {
+  entriesOfKind,
+  indexOfFile,
+  kindOf,
+  loadSongCatalog,
+  songAt,
+} from "./song-library.js";
+import {
   CLEF_GLYPH,
   isWhite,
   MIDI_HIGH,
@@ -130,6 +137,13 @@ function createSession() {
   return {
     stopped: false,
     song: null,        // morceau parsé (voir buildSong)
+
+    // Nature de la bibliothèque affichée dans le <select> : le répertoire
+    // (« song ») ou le matériel de travail (« exercice »). Décidée au démarrage
+    // par le fichier éventuellement demandé, jamais changée ensuite.
+    libraryKind: "song",
+    requestedFile: null,
+
     currentTime: 0,    // position de lecture, en secondes (source de vérité)
     isPlaying: false,
     showNotation: false, // mini-portées sur les notes (désactivées par défaut)
@@ -217,18 +231,28 @@ const STORAGE_KEY = "synthesia.settings";
 const AUTOSAVE_INTERVAL_MS = 60_000; // une sauvegarde par minute
 
 function saveSettings() {
-  // Tous les morceaux viennent de la bibliothèque ; on retient l'indice ET le
-  // titre pour rester robuste à un réordonnancement de songs.json. La valeur
-  // vide correspond à l'option d'invite du <select> : rien à restaurer.
+  // Tous les morceaux viennent du catalogue ; on retient l'indice ET le titre
+  // pour rester robuste à un réordonnancement de songs.json. La valeur vide
+  // correspond à l'option d'invite du <select> : rien à retenir.
+  //
+  // Le dernier morceau est mémorisé **par nature** : ouvrir un exercice ne doit
+  // pas faire perdre la place où on en était dans son morceau, et inversement.
   const idx = parseInt(document.getElementById("songSelect").value, 10);
-  const fromLibrary = !isNaN(idx) && songLibrary[idx];
+  const fromLibrary = !isNaN(idx) ? songAt(idx) : null;
+  const library = { ...(loadSettings()?.library ?? {}) };
+  if (fromLibrary) {
+    library[state.libraryKind] = {
+      index: idx,
+      title: fromLibrary.title,
+      currentTime: state.currentTime,
+    };
+  }
+
   const practice = state.practice;
   const data = {
     speed: state.speed,
     showNotation: state.showNotation,
-    currentTime: state.currentTime,
-    songIndex: fromLibrary ? idx : null,
-    songTitle: fromLibrary ? songLibrary[idx].title : null,
+    library,
     // Réglages du sous-mode Travail. Le passage actif est retenu avec eux :
     // reprendre le travail là où on l'a laissé fait partie du § 18 de plan/06.
     practice: {
@@ -250,7 +274,20 @@ function saveSettings() {
 function loadSettings() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) return null;
+    const saved = JSON.parse(raw);
+    // Réglages écrits avant la séparation morceaux / exercices : le morceau
+    // retenu était unique et vivait à la racine. Il devient celui des morceaux.
+    if (!saved.library && Number.isInteger(saved.songIndex)) {
+      saved.library = {
+        song: {
+          index: saved.songIndex,
+          title: saved.songTitle,
+          currentTime: saved.currentTime ?? 0,
+        },
+      };
+    }
+    return saved;
   } catch {
     return null;
   }
@@ -2336,37 +2373,38 @@ async function loadMidiFromUrl(url, displayName) {
   }
 }
 
-// Catalogue des morceaux (chargé une seule fois depuis songs.json)
-let songLibrary = [];
-let songLibraryFetched = false;
+// Ce que dit l'option d'invite du <select>, selon la nature de la bibliothèque
+// affichée. Le mode est le même lecteur dans les deux cas ; seul son catalogue
+// change (cf. `song-library.js`).
+const LIBRARY_PROMPT = {
+  song: "Bibliothèque de morceaux…",
+  exercice: "Bibliothèque d'exercices…",
+};
 
-// Remplit le <select> à partir de songs.json. Renvoie true si au moins un
-// morceau a été trouvé. Le <select> appartient à index.html et survit au
+// Entrées visibles dans le <select> : celles de la nature en cours, avec leur
+// indice dans le catalogue complet.
+let visibleEntries = [];
+
+// Remplit le <select> avec les entrées de nature `kind`. Renvoie true si au
+// moins une a été trouvée. Le <select> appartient à index.html et survit au
 // changement de mode : on repart de la seule option d'invite pour ne pas
 // empiler les morceaux à chaque démarrage du mode.
-async function loadSongLibrary() {
+async function loadSongLibrary(kind) {
   const select = document.getElementById("songSelect");
-  if (!songLibraryFetched) {
-    try {
-      const res = await fetch("songs.json");
-      if (!res.ok) return false;
-      songLibrary = await res.json();
-      songLibraryFetched = true;
-    } catch {
-      return false; // pas de songs.json — on retombera sur la démo
-    }
-  }
+  await loadSongCatalog();
+  visibleEntries = entriesOfKind(kind);
 
   select.length = 1;
-  songLibrary.forEach((song, i) => {
-    select.appendChild(new Option(song.title, String(i)));
-  });
-  return songLibrary.length > 0;
+  select.options[0].textContent = LIBRARY_PROMPT[kind] ?? LIBRARY_PROMPT.song;
+  for (const { index, song } of visibleEntries) {
+    select.appendChild(new Option(song.title, String(index)));
+  }
+  return visibleEntries.length > 0;
 }
 
-// Charge le morceau d'indice `idx` de la bibliothèque et synchronise le <select>.
+// Charge le morceau d'indice `idx` du catalogue et synchronise le <select>.
 async function selectSong(idx) {
-  const song = songLibrary[idx];
+  const song = songAt(idx);
   if (!song) return;
   document.getElementById("songSelect").value = String(idx);
   if (song.builtin === "demo") {
@@ -2617,9 +2655,14 @@ function attachInteractions(signal) {
 // ----------------------------------------------------------------------------
 //  Cycle de vie de la fonctionnalité
 // ----------------------------------------------------------------------------
-function start(host) {
+// `options.songFile` — chemin d'un fichier du catalogue à ouvrir d'emblée. Le
+// mode Exercices s'en sert pour ouvrir un morceau d'étude dans ce lecteur : la
+// nature de la bibliothèque affichée suit celle du fichier demandé, si bien que
+// le <select> propose ensuite les autres exercices, pas les morceaux.
+function start(host, options) {
   container = host;
   state = createSession();
+  state.requestedFile = options?.songFile ?? null;
   listeners = new AbortController();
 
   // Les contrôles propres au mode vivent dans index.html, séparés de la barre
@@ -2755,7 +2798,17 @@ function cancelPendingFrames(session) {
 async function loadInitialSong() {
   const session = state;
   const saved = loadSettings();
-  const hasLibrary = await loadSongLibrary();
+
+  // La nature de la bibliothèque est décidée avant tout le reste : elle dit
+  // quelles entrées peuplent le <select>, et donc lesquelles peuvent être
+  // restaurées. Sans demande explicite, c'est le répertoire.
+  await loadSongCatalog();
+  if (session.stopped) return;
+  const requestedIndex = session.requestedFile ? indexOfFile(session.requestedFile) : -1;
+  session.libraryKind =
+    requestedIndex >= 0 ? kindOf(songAt(requestedIndex)) : "song";
+
+  const hasLibrary = await loadSongLibrary(session.libraryKind);
   if (session.stopped) return;
 
   // Réglages indépendants du morceau : applicables immédiatement.
@@ -2770,27 +2823,38 @@ async function loadInitialSong() {
     }
   }
 
-  // Choix du morceau à charger.
-  if (hasLibrary) {
-    let idx = 0;
-    if (
-      saved &&
-      Number.isInteger(saved.songIndex) &&
-      songLibrary[saved.songIndex] &&
-      songLibrary[saved.songIndex].title === saved.songTitle
-    ) {
-      idx = saved.songIndex;
-    }
-    await selectSong(idx);
+  // Choix du morceau à charger : celui qu'on demande, sinon le dernier ouvert
+  // dans cette bibliothèque, sinon sa première entrée.
+  const remembered = saved?.library?.[session.libraryKind];
+  const rememberedIndex =
+    remembered &&
+    Number.isInteger(remembered.index) &&
+    songAt(remembered.index)?.title === remembered.title &&
+    kindOf(songAt(remembered.index)) === session.libraryKind
+      ? remembered.index
+      : -1;
+
+  let loadedIndex = -1;
+  if (requestedIndex >= 0) {
+    loadedIndex = requestedIndex;
+  } else if (rememberedIndex >= 0) {
+    loadedIndex = rememberedIndex;
+  } else if (hasLibrary) {
+    loadedIndex = visibleEntries[0].index;
+  }
+
+  if (loadedIndex >= 0) {
+    await selectSong(loadedIndex);
     if (session.stopped) return;
   } else {
     loadDemo();
   }
 
-  // La position de lecture est restaurée après coup : le chargement du morceau
-  // (resetForNewSong) remet currentTime à 0.
-  if (saved && saved.currentTime > 0) {
-    setTime(saved.currentTime);
+  // La position de lecture est restaurée après coup — le chargement du morceau
+  // (resetForNewSong) remet currentTime à 0 —, et seulement si c'est bien le
+  // morceau qu'on avait quitté : la position d'un autre n'a aucun sens ici.
+  if (loadedIndex === rememberedIndex && remembered.currentTime > 0) {
+    setTime(remembered.currentTime);
   }
 
   // Le sous-mode Travail est restauré en dernier : ses passages n'existent

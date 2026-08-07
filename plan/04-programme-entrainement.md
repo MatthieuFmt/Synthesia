@@ -89,9 +89,9 @@ n'interrompt quoi que ce soit (§ 15).
 | Créneau | Part | Priorité | Fonctionnalités possibles |
 |---|---|---|---|
 | Échauffement | 20 % | 3 | Exercices |
-| Lecture | 20 % | 2 | Lecture de notes, Lecture de partitions |
+| Lecture | 20 % | 2 | Lecture de notes |
 | Morceau | 40 % | 1 | Morceau (travail d'un passage) |
-| Oreille et rythme | 20 % | 4 | Rythme, Oreille, Pédale |
+| Oreille | 20 % | 4 | Oreille |
 
 Deux règles font le reste :
 
@@ -123,7 +123,12 @@ C'est **tout** ce qui est stocké. Le programme lui-même n'est pas une donnée 
 il se recalcule à chaque affichage à partir du budget, du registre F1 et du
 journal F3. Il n'y a donc rien à migrer quand un mode s'ajoute — la Fluidité
 et la Pédale sont entrées dans la rotation sans qu'une ligne de stockage
-bouge.
+bouge. Ni quand un mode **part** : le retrait du Rythme et de la Pédale
+(07/08/2026) a vidé le créneau « Oreille et rythme » de deux de ses trois
+fonctionnalités sans qu'aucune séance stockée n'ait à être touchée — le
+créneau a simplement été renommé « Oreille ». Chaque créneau n'a plus qu'une
+fonctionnalité : la règle du « moins vu récemment » ne tranche donc plus rien
+pour l'instant, mais elle ne coûte rien non plus.
 
 La clé `synthesia.training.v1` (fonctionnalités cochées, fréquences, durées)
 n'est **pas** migrée : il n'y a rien à en reprendre. Une clé inconnue ou
@@ -252,7 +257,7 @@ Ce qui n'a **pas** été écrit pour l'occasion, et c'est le point important :
 - **le registre n'est pas dupliqué.** `navigation.js` expose
   `availableFeatures()`, et le mode s'en sert pour la liste comme pour les
   titres ;
-- **le rendu est en DOM**, comme la Lecture de notes et le Rythme : rien ne
+- **le rendu est en DOM**, comme l'Oreille et la Progression : rien ne
   défile, rien ne sonne, donc aucune boucle d'animation et des cibles tactiles
   franches (CLAUDE.md, contraintes matérielles).
 

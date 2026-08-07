@@ -3,9 +3,9 @@
 //
 //  L'utilisateur ne choisit plus *quoi* travailler : il donne un temps par
 //  jour, et ce module écrit la séance, comme le ferait un professeur. Une
-//  séance a toujours la même forme — échauffement, lecture, morceau, oreille
-//  et rythme — et c'est le budget qui décide de la longueur de chaque bloc, et
-//  du nombre de blocs quand le temps manque (plan/04 § 5 bis).
+//  séance a toujours la même forme — échauffement, lecture, morceau, oreille —
+//  et c'est le budget qui décide de la longueur de chaque bloc, et du nombre
+//  de blocs quand le temps manque (plan/04 § 5 bis).
 //
 //  Aucun DOM, aucun stockage : on lui donne les fonctionnalités disponibles
 //  (registre F1), le journal (F3) et un budget ; il rend la séance. Tout se
@@ -14,11 +14,13 @@
 //  Deux règles portent l'essentiel :
 //
 //  1. **Le choix du jour est figé le matin.** Dans un créneau qui propose
-//     plusieurs fonctionnalités (la lecture, par exemple), on prend celle qui
-//     n'a pas été travaillée depuis le plus longtemps — mais en s'arrêtant à
-//     ce matin. Sinon terminer un bloc changerait le bloc lui-même sous les
-//     yeux de l'utilisateur, et la séance ne serait jamais la même deux
-//     minutes de suite.
+//     plusieurs fonctionnalités, on prend celle qui n'a pas été travaillée
+//     depuis le plus longtemps — mais en s'arrêtant à ce matin. Sinon terminer
+//     un bloc changerait le bloc lui-même sous les yeux de l'utilisateur, et la
+//     séance ne serait jamais la même deux minutes de suite. Depuis le retrait
+//     du Rythme et de la Pédale (07/08/2026), chaque créneau n'a plus qu'une
+//     fonctionnalité : la règle ne tranche donc rien pour l'instant, mais
+//     rouvrir un `pool` à deux entrées reste une ligne.
 //  2. **Un bloc trop court n'existe pas.** Sous MIN_BLOCK_MINUTES, on retire
 //     le créneau le moins prioritaire et on redistribue : mieux vaut trois
 //     vrais blocs que quatre miettes.
@@ -61,7 +63,7 @@ export const SLOTS = [
     label: "Lecture",
     share: 0.2,
     priority: 2,
-    pool: ["fluency", "sheet-reading"],
+    pool: ["fluency"],
     why: "Un peu de déchiffrage chaque jour vaut mieux qu'une heure le dimanche.",
   },
   {
@@ -74,11 +76,11 @@ export const SLOTS = [
   },
   {
     id: "listen",
-    label: "Oreille et rythme",
+    label: "Oreille",
     share: 0.2,
     priority: 4,
-    pool: ["rhythm", "ear-training", "pedal"],
-    why: "Ce que la partition ne montre pas : la pulsation, les sons, la pédale.",
+    pool: ["ear-training"],
+    why: "Ce que la partition ne montre pas : reconnaître les sons à l'oreille.",
   },
 ];
 

@@ -14,11 +14,8 @@ import { initNavigation } from "./navigation.js";
 import { trainingFeature } from "./training-mode.js";
 import { songFeature } from "./song-mode.js";
 import { fluencyFeature } from "./fluency-mode.js";
-import { sheetReadingFeature } from "./sheet-reading-mode.js";
 import { exerciseFeature } from "./exercise-mode.js";
-import { rhythmFeature } from "./rhythm-mode.js";
 import { earTrainingFeature } from "./ear-training-mode.js";
-import { pedalFeature } from "./pedal-mode.js";
 import { progressFeature } from "./progress-mode.js";
 
 // Le Programme d'entraînement ouvre la liste : c'est lui qui dit par quoi
@@ -26,12 +23,9 @@ import { progressFeature } from "./progress-mode.js";
 const FEATURES = [
   trainingFeature,
   songFeature,
-  fluencyFeature,      // unique mode Lecture de notes, à portée défilante
-  sheetReadingFeature, // suite directe de la Lecture de notes (plan/08)
+  fluencyFeature, // unique mode Lecture de notes, à portée défilante
   exerciseFeature,
-  rhythmFeature,
   earTrainingFeature,
-  pedalFeature,
   progressFeature, // consommateur pur du journal F3 — il ferme la liste
 ];
 

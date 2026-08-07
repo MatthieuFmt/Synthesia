@@ -36,9 +36,15 @@ export const DETAIL_EVENTS = 2500;
 // Vocabulaire fermé (plan/F3-suivi-progression.md § 7). Une valeur nouvelle
 // s'ajoute au plan puis ici, jamais à la volée : les vues ne calculent quelque
 // chose de commun que si ce vocabulaire tient.
+//
+// Le vocabulaire n'est fermé qu'à l'**écriture** : un journal déjà stocké se
+// relit tel quel. C'est ce qui a permis d'en retirer, le 07/08/2026, ce qui
+// appartenait en propre au Rythme (05) et à la Pédale (09) — le type `beat` et
+// les résultats `on-time` / `early` / `late` / `blurred` / `gap` — sans rien
+// casser des séances déjà enregistrées. `missed` reste : c'est aussi le mot de
+// la Lecture de notes pour une note laissée passer.
 export const EVENT_TYPES = new Set([
-  "answer",        // une tentative de réponse (02, 07, 08)
-  "beat",          // un jugement de timing par frappe (05, 09)
+  "answer",        // une tentative de réponse (07, 10)
   "repetition",    // une répétition d'exercice effectuée (03)
   "run",           // une exécution complète d'un exercice ou d'un passage (03, 06)
   "session-start",
@@ -47,9 +53,8 @@ export const EVENT_TYPES = new Set([
 
 export const OUTCOMES = new Set([
   "correct", "wrong",                        // réponse jugée
-  "on-time", "early", "late", "missed",      // timing
+  "missed",                                  // cible laissée passer
   "clean", "flawed",                         // exécution
-  "blurred", "gap",                          // pédale
   "done", "abandoned",                       // séance
   "none",                                    // mesuré par rien (pratique libre)
 ]);

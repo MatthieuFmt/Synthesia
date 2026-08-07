@@ -1,5 +1,5 @@
 // ============================================================================
-//  Mesure « trop tôt / trop tard » — Feature 05
+//  Mesure « trop tôt / trop tard » — écrit pour l'Entraînement rythmique (05)
 //
 //  Compare des frappes horodatées à la pulsation attendue et rend un jugement
 //  (plan/05-entrainement-rythmique.md § 5). La fenêtre de tolérance est exprimée
@@ -8,19 +8,18 @@
 //
 //  Aucun DOM, aucun Canvas, aucun Tone.js : testable dans Node.
 //
-//  Ce module est destiné à servir ailleurs sans être redéfini : à la mesure de
-//  régularité de la validation MIDI des exercices techniques
-//  (plan/03 § 3) et aux verdicts de changement de pédale (plan/09 § 7).
+//  05 et 09 ont été retirés le 07/08/2026 ; ce module leur survit parce qu'il
+//  n'était déjà plus à eux : c'est lui qui mesure la régularité de la
+//  validation MIDI des exercices techniques (plan/03 § 3), via
+//  `exercises/validate-run.js`, son unique consommateur aujourd'hui. Il reste
+//  ici plutôt que de déménager : sa place ne devient trompeuse que le jour où
+//  quelqu'un cherchera « le module de timing » ailleurs que dans `rhythm/`.
 // ============================================================================
 
 // Seuils du § 5, en fraction de la durée d'un temps.
 export const ON_TIME_FRACTION = 0.1;
 export const SLIGHT_FRACTION = 0.25;
 export const CLEAR_FRACTION = 0.4;
-
-// Vocabulaire fermé du journal de progression
-// (plan/F3-suivi-progression.md § 7, famille « Timing »).
-export const JUDGMENTS = ["on-time", "early", "late", "missed"];
 
 // ----------------------------------------------------------------------------
 //  Jugement d'une frappe
@@ -32,7 +31,7 @@ export const JUDGMENTS = ["on-time", "early", "late", "missed"];
 //  `judgment` : c'est lui qui va dans le journal, et un seuil qui change ne doit
 //  pas invalider un historique déjà écrit (plan/F3 § 7, « Degrés et seuils »).
 // ----------------------------------------------------------------------------
-export function judge(deviationMs, secondsPerBeat) {
+function judge(deviationMs, secondsPerBeat) {
   if (deviationMs === null || deviationMs === undefined || !Number.isFinite(deviationMs)) {
     return { judgment: "missed", degree: null, deviationMs: null, fraction: null };
   }
@@ -113,28 +112,6 @@ export function matchByTime(expected, played, secondsPerBeat, pairable = () => t
   const extras = played.filter((_, index) => !takenPlayed.has(index));
 
   return { hits, extras };
-}
-
-// Appariement de simples frappes, où seul l'instant compte. Enveloppe de
-// `matchByTime` qui garde la forme attendue par la Reproduction rythmique.
-export function matchTaps(expectedTimes, tapTimes, secondsPerBeat) {
-  const { hits, extras } = matchByTime(
-    expectedTimes.map((time) => ({ time })),
-    tapTimes.map((time) => ({ time })),
-    secondsPerBeat
-  );
-
-  return {
-    hits: hits.map((hit) => ({
-      index: hit.index,
-      expectedTime: hit.expected.time,
-      judgment: hit.judgment,
-      degree: hit.degree,
-      deviationMs: hit.deviationMs,
-      fraction: hit.fraction,
-    })),
-    extraTaps: extras.map((extra) => extra.time),
-  };
 }
 
 // ----------------------------------------------------------------------------

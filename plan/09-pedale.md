@@ -1,11 +1,27 @@
 # Feature 09 — Exercices de pédale
 
-> Statut : **implémenté et remanié** (27/07/2026, soir) — Pédale directe et
-> Pédale syncopée, trois niveaux de difficulté, un vrai petit morceau joué et
-> deux repères visuels qui disent **quand** agir. La famille Écoute a été
-> retirée, la famille Application (étape E) reste à faire, comme prévu. Voir la
-> [première validation](#18-validation-effectuée-27-juillet-2026) puis la
-> [refonte](#19-refonte-du-27-juillet-2026-au-soir).
+> Statut : **retirée le 07/08/2026**, en même temps que le Rythme (05). Le mode
+> était complet — Pédale directe et Pédale syncopée, trois niveaux, un vrai
+> petit morceau joué et deux repères visuels qui disent **quand** agir
+> ([validation](#18-validation-effectuée-27-juillet-2026),
+> [refonte](#19-refonte-du-27-juillet-2026-au-soir)) —, seule la famille
+> Application (étape E) restait à faire.
+>
+> Supprimés : `src/pedal-mode.js`, `src/pedal/timing.js`, la famille de styles
+> `.pd-`, et les mentions du mode dans le registre, la navigation, le
+> professeur de 04 et l'écran Progression. L'écoute du **CC 64** quitte
+> `midi-input.js` avec son unique abonné : la décision tranchée de F2 § 13
+> redevient donc ouverte, et le point d'entrée est signalé en commentaire pour
+> le jour où il faudra la remettre (un `command === 0xb0` dans
+> `handleMessage`). Le vocabulaire `blurred` / `gap` quitte aussi
+> `progress/store.js`, qui n'est fermé qu'à l'écriture : les séances de pédale
+> déjà enregistrées restent lisibles.
+>
+> **À ne pas confondre avec les repères de pédale du mode Morceau** : ceux-là
+> appartiennent à 01, se lisent dans le fichier MIDI, se dessinent sur le
+> rouleau, et n'ont jamais rien dû à 09. Ils restent en place.
+>
+> Le plan ci-dessous est conservé tel quel comme historique.
 
 [Retour à la checklist générale](README.md)
 

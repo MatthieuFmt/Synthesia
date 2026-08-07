@@ -1,9 +1,31 @@
 # Feature 05 — Entraînement rythmique
 
-> Statut : **les trois familles et les trois entrées en place** (26/07/2026).
-> Métronome, Reconnaissance et Reproduction — au tap, au piano à l'écran et au
-> clavier MIDI physique — fonctionnent de bout en bout, vérifiés dans un
-> navigateur (§ 18). Restent les triolets et la saisie libre en Reconnaissance.
+> Statut : **retirée le 07/08/2026**, en même temps que la Pédale (09). Les
+> trois familles et les trois entrées fonctionnaient de bout en bout
+> (26/07/2026, vérifiées dans un navigateur — § 18) ; le mode n'a simplement
+> pas trouvé sa place dans la séance quotidienne.
+>
+> Supprimés : `src/rhythm-mode.js`, `src/rhythm/patterns.js`, la famille de
+> styles `.rh-` (section propre **et** blocs responsive), et les mentions du
+> mode dans le registre, la navigation, le professeur de 04 et l'écran
+> Progression.
+>
+> **Conservés**, parce qu'ils avaient déjà un second consommateur le jour de
+> leur écriture : `src/metronome.js` (grille de pulsation et décompte des
+> exercices techniques) et `src/rhythm/timing.js` (le jugement
+> à l'heure / avance / retard de la validation MIDI de 03, via
+> `exercises/validate-run.js`). Ce dernier reste dans `rhythm/` : il n'a pas
+> déménagé, sa place n'est pas encore trompeuse. En sont partis `matchTaps()`
+> (enveloppe écrite pour la Reproduction) et l'export de `judge()`, devenu
+> interne.
+>
+> Le § 11 gagne un post-scriptum : `nearestBeat()`, écrite d'avance *pour* ce
+> mode et jamais utilisée par lui, a été supprimée le même jour. Elle servait
+> déjà d'exemple contre l'extraction préventive ; elle en est maintenant la
+> démonstration complète — écrite pour rien, morte sans que personne ne s'en
+> aperçoive.
+>
+> Le plan ci-dessous est conservé tel quel comme historique.
 
 [Retour à la checklist générale](README.md)
 
