@@ -1,11 +1,11 @@
 # Fondation F2 — Entrée clavier MIDI
 
-> Statut : **fondation en place et consommée** (26/07/2026). Détection,
-> permission, choix de l'appareil, branchement à chaud et normalisation des notes
-> fonctionnent, avec un panneau de connexion sur l'accueil (§ 15). Trois
-> fonctionnalités s'y abonnent : 03 valide les notes jouées, 05 en fait une
-> entrée de reproduction, 01 allume ses touches. Reste la seule vérification que
-> rien ne remplace : **un vrai clavier branché**.
+> Statut : **fondation en place et consommée** (26/07/2026), **élargie au
+> Bluetooth le 08/08/2026** (§ 16). Détection, permission, choix de l'appareil,
+> branchement à chaud et normalisation des notes fonctionnent, avec un panneau de
+> connexion sur l'accueil (§ 15). Trois fonctionnalités s'y abonnent : 03 valide
+> les notes jouées, 07 et 10 écoutent les réponses, 01 allume ses touches. Reste
+> la seule vérification que rien ne remplace : **un vrai clavier branché**.
 
 [Retour à la checklist générale](README.md)
 
@@ -21,9 +21,14 @@
   (`src/midi-controls.js`, sur l'accueil)
 - [x] Vérifier qu'aucune fonctionnalité ne devient dépendante du MIDI.
   (les quatre modes vérifiés sans support, et après un refus de permission)
+- [x] Accepter aussi les claviers **Bluetooth** (§ 16, 08/08/2026).
+  (`src/midi-bluetooth.js` ; Android ne les montre pas au Web MIDI)
+- [x] Dire *pourquoi* rien n'est détecté, dans le panneau lui-même (§ 16).
+  (http:// au lieu de https://, navigateur sans Web MIDI, câble USB muet)
 - [ ] Tester avec un vrai clavier MIDI branché.
-  (les vérifications automatiques utilisent une doublure du Web MIDI ; seul un
-  appareil réel peut valider la latence et les messages d'un vrai fabricant)
+  (les vérifications automatiques utilisent une doublure du Web MIDI et une
+  doublure du Web Bluetooth ; seul un appareil réel peut valider la latence et
+  les messages d'un vrai fabricant)
 
 ## 1. À ne pas confondre avec l'import de fichier existant
 
@@ -376,3 +381,134 @@ doublure reproduit le protocole, pas un appareil — ni la latence réelle, ni l
 messages que tel fabricant envoie en plus, ni les vraies notes fantômes. C'est
 la ligne de l'étape D qui reste ouverte, et c'est celle qui décidera si le
 filtrage minimal du § 13 suffit.
+
+## 16. Le Bluetooth, et pourquoi le câble ne suffit pas (8 août 2026)
+
+Point de départ : **le câble MIDI ne donne rien sur la tablette**. Trois causes
+possibles, et l'application n'en distinguait aucune — elle affichait « Ce
+navigateur ne gère pas les claviers MIDI » dans les trois cas.
+
+### La cause la plus probable n'est pas le câble
+
+Le Web MIDI est réservé aux **contextes sécurisés**. Servie en `http://` sur une
+adresse locale — `http://192.168.1.69:8000`, exactement ce que fait une tablette
+qui lit le serveur d'un PC —, la page ne voit pas `navigator.requestMIDIAccess` :
+la propriété n'existe pas. C'est *indiscernable* d'un navigateur trop vieux si on
+ne le dit pas. Seuls `https://` et `http://localhost` échappent à la règle, donc
+le site GitHub Pages fonctionne là où le serveur de développement échoue.
+
+Le panneau le dit maintenant, avec les deux autres causes, dans une ligne de
+diagnostic sous les notes reçues (`state.environment`) :
+
+- page en `http://` → il faut `https://` (ou `http://localhost` sur la machine
+  elle-même) ;
+- navigateur sans Web MIDI → sur Android, Chrome ou Samsung Internet, pas
+  Firefox ;
+- permission accordée mais **aucun appareil** → là seulement c'est le câble :
+  USB OTG, adaptateur du bon côté, clavier allumé avant le branchement.
+
+Une tablette n'a pas de console. Une panne qui ne s'explique pas dans l'écran
+n'est diagnosticable nulle part.
+
+### Pourquoi un second transport
+
+Le Web MIDI d'Android ne liste **que** l'USB. Un clavier BLE-MIDI appairé dans
+les réglages du système n'apparaît pas dans `requestMIDIAccess()` : côté
+Android, un appareil Bluetooth doit être ouvert explicitement
+(`MidiManager.openBluetoothDevice`), et le navigateur ne le fait pas. Le seul
+chemin depuis une page web est le **Web Bluetooth**, qui parle directement au
+service BLE-MIDI du clavier (`03b80e5a-…`, caractéristique `7772e5db-…`).
+
+Ce n'est donc pas un confort ajouté au passage : sur la machine visée, c'est le
+seul transport qui reste quand le câble ne marche pas.
+
+### Ce que ça change dans l'architecture — presque rien
+
+`midi-bluetooth.js` ne fait que le **transport** : ouvrir la liaison, décoder les
+paquets, et rendre un objet qui ressemble à une entrée du Web MIDI — un `id`, un
+`name`, un `onmidimessage` qu'on affecte. `midi-input.js` fusionne les deux
+sources dans **une seule liste d'appareils** ; la permission, l'appareil actif,
+la normalisation, le filtrage des rebonds et les abonnements ne bougent pas.
+Aucune fonctionnalité n'a été touchée : `onMidiNote` rend les mêmes évènements du
+§ 8, et rien en aval ne sait par où la note est arrivée. C'est la même règle que
+partout ailleurs — on donne un paramètre, pas une copie.
+
+Un seul comportement d'ensemble a dû changer : `listening` ne peut plus se
+déduire du statut de la permission Web MIDI. Un clavier Bluetooth marche
+parfaitement dans un navigateur sans Web MIDI, où le statut reste `unsupported`
+— c'est-à-dire le cas d'Android, donc le cas courant. `listening` se lit
+désormais sur l'appareil réellement branché à notre écouteur, et la pastille
+verte suit. C'est ce que la première campagne dans Chrome a attrapé : le panneau
+affichait « Connecté : Piano BLE » avec une pastille grise.
+
+### Trois pièges du format BLE-MIDI
+
+- **L'horodatage est coupé en deux** : 6 bits de poids fort dans l'en-tête du
+  paquet, 7 bits de poids faible devant chaque message. Quand les bits faibles
+  repassent à zéro pendant un paquet, c'est le champ de poids fort qui avance
+  d'un cran — **+128 ms**, pas un tour complet du compteur (8192 ms). La première
+  version ajoutait 8192 et datait la note de huit secondes dans le passé ; c'est
+  le harnais qui l'a dit, pas la relecture.
+- **Le running status s'applique aussi à l'horodatage** : un message peut suivre
+  sans octet de statut *et* sans octet d'horodatage. C'est le bit 7 qui tranche,
+  comme partout en MIDI — un accord tient dans un seul paquet.
+- **L'horodatage rendu est l'instant d'arrivée du paquet**, corrigé du retard
+  *interne* au paquet. C'est exact à l'intérieur d'un paquet ; le trajet radio
+  lui-même (quelques millisecondes, et sa gigue) reste invisible. Aucune
+  fonctionnalité actuelle ne juge un timing à cette finesse — 03 apparie avec la
+  fenêtre de `rhythm/timing.js` —, mais c'est à savoir le jour où l'une le fera.
+
+### Ce qui n'a pas été fait, et pourquoi
+
+- **Pas de reconnexion automatique.** Un clavier BLE qui s'endort demande un clic
+  pour revenir. Une reconnexion en tâche de fond coûterait de la batterie sur une
+  tablette qui en manque, pour un cas qu'un bouton règle.
+- **Pas de sélecteur « tous les appareils ».** La spécification impose au clavier
+  d'annoncer le service MIDI ; filtrer dessus évite de montrer toutes les
+  enceintes du quartier. Si un clavier réel n'apparaît pas, c'est **là** qu'il
+  faudra revenir — avec l'appareil sous les yeux, comme pour le filtrage du § 13.
+- **Pas de sortie MIDI, pas de SysEx** : hors périmètre (§ 4), et le décodeur
+  abandonne proprement un paquet SysEx au lieu de le découper de travers.
+
+### Validation (8 août 2026)
+
+**Hors navigateur** — 128 vérifications sur 128 dans Node, avec `requestDevice`,
+l'horloge et le Web MIDI injectés :
+
+- **décodage** (35) : paquet simple, plusieurs messages, running status avec et
+  sans horodatage, note off, program change, pitch bend, temps réel, paquet
+  vide/nul/tronqué, en-tête invalide, SysEx abandonné en gardant ce qui précède,
+  repli du compteur d'horodatage ;
+- **Bluetooth** (45) : connexion, appareil actif, écoute réelle **sans Web
+  MIDI**, note normalisée à l'identique du § 8, rebond filtré, désactivation qui
+  relâche les notes tenues, liaison perdue (appareil retiré, notes relâchées,
+  message nommant le clavier), déconnexion volontaire, reconnexion sans
+  doublon, annulation du sélecteur, panne GATT, navigateur sans Web Bluetooth,
+  `dispose()` qui referme la liaison ;
+- **les deux transports ensemble** (16) : USB et Bluetooth listés côte à côte, le
+  clavier inactif non entendu, bascule de l'un à l'autre, et le Bluetooth qui
+  **survit au débranchement USB** ;
+- **contexte non sécurisé** (8) : `http://` expliqué pour le MIDI comme pour le
+  Bluetooth ;
+- **non-régression du Web MIDI seul** (48) : les scénarios du § 15 rejoués —
+  absence de support, refus `SecurityError`/`NotAllowedError`, `requesting`
+  observable, deux claviers, changement d'appareil, débranchement, branchement à
+  chaud, veille et réactivation sans nouvelle permission, abonné en échec.
+
+**Dans Chrome sans interface** — 52 sur 52, l'application entière, avec une
+doublure du Web Bluetooth installée **avant** les modules, et deux exécutions :
+une par `http://localhost` (contexte sécurisé) et une par l'adresse IP locale
+(contexte non sécurisé — la situation réelle de la tablette).
+
+- le sélecteur est bien filtré sur le service BLE-MIDI ;
+- connexion : « Connecté : Piano BLE (Bluetooth) », pastille verte, diagnostic
+  effacé, bouton qui propose de déconnecter ;
+- un paquet BLE donne « Do4 — dernière à 79 % de vélocité », un accord de trois
+  notes tient dans un seul paquet en running status, les relâchements n'ajoutent
+  rien à l'affichage ;
+- liaison perdue, reconnexion, déconnexion volontaire (GATT réellement fermé),
+  annulation du sélecteur avec un conseil compréhensible ;
+- **en `http://`** : le Web MIDI a réellement disparu de la page, le panneau
+  l'explique et parle du `https` ;
+- l'application reste utilisable : les modes s'ouvrent, on revient à l'accueil,
+  il n'y a **qu'un seul panneau** et aucune erreur de page.

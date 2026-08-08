@@ -12,9 +12,20 @@
 //  permet de vérifier hors navigateur l'absence de support, un refus de
 //  permission, le branchement à chaud et la normalisation des messages.
 //
+//  Deux transports, une seule liste d'appareils : le Web MIDI (USB, et les
+//  claviers du système sur ordinateur) et le Bluetooth (`midi-bluetooth.js`),
+//  parce qu'Android ne montre **pas** les claviers BLE au Web MIDI. Un clavier
+//  Bluetooth arrive ici sous la même forme qu'un clavier USB — un objet qui
+//  porte `onmidimessage` — et rien en aval ne sait lequel est lequel.
+//
 //  À ne pas confondre avec l'import de fichiers `.mid` du mode Morceau : ce sont
 //  deux entrées différentes vers la même représentation de note (F2 § 1).
 // ============================================================================
+
+import {
+  bluetoothSupported,
+  connectBluetoothMidi,
+} from "./midi-bluetooth.js";
 
 // Les six états possibles. `ready` ne veut pas dire qu'un appareil est branché :
 // la permission peut être accordée sans qu'aucun clavier ne soit présent.
@@ -48,6 +59,28 @@ function defaultRequestAccess() {
   return navigator.requestMIDIAccess({ sysex: false });
 }
 
+// Le Web MIDI comme le Web Bluetooth sont réservés aux contextes sécurisés :
+// `https://` ou `localhost`. Servie en `http://` sur une adresse locale
+// (`http://192.168.x.x:8000`, le cas d'une tablette qui lit le serveur d'un
+// PC), la page ne voit **ni** `requestMIDIAccess` **ni** `bluetooth` — l'API a
+// simplement disparu de `navigator`. C'est indiscernable d'un vieux navigateur
+// si on ne le dit pas, d'où ce test.
+function secureContext() {
+  if (typeof window === "undefined") return true;
+  return window.isSecureContext !== false;
+}
+
+function unsupportedMessage() {
+  if (!secureContext()) {
+    return (
+      "Page servie en http:// : les navigateurs réservent le MIDI aux pages " +
+      "https:// (ou à http://localhost). Ouvre l'application par son adresse " +
+      "https pour utiliser un clavier."
+    );
+  }
+  return "Ce navigateur ne gère pas le Web MIDI API (sur Android : Chrome oui, Firefox non).";
+}
+
 function defaultNow() {
   return typeof performance !== "undefined" ? performance.now() : Date.now();
 }
@@ -62,6 +95,8 @@ function defaultNow() {
 export function createMidiInput({
   requestAccess = defaultRequestAccess,
   now = defaultNow,
+  connectBluetooth = connectBluetoothMidi,
+  bluetoothAvailable = bluetoothSupported,
 } = {}) {
   const noteListeners = new Set();
   const stateListeners = new Set();
@@ -69,11 +104,17 @@ export function createMidiInput({
   let access = null;
   let status = null;      // calculé au premier appel de `state()`
   let error = null;       // message lisible d'un échec, jamais un objet brut
-  let devices = [];       // [{ id, name, manufacturer }]
+  let devices = [];       // [{ id, name, manufacturer, transport }]
   let activeDeviceId = null;
   let attachedDevice = null; // l'entrée MIDI qui porte notre écouteur
   let enabled = false;
   let disposed = false;
+
+  // Claviers Bluetooth ouverts par nos soins. Le Web MIDI ne les connaît pas :
+  // c'est nous qui tenons la liste.
+  let bluetoothPorts = [];
+  let bluetoothConnecting = false;
+  let bluetoothError = null;
 
   // Notes actuellement tenues, par hauteur. Sert à filtrer les rebonds de touche
   // et à ne jamais laisser une note « collée » derrière soi.
@@ -93,6 +134,7 @@ export function createMidiInput({
   }
 
   function state() {
+    const active = devices.find((device) => device.id === activeDeviceId) ?? null;
     return {
       status: currentStatus(),
       supported: currentStatus() !== MIDI_STATUS.unsupported,
@@ -100,10 +142,26 @@ export function createMidiInput({
       error,
       devices: devices.map((device) => ({ ...device })),
       activeDeviceId,
-      activeDeviceName: devices.find((d) => d.id === activeDeviceId)?.name ?? null,
-      // Vrai seulement si tout est réuni : permission, appareil, activation.
-      listening: enabled && activeDeviceId !== null && currentStatus() === MIDI_STATUS.ready,
+      activeDeviceName: active?.name ?? null,
+      activeTransport: active?.transport ?? null,
+      // Vrai seulement si tout est réuni : un appareil effectivement branché à
+      // notre écouteur, et l'entrée activée. Un clavier Bluetooth suffit, même
+      // sans Web MIDI dans le navigateur.
+      listening: enabled && attachedDevice !== null,
       heldNotes: [...held],
+      bluetooth: {
+        supported: bluetoothAvailable(),
+        connecting: bluetoothConnecting,
+        connected: bluetoothPorts.length > 0,
+        error: bluetoothError,
+      },
+      // De quoi expliquer une absence de support sans ouvrir la console — il n'y
+      // en a pas sur une tablette.
+      environment: {
+        secure: secureContext(),
+        webMidi: supported(),
+        webBluetooth: bluetoothAvailable(),
+      },
     };
   }
 
@@ -216,21 +274,34 @@ export function createMidiInput({
   //  Appareils
   // --------------------------------------------------------------------------
   function listDevices() {
-    if (!access?.inputs) return [];
     const found = [];
-    // `inputs` est une Map ; certains navigateurs n'exposent que `forEach`.
-    access.inputs.forEach((input) => {
-      found.push({
-        id: input.id,
-        name: input.name || "Clavier MIDI",
-        manufacturer: input.manufacturer || "",
+    if (access?.inputs) {
+      // `inputs` est une Map ; certains navigateurs n'exposent que `forEach`.
+      access.inputs.forEach((input) => {
+        found.push({
+          id: input.id,
+          name: input.name || "Clavier MIDI",
+          manufacturer: input.manufacturer || "",
+          transport: "system",
+        });
       });
-    });
+    }
+    for (const port of bluetoothPorts) {
+      found.push({
+        id: port.id,
+        name: port.name,
+        manufacturer: port.manufacturer,
+        transport: "bluetooth",
+      });
+    }
     return found;
   }
 
   function inputById(id) {
-    if (!access?.inputs || id === null) return null;
+    if (id === null) return null;
+    const port = bluetoothPorts.find((candidate) => candidate.id === id);
+    if (port) return port;
+    if (!access?.inputs) return null;
     let match = null;
     access.inputs.forEach((input) => {
       if (input.id === id) match = input;
@@ -273,6 +344,40 @@ export function createMidiInput({
     notifyState();
   }
 
+  // Ce que font en commun l'activation du Web MIDI et la connexion d'un clavier
+  // Bluetooth : relire la liste, garder un appareil actif valable, écouter.
+  function beginListening() {
+    enabled = true;
+    devices = listDevices();
+    if (!devices.some((device) => device.id === activeDeviceId)) {
+      activeDeviceId = devices[0]?.id ?? null;
+    }
+    attach();
+  }
+
+  // --------------------------------------------------------------------------
+  //  Bluetooth
+  //
+  //  Un clavier BLE se perd tout seul : hors de portée, batterie vide, veille de
+  //  la tablette. Ce n'est pas une erreur de l'application, seulement un
+  //  appareil de moins — exactement comme un câble USB débranché.
+  // --------------------------------------------------------------------------
+  function forgetBluetooth(port) {
+    const before = bluetoothPorts.length;
+    bluetoothPorts = bluetoothPorts.filter((candidate) => candidate !== port);
+    if (bluetoothPorts.length === before) return;
+    port.onmidimessage = null;
+    if (attachedDevice === port) detach();
+    refreshDevices();
+  }
+
+  function handleBluetoothLost(port) {
+    if (disposed) return;
+    releaseHeld(); // il tenait peut-être des notes en partant
+    bluetoothError = `${port.name} s'est déconnecté.`;
+    forgetBluetooth(port);
+  }
+
   // --------------------------------------------------------------------------
   //  API publique
   // --------------------------------------------------------------------------
@@ -303,7 +408,10 @@ export function createMidiInput({
 
       if (!supported()) {
         status = MIDI_STATUS.unsupported;
-        error = "Ce navigateur ne gère pas le Web MIDI API.";
+        error = unsupportedMessage();
+        // Un clavier Bluetooth déjà connecté n'a que faire du Web MIDI : il ne
+        // passe pas par lui. Sans support, « Activer » doit quand même l'écouter.
+        if (bluetoothPorts.length > 0) beginListening();
         notifyState();
         return state();
       }
@@ -336,13 +444,80 @@ export function createMidiInput({
         }
       }
 
-      enabled = true;
-      devices = listDevices();
-      if (!devices.some((device) => device.id === activeDeviceId)) {
-        activeDeviceId = devices[0]?.id ?? null;
-      }
-      attach();
+      beginListening();
       notifyState();
+      return state();
+    },
+
+    // Ouvre le sélecteur d'appareils Bluetooth du navigateur, puis écoute le
+    // clavier choisi. À appeler **depuis un geste de l'utilisateur** : le
+    // sélecteur l'exige, et un `await` glissé avant le ferait perdre.
+    async connectBluetooth() {
+      if (disposed) return state();
+
+      if (!bluetoothAvailable()) {
+        bluetoothError = secureContext()
+          ? "Ce navigateur ne gère pas le Bluetooth web (sur Android : Chrome, pas Firefox)."
+          : "Page servie en http:// : le Bluetooth web exige https:// (ou http://localhost).";
+        notifyState();
+        return state();
+      }
+
+      bluetoothConnecting = true;
+      bluetoothError = null;
+      notifyState(); // synchrone : le geste de l'utilisateur est encore valide
+
+      let port = null;
+      try {
+        port = await connectBluetooth({ now, onLost: handleBluetoothLost });
+      } catch (failure) {
+        const name = failure?.name ?? "";
+        bluetoothConnecting = false;
+        bluetoothError =
+          name === "NotFoundError"
+            ? "Aucun clavier Bluetooth choisi. Vérifie qu'il est allumé et en mode " +
+              "appairage ; sur Android, la localisation doit être activée pour que " +
+              "le navigateur puisse chercher."
+            : `Connexion Bluetooth impossible (${failure?.message ?? "raison inconnue"}).`;
+        notifyState();
+        return state();
+      }
+
+      bluetoothConnecting = false;
+      if (disposed) {
+        port.close();
+        return state();
+      }
+
+      // Reconnecter le même clavier remplace l'ancienne liaison au lieu de le
+      // faire apparaître deux fois dans la liste.
+      const previous = bluetoothPorts.find((candidate) => candidate.id === port.id);
+      if (previous) {
+        previous.onmidimessage = null;
+        if (attachedDevice === previous) detach();
+        previous.close();
+        bluetoothPorts = bluetoothPorts.filter((candidate) => candidate !== previous);
+      }
+
+      bluetoothPorts.push(port);
+      // Celui qu'on vient de choisir devient l'appareil écouté : c'est le geste
+      // que l'utilisateur vient de faire.
+      activeDeviceId = port.id;
+      beginListening();
+      notifyState();
+      return state();
+    },
+
+    // Referme un clavier Bluetooth (tous, si aucun identifiant n'est donné).
+    disconnectBluetooth(id = null) {
+      const targets = id === null ? [...bluetoothPorts] : bluetoothPorts.filter((p) => p.id === id);
+      if (targets.length === 0) return state();
+      releaseHeld();
+      bluetoothError = null;
+      for (const port of targets) {
+        port.close();
+        forgetBluetooth(port);
+      }
       return state();
     },
 
@@ -380,6 +555,8 @@ export function createMidiInput({
       held.clear();
       if (access) access.onstatechange = null;
       access = null;
+      for (const port of bluetoothPorts) port.close();
+      bluetoothPorts = [];
       enabled = false;
       noteListeners.clear();
       stateListeners.clear();

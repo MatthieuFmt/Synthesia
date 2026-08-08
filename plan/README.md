@@ -23,7 +23,7 @@ pour avancer, pas avant.
 | Nº | Fondation | État actuel | Plan détaillé |
 | --- | --- | --- | --- |
 | F1 | Navigation entre les fonctionnalités | Boucle + menu des modes, accueil rangé par famille | [F1-navigation.md](F1-navigation.md) |
-| F2 | Entrée clavier MIDI (reconnaissance des touches jouées) | En place, consommée par 01, 03 et 05 | [F2-entree-midi.md](F2-entree-midi.md) |
+| F2 | Entrée clavier MIDI (reconnaissance des touches jouées) | En place (USB **et Bluetooth**), consommée par 01, 03, 07 et 10 | [F2-entree-midi.md](F2-entree-midi.md) |
 | F3 | Suivi de progression | Complet : journal, six vues, écran, export/effacement | [F3-suivi-progression.md](F3-suivi-progression.md) |
 
 ## Fonctionnalités
@@ -107,9 +107,15 @@ Voir [le plan détaillé de la Navigation](F1-navigation.md).
   (panneau sur l'accueil, avec les dernières notes reçues)
 - [x] Vérifier qu'aucune fonctionnalité ne devient dépendante du MIDI.
   (les quatre modes vérifiés sans support et après un refus de permission)
+- [x] Accepter les claviers **Bluetooth**, qu'Android ne montre pas au Web MIDI.
+  (`midi-bluetooth.js`, 08/08/2026 — voir
+  [F2 § 16](F2-entree-midi.md#16-le-bluetooth-et-pourquoi-le-câble-ne-suffit-pas-8-août-2026))
+- [x] Dire dans le panneau *pourquoi* aucun clavier n'est détecté.
+  (page en `http://`, navigateur sans Web MIDI, ou câble muet — une tablette n'a
+  pas de console)
 - [ ] Tester avec un vrai clavier branché.
-  (les vérifications passent par une doublure du Web MIDI — voir
-  [F2 § 15](F2-entree-midi.md#15-validation-effectuée-26-juillet-2026))
+  (les vérifications passent par une doublure du Web MIDI et du Web Bluetooth —
+  voir [F2 § 15](F2-entree-midi.md#15-validation-effectuée-26-juillet-2026))
 
 Voir [le plan détaillé de l'Entrée MIDI](F2-entree-midi.md).
 

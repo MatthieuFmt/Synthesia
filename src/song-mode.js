@@ -1521,7 +1521,7 @@ function togglePlay() {
 // le Transport.
 function setSpeed(speed) {
   state.speed = speed;
-  updateSpeedLabel(speed);
+  updateSpeedLabel();
   if (state.audio.ready) {
     buildPart();
     Tone.Transport.seconds = state.currentTime / state.speed;
@@ -1529,12 +1529,13 @@ function setSpeed(speed) {
   // Les bornes de boucle sont exprimées en secondes de Transport : elles
   // suivent le tempo de travail.
   applyLoopPoints();
-  updatePracticeTempoLabel();
 }
 
-function updateSpeedLabel(speed) {
+// Vitesse de lecture et tempo de travail (06) sont le même réglage : une seule
+// commande dans la barre, donc un seul affichage, en pourcentage.
+function updateSpeedLabel() {
   const el = document.getElementById("speedValue");
-  if (el) el.textContent = `${speed % 1 === 0 ? speed : speed.toFixed(2).replace(/0+$/, "").replace(/\.$/, "")}×`;
+  if (el) el.textContent = `${tempoPercent()} %`;
 }
 
 function updatePlayButton() {
@@ -1650,10 +1651,17 @@ function isAudibleNote(note, session) {
   return !practice.wait;
 }
 
-function applyLoopPoints() {
+// La boucle n'existe que pour un passage : sur « Morceau entier », il n'y a pas
+// de fin à laquelle revenir. Le réglage reste mémorisé — il se rallume dès
+// qu'un passage est choisi — mais il ne s'applique pas, et c'est ce que disent
+// le bouton grisé et le bilan muet.
+function isLooping() {
   const practice = state.practice;
-  const section = activeSection();
-  if (!practice.enabled || !practice.loop || !section) {
+  return practice.enabled && practice.loop && activeSection() !== null;
+}
+
+function applyLoopPoints() {
+  if (!isLooping()) {
     Tone.Transport.loop = false;
     return;
   }
@@ -1940,12 +1948,7 @@ function setPracticeEnabled(enabled) {
   practice.enabled = enabled;
 
   if (enabled) {
-    practice.repetitions = 0;
-    practice.cleanRuns = 0;
-    practice.flawedStreak = 0;
-    practice.lastReport = null;
-    practice.reports = [];
-    practice.suggestion = null;
+    resetPracticeCounters();
     openPracticeLog();
   } else {
     closePracticeLog();
@@ -1993,6 +1996,9 @@ function setPracticeAccompany(accompany) {
 
 function setPracticeLoop(loop) {
   state.practice.loop = loop;
+  // Le bilan ne compte que des tours de boucle : il repart de zéro quand la
+  // boucle démarre, sinon « N tours » désignerait deux choses à la fois.
+  if (loop) resetPracticeCounters();
   applyLoopPoints();
   renderPracticeBar();
 }
@@ -2005,15 +2011,23 @@ function setPracticeWait(wait) {
   scheduleDraw();
 }
 
-function setActiveSection(sectionId) {
+// Tout ce que le bilan a accumulé sur le passage précédent. Remis à zéro dès
+// que « N tours » cesserait de compter la même chose : autre passage, autre
+// morceau, ou boucle relancée.
+function resetPracticeCounters() {
   const practice = state.practice;
-  practice.sectionId = sectionId || null;
   practice.repetitions = 0;
   practice.cleanRuns = 0;
   practice.flawedStreak = 0;
   practice.lastReport = null;
   practice.reports = [];
   practice.suggestion = null;
+}
+
+function setActiveSection(sectionId) {
+  const practice = state.practice;
+  practice.sectionId = sectionId || null;
+  resetPracticeCounters();
   leaveWait({ resume: false });
 
   const bounds = sectionBounds();
@@ -2092,15 +2106,7 @@ function boundAtY(y) {
 }
 
 function setTempoPercent(percent) {
-  const speed = clampTempoPercent(percent) / 100;
-  const range = byId("speedRange");
-  if (range) range.value = String(speed);
-  setSpeed(speed);
-}
-
-function updatePracticeTempoLabel() {
-  const label = byId("practiceTempoValue");
-  if (label) label.textContent = `${tempoPercent()} %`;
+  setSpeed(clampTempoPercent(percent) / 100);
 }
 
 function renderPracticeBar() {
@@ -2138,18 +2144,26 @@ function renderPracticeBar() {
     );
   }
   setPressed("practiceAccompany", practice.accompany);
-  setPressed("practiceLoop", practice.loop);
+  // Allumé seulement quand ça boucle vraiment, pas quand c'est seulement voulu.
+  setPressed("practiceLoop", isLooping());
   setPressed("practiceWait", practice.wait);
 
   // Sans main séparée, accompagner ou masquer ne veut rien dire.
   const accompany = byId("practiceAccompany");
   if (accompany) accompany.disabled = practice.hand === "both";
+
+  const loop = byId("practiceLoop");
+  if (loop) {
+    loop.disabled = !hasSection;
+    loop.title = hasSection
+      ? "Répéter le passage en boucle"
+      : "Choisis un passage pour le répéter en boucle";
+  }
   for (const id of ["practiceRename", "practiceDelete", "practiceMarkStart", "practiceMarkEnd"]) {
     const button = byId(id);
     if (button) button.disabled = !hasSection;
   }
 
-  updatePracticeTempoLabel();
   renderPracticeStatus();
   syncCanvasSize();
 }
@@ -2159,12 +2173,23 @@ function setPressed(id, pressed) {
 }
 
 // Bilan compact du passage : uniquement ce qui a été mesuré (plan/06 § 9).
+//
+// Il ne s'affiche que sous boucle : ce qu'il compte, ce sont des tours du même
+// passage. Hors boucle il n'y a pas de tours, donc rien à dire — sauf
+// l'attente, qui est la seule explication d'un rouleau figé.
 function renderPracticeStatus() {
   const text = byId("practiceStatusText");
   const apply = byId("practiceApplyTempo");
   if (!text) return;
 
   const practice = state.practice;
+  if (!isLooping()) {
+    text.textContent = practice.waiting ? "en attente de la note…" : "";
+    if (apply) apply.hidden = true;
+    syncCanvasSize();
+    return;
+  }
+
   const entry = sectionStore.get(
     practice.songId,
     practice.sectionId ?? WHOLE_SONG_ID
@@ -2216,12 +2241,7 @@ function loadSectionsForSong(title) {
   practice.sections = sectionStore.list(practice.songId);
   practice.sectionId =
     practice.sections.find((s) => s.id === practice.sectionId)?.id ?? null;
-  practice.repetitions = 0;
-  practice.cleanRuns = 0;
-  practice.flawedStreak = 0;
-  practice.lastReport = null;
-  practice.reports = [];
-  practice.suggestion = null;
+  resetPracticeCounters();
   practice.waiting = null;
   rebuildGates();
   beginPracticeRun(0);
@@ -2263,12 +2283,6 @@ function attachPracticeControls(signal) {
   );
   on("practiceLoop", "click", () => setPracticeLoop(!state.practice.loop));
   on("practiceWait", "click", () => setPracticeWait(!state.practice.wait));
-  on("practiceTempoDown", "click", () =>
-    setTempoPercent(tempoPercent() - TEMPO_STEP_PERCENT)
-  );
-  on("practiceTempoUp", "click", () =>
-    setTempoPercent(tempoPercent() + TEMPO_STEP_PERCENT)
-  );
   on("practiceApplyTempo", "click", () => {
     const suggestion = state.practice.suggestion;
     if (!suggestion) return;
@@ -2617,18 +2631,17 @@ function attachInteractions(signal) {
     { signal }
   );
 
-  // Curseur de vitesse de lecture : étiquette en direct, application au relâché
-  // (reconstruire le Part de Tone à chaque micro-pas pendant le glissé serait
-  //  inutilement coûteux pendant la lecture).
-  const speedRange = document.getElementById("speedRange");
-  speedRange.addEventListener(
-    "input",
-    (e) => updateSpeedLabel(parseFloat(e.target.value)),
+  // Vitesse de lecture, par pas de 5 % : un clic = une reconstruction du Part
+  // de Tone, là où le curseur d'avant devait attendre le relâché pour ne pas en
+  // faire trente pendant un glissé.
+  document.getElementById("speedDown").addEventListener(
+    "click",
+    () => setTempoPercent(tempoPercent() - TEMPO_STEP_PERCENT),
     { signal }
   );
-  speedRange.addEventListener(
-    "change",
-    (e) => setSpeed(parseFloat(e.target.value)),
+  document.getElementById("speedUp").addEventListener(
+    "click",
+    () => setTempoPercent(tempoPercent() + TEMPO_STEP_PERCENT),
     { signal }
   );
 
@@ -2814,8 +2827,7 @@ async function loadInitialSong() {
   // Réglages indépendants du morceau : applicables immédiatement.
   if (saved) {
     if (typeof saved.speed === "number") {
-      document.getElementById("speedRange").value = String(saved.speed);
-      setSpeed(saved.speed);
+      setSpeed(clampTempoPercent(saved.speed * 100) / 100);
     }
     if (typeof saved.showNotation === "boolean") {
       session.showNotation = saved.showNotation;

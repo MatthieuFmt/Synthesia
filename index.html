@@ -88,22 +88,19 @@
               </svg>
             </label>
 
-            <label class="speed" title="Vitesse de lecture">
+            <!-- Vitesse de lecture. C'est aussi le « tempo de travail » du
+                 sous-mode Travail (06) : un seul et même réglage, donc une
+                 seule commande, ici, en pourcentage du tempo réel. -->
+            <div class="speed" role="group" aria-label="Vitesse de lecture">
               <svg class="toolbar-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M3.34 19a10 10 0 1 1 17.32 0M12 15l4-4" />
               </svg>
-              <input
-                type="range"
-                id="speedRange"
-                class="speed-range"
-                aria-label="Vitesse de lecture"
-                min="0.25"
-                max="2"
-                step="0.05"
-                value="1"
-              />
-              <span id="speedValue" class="speed-value">1×</span>
-            </label>
+              <button id="speedDown" class="btn icon-btn" type="button"
+                aria-label="Vitesse : moins 5 %" title="Vitesse : moins 5 %">−</button>
+              <span id="speedValue" class="speed-value">100 %</span>
+              <button id="speedUp" class="btn icon-btn" type="button"
+                aria-label="Vitesse : plus 5 %" title="Vitesse : plus 5 %">+</button>
+            </div>
 
             <!-- Entrée du sous-mode Travail (feature 06). Le mode Morceau reste
                  un lecteur tant que ce bouton n'est pas activé. -->
@@ -197,14 +194,9 @@
               aria-pressed="false" title="Attendre la bonne note avant de continuer">Attente</button>
           </div>
 
-          <div class="practice-group practice-tempo">
-            <button id="practiceTempoDown" class="btn icon-btn" type="button"
-              aria-label="Tempo de travail : moins 5 %">−</button>
-            <span id="practiceTempoValue" class="practice-tempo-value">100 %</span>
-            <button id="practiceTempoUp" class="btn icon-btn" type="button"
-              aria-label="Tempo de travail : plus 5 %">+</button>
-          </div>
-
+          <!-- Le tempo de travail n'est pas ici : c'est la vitesse de lecture
+               de la barre du dessus, qui reste visible quand le Travail est
+               ouvert. En avoir deux copies était un doublon. -->
           <div class="practice-status">
             <span id="practiceStatusText" class="practice-status-text" role="status"></span>
             <button id="practiceApplyTempo" class="btn practice-btn practice-suggest"

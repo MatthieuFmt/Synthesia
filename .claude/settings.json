@@ -7,7 +7,8 @@
       "Bash(git -C \"d:/Documents/dev/Synthesia\" status --short)",
       "Bash(taskkill //F //IM chrome.exe)",
       "Bash(rm -rf profile)",
-      "Bash(\"C:/Program Files/Google/Chrome/Application/chrome.exe\" --headless=new --no-sandbox --disable-gpu --window-size=880,620 --virtual-time-budget=20000 --user-data-dir=\"C:/Users/matt1/AppData/Local/Temp/claude/d--Documents-dev-Synthesia/fe0b155b-61e6-47d4-93d6-ae313be583e7/scratchpad/profile\" --screenshot=\"C:\\\\Users\\\\matt1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\d--Documents-dev-Synthesia\\\\fe0b155b-61e6-47d4-93d6-ae313be583e7\\\\scratchpad\\\\exercices2.png\" \"http://localhost:8411/index.html?scenario=shot\")"
+      "Bash(\"C:/Program Files/Google/Chrome/Application/chrome.exe\" --headless=new --no-sandbox --disable-gpu --window-size=880,620 --virtual-time-budget=20000 --user-data-dir=\"C:/Users/matt1/AppData/Local/Temp/claude/d--Documents-dev-Synthesia/fe0b155b-61e6-47d4-93d6-ae313be583e7/scratchpad/profile\" --screenshot=\"C:\\\\Users\\\\matt1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\d--Documents-dev-Synthesia\\\\fe0b155b-61e6-47d4-93d6-ae313be583e7\\\\scratchpad\\\\exercices2.png\" \"http://localhost:8411/index.html?scenario=shot\")",
+      "Bash('C:/Program Files/Google/Chrome/Application/chrome.exe' --headless=new --no-sandbox --disable-gpu --user-data-dir=C:/Users/matt1/AppData/Local/Temp/claude/d--Documents-dev-Synthesia/e57d0c6e-94c3-4ee9-976e-89573bfe4162/scratchpad/profile2 --window-size=1300,760 --virtual-time-budget=20000 '--screenshot=C:\\\\Users\\\\matt1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\d--Documents-dev-Synthesia\\\\e57d0c6e-94c3-4ee9-976e-89573bfe4162\\\\scratchpad\\\\shot.png' http://localhost:8421/_harness/check.html)"
     ]
   }
 }

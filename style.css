@@ -326,37 +326,10 @@ body {
   min-width: 0;
 }
 
-.speed-range {
-  appearance: none;
-  -webkit-appearance: none;
-  width: 120px;
-  height: 6px;
-  border-radius: 3px;
-  background: #21262d;
-  outline: none;
-  cursor: pointer;
-}
-
-.speed-range::-webkit-slider-thumb {
-  appearance: none;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: var(--cursor, #ffae57);
-  border: none;
-}
-
-.speed-range::-moz-range-thumb {
-  width: 14px;
-  height: 14px;
-  border: none;
-  border-radius: 50%;
-  background: var(--cursor, #ffae57);
-}
-
 .speed-value {
   font-variant-numeric: tabular-nums;
-  min-width: 38px;
+  min-width: 48px;
+  text-align: center;
   color: var(--text);
 }
 
@@ -541,14 +514,6 @@ body {
 .practice-btn:disabled {
   opacity: .45;
   cursor: default;
-}
-
-.practice-tempo-value {
-  min-width: 48px;
-  text-align: center;
-  font-size: 13px;
-  font-variant-numeric: tabular-nums;
-  color: var(--text);
 }
 
 .practice-status {
@@ -1703,6 +1668,18 @@ body {
   color: var(--cursor);
 }
 
+/* Pourquoi ça ne marche pas : http:// au lieu de https://, navigateur sans Web
+   MIDI, câble USB muet. Sur une tablette il n'y a pas de console — la raison
+   doit tenir dans le panneau. */
+.midi-diagnostic {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.midi-diagnostic[hidden] { display: none; }
+
 .midi-hint {
   margin: 0;
   font-size: 12px;
@@ -2043,8 +2020,7 @@ body.force-landscape .landscape-btn { display: inline-flex; }
   .toggle,
   .speed { font-size: 12px; }
   .speed { gap: 4px; }
-  .speed-range { width: auto; flex: 1 1 30px; min-width: 30px; max-width: 80px; }
-  .speed-value { min-width: 28px; }
+  .speed-value { min-width: 40px; }
 
   .legend { display: none; }
 
@@ -2072,7 +2048,6 @@ body.force-landscape .landscape-btn { display: inline-flex; }
   #practiceMarkEnd { width: 30px; justify-content: center; padding: 0; }
   .practice-bar .icon-btn { width: 30px; flex: 0 0 30px; height: 30px; }
   .practice-select { height: 30px; line-height: 28px; max-width: 108px; }
-  .practice-tempo-value { min-width: 42px; font-size: 12px; }
   .practice-status { flex-basis: 100%; }
 
   /* Une base large fait passer le transport à la ligne quand les contrôles du

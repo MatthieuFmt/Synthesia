@@ -66,7 +66,10 @@ src/exercises/validate-run.js  # verdict d'une série jouée au clavier MIDI (sa
 src/rhythm/timing.js        # jugement à l'heure/avance/retard, appariement (sans DOM) —
                             # reste du Rythme retiré ; sert la validation MIDI de 03
 src/metronome.js            # grille de pulsation + décompte pour 03, sans DOM
-src/midi-input.js           # PARTAGÉ (F2) : Web MIDI, appareils, notes normalisées (sans DOM)
+src/midi-input.js           # PARTAGÉ (F2) : Web MIDI + Bluetooth, appareils, notes
+                            # normalisées (sans DOM) — un mode ne voit qu'une liste
+src/midi-bluetooth.js       # transport BLE-MIDI (Web Bluetooth) : connexion et
+                            # décodage des paquets ; seul midi-input.js l'appelle
 src/midi-controls.js        # PARTAGÉ (F2) : panneau de connexion, affiché sur l'accueil
 src/progress/store.js       # PARTAGÉ (F3) : journal d'évènements dans localStorage,
                             # export, compaction (les bornes de séance survivent)
@@ -268,6 +271,8 @@ L'app tourne sur une **vieille tablette Android** avec un petit écran et peu de
 ## Entrée MIDI (F2)
 
 - **Une seule instance partagée**, dans `midi-input.js`. L'accès MIDI est une ressource unique du navigateur : aucun mode ne doit appeler `navigator.requestMIDIAccess` lui-même.
+- **Deux transports, une seule liste d'appareils** : le Web MIDI (USB) et le Bluetooth (`midi-bluetooth.js`, Web Bluetooth). Android ne montre **pas** les claviers BLE au Web MIDI : c'est pour ça que le second existe. Un clavier Bluetooth entre dans `midi-input.js` sous la forme d'une entrée Web MIDI (un objet qui porte `onmidimessage`) — aucun mode ne sait, ni n'a à savoir, par où arrive une note.
+- **Contexte sécurisé obligatoire** : servie en `http://` sur une adresse locale, la page n'a **ni** `navigator.requestMIDIAccess` **ni** `navigator.bluetooth` — les API ont disparu, ce qui est indiscernable d'un vieux navigateur. Le panneau le dit explicitement (`state.environment`) ; ne pas retirer ce diagnostic, c'est la panne la plus fréquente sur tablette.
 - **Contrairement à l'audio, l'état MIDI survit à `stop()`** : une permission accordée et un appareil choisi n'ont aucune raison d'être redemandés à chaque changement de mode. C'est l'exception assumée à la règle « rien ne survit à stop() ».
 - **Un mode s'abonne, il ne configure rien** : `onMidiNote(cb)` rend sa fonction de désabonnement, à appeler dans `stop()`. Le panneau de connexion vit sur l'accueil, pas dans les modes.
 - **Le MIDI est toujours optionnel.** Aucun mode ne doit devenir inutilisable sans clavier branché, sans permission, ou dans un navigateur sans Web MIDI.
