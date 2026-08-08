@@ -2708,9 +2708,10 @@ function start(host, options) {
 //
 //  Une note jouée sur le clavier branché doit produire le **même** retour que
 //  la même touche cliquée à l'écran : elle s'allume et elle sonne
-//  (plan/F2 § 7). C'est tout ce que le mode Morceau fait du MIDI pour
-//  l'instant — savoir si la note était la bonne appartient au travail guidé de
-//  plan/06, et n'est pas décidé ici.
+//  (plan/F2 § 7) — sauf en mode Attente, où le piano de l'utilisateur sonne
+//  déjà (voir `echoesPlayedNotes`). C'est tout ce que le mode Morceau fait du
+//  MIDI pour l'instant — savoir si la note était la bonne appartient au travail
+//  guidé de plan/06, et n'est pas décidé ici.
 //
 //  Différence avec le clic : la touche reste allumée tant que la note est
 //  tenue, au lieu de se rallumer pendant 220 ms. Un vrai clavier dit quand on
@@ -2738,9 +2739,21 @@ function holdKey(midi, lateness = 0) {
   if (session.pressedKeys.has(midi)) return;
   session.pressedKeys.add(midi);
   scheduleDraw();
+  if (!echoesPlayedNotes(session)) return;
   session.audio.playNote(midi).catch((error) => {
     console.error("Impossible de jouer la note reçue du clavier MIDI.", error);
   });
+}
+
+// En mode Attente, la note vient d'un vrai piano : elle a déjà sonné sous les
+// doigts. La rejouer ferait entendre la même note deux fois à quelques
+// millisecondes d'écart — le doublon est d'autant plus gênant que c'est
+// justement le mode où l'application se tait sur la main travaillée
+// (`isAudibleNote`). Ne concerne que le clavier physique : une touche cliquée à
+// l'écran n'a pas d'autre source de son que l'application.
+function echoesPlayedNotes(session) {
+  const practice = session.practice;
+  return !(practice.enabled && practice.wait);
 }
 
 function releaseKey(midi) {

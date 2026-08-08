@@ -253,6 +253,14 @@ Le partage s'est fait dans ce sens-là, et pas autrement :
   doublerait la note de l'utilisateur et lui donnerait la réponse. La main
   d'accompagnement, elle, continue de sonner. Hors mode Attente, tout est joué
   comme avant.
+- **En mode Attente, l'application ne rejoue pas non plus la note reçue du
+  clavier physique** (ajouté le 08/08/2026). C'est le même doublon vu de
+  l'autre côté : le piano de l'utilisateur a déjà fait sonner la note sous ses
+  doigts, la répéter quelques millisecondes plus tard est perturbant.
+  Exception assumée à la règle de [F2 § 7](F2-entree-midi.md) — « le clavier
+  branché produit le même retour qu'une touche cliquée » : la touche s'allume
+  toujours, elle ne sonne plus. Le clic à l'écran, lui, continue de sonner en
+  Attente ; il n'a pas d'autre source de son.
 - **La touche cherchée ne s'allume pas d'elle-même pendant l'attente.** Le
   clavier allume normalement les notes en cours ; à la porte, cela reviendrait à
   désigner la touche, et l'aide prévue « après plusieurs échecs » (§ 7) n'aurait
