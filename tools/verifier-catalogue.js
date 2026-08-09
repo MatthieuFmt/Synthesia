@@ -223,6 +223,12 @@ function verifierExercice(exercise) {
       dire(`main « ${hand} » annoncée mais pas définie (doigté ou mode manquant)`);
     }
   }
+  // Le mode ne propose plus que les deux mains ensemble : un exercice qui ne
+  // sait pas les deux n'est jouable nulle part, donc il ne doit pas exister.
+  // C'est la seule vérification qui refuse un exercice pourtant bien formé.
+  if (!supportsHand(exercise, "both")) {
+    dire("injouable à deux mains : le mode Exercices ne travaille plus qu'ainsi");
+  }
 
   // ---- Ce qui se mesure sur les notes réellement produites ----
   for (const keyId of exercise.supportedKeys) {

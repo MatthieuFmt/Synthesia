@@ -19,25 +19,37 @@ export const NOTES_PER_SESSION = 30;
 // intervalle. Progression pédagogique « pas d'abord, sauts ensuite, grands
 // intervalles progressivement » — plan/10-fluidite.md § 12.
 //
-// L'index vaut le degré de portée tant que le pool est d'un seul morceau. Le
-// groupe Intermédiaire main gauche ne l'est plus depuis le 08/08/2026 — il
-// enjambe les notes du Débutant —, et la marche y franchit donc son trou comme
-// un pas. C'est ce qui garde les deux moitiés du groupe accessibles ; le prix
-// est quelques 7es là où la table annonce une 2de, sur les deux seules notes qui
-// bordent le trou.
+// L'index vaut exactement le degré de portée : depuis que les niveaux
+// s'éloignent du Do central en miroir (09/08/2026), tous les groupes sont d'un
+// seul morceau et la marche ne franchit plus de trou.
+//
+// Chaque table s'arrête où s'arrête son groupe : les deux premiers niveaux ne
+// comptent que quatre notes, une magnitude plus grande ne ferait qu'y rebondir
+// sur les bords. Les grands intervalles n'apparaissent donc qu'avec la portée
+// entière (Difficile) et ses lignes supplémentaires (Expert).
 export const DELTA_TABLES = {
+  // Quatre notes : le pas et le saut, rien d'autre.
   beginner: [
     { magnitude: 1, weight: 0.75 },
     { magnitude: 2, weight: 0.25 },
   ],
+  // Quatre notes aussi ; la 4te d'un bout à l'autre du groupe s'y ajoute.
   intermediate: [
+    { magnitude: 1, weight: 0.60 },
+    { magnitude: 2, weight: 0.28 },
+    { magnitude: 3, weight: 0.12 },
+  ],
+  // Onze notes : toute la portée, donc de la place pour de vrais écarts.
+  advanced: [
     { magnitude: 1, weight: 0.50 },
     { magnitude: 2, weight: 0.25 },
     { magnitude: 3, weight: 0.15 },
     { magnitude: 4, weight: 0.07 },
     { magnitude: 5, weight: 0.03 },
   ],
-  advanced: [
+  // Quinze notes, lignes supplémentaires comprises : les écarts s'élargissent
+  // encore et la marche visite les extrémités.
+  expert: [
     { magnitude: 1, weight: 0.35 },
     { magnitude: 2, weight: 0.25 },
     { magnitude: 3, weight: 0.15 },
@@ -86,7 +98,7 @@ function pickNextIndex(random, pool, previousIndex, deltaTable, seen, weightOf) 
     }
   }
 
-  // Filet de sécurité : inatteignable avec les pools actuels (5 notes au
+  // Filet de sécurité : inatteignable avec les pools actuels (4 notes au
   // minimum), gardé si un pool plus court apparaissait un jour.
   if (candidates.size === 0) {
     for (let index = 0; index < pool.length; index++) {
@@ -167,7 +179,7 @@ export function layoutStaffs(height, hands) {
 
   if (isGrandStaff) {
     // Quatre interlignes par portée et trois entre les deux. Deux interlignes
-    // extérieurs restent disponibles pour les notes du niveau Difficile.
+    // extérieurs restent disponibles pour les notes du niveau Expert.
     const grandHeight = LG * 11;
     const grandTop = Math.round((height - grandHeight) / 2);
     staffs.treble = {

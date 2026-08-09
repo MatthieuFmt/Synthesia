@@ -146,6 +146,13 @@ export const DIFFICULTIES = [
 //
 //  `restBeats` est la respiration entre deux répétitions. Elle appartient à la
 //  définition de l'exercice et ne varie jamais au hasard (plan/03 § 8).
+//
+//  **Tout exercice se joue des deux mains** (09/08/2026) : `supportedHands` doit
+//  contenir `"both"`, ce que `verifier-catalogue.js` refuse de laisser passer.
+//  Un exercice qui ne saurait s'écrire que d'une main n'a pas sa place ici — il
+//  vaut mieux une famille incomplète qu'un doigté inventé pour l'autre main.
+//  `"right"` et `"left"` restent déclarés, parce qu'ils disent autre chose : que
+//  le doigté de cette main existe. Le mode s'en sert pour les deux à la fois.
 // ----------------------------------------------------------------------------
 export const EXERCISES = [
   // ==========================================================================
@@ -1858,49 +1865,14 @@ export const EXERCISES = [
       },
     },
   },
-  {
-    id: "scale-chromatic-one-octave",
-    family: "scales",
-    title: "Gamme chromatique sur une octave",
-    goal: "Un doigté qui n'a plus rien à voir avec celui d'une gamme majeure",
-    instruction:
-      "Le 3 sur toutes les touches noires, le pouce sur les blanches, et le 2 aux deux endroits où deux blanches se touchent : mi-fa et si-do.",
-    difficulty: "advanced",
-    // Main droite seulement, et c'est délibéré : le doigté chromatique de la
-    // main gauche ne place pas le 2 aux mêmes endroits, et l'écrire sans l'avoir
-    // essayé au clavier serait inventer. Il aura son propre exercice le jour où
-    // il sera vérifié — cf. plan/exercices-catalogue.md § 9, « ce que le harnais
-    // ne saura pas dire ».
-    supportedHands: ["right"],
-    supportedKeys: ["C"], // le doigté chromatique ne dépend pas du ton, la notation en degrés si
-    defaultTempo: 60,
-    defaultRepetitions: 4,
-    beatsPerBar: 4,
-    beatsPerStep: 0.25,
-    restBeats: 4,
-    // Le doigté chromatique standard, celui de tous les conservatoires. Il n'a
-    // aucun passage de pouce au sens de la gamme majeure : le pouce ne passe pas
-    // sous la main, c'est le 3 qui enjambe. C'est pour cela que la gamme
-    // chromatique est un exercice à part et non une gamme de plus.
-    //
-    // Cet exercice est aussi le premier du catalogue dont les pas durent un quart
-    // de temps : c'est lui qui fait apparaître le doigté **à côté** de la note
-    // plutôt que dedans (§ 7 du plan).
-    pattern: [
-      0, "0#", 1, "1#", 2, 3, "3#", 4, "4#", 5, "5#", 6,
-      { degrees: 7, beats: 1 },
-      6, "5#", 5, "4#", 4, "3#", 3, 2, "1#", 1, "0#",
-      { degrees: 0, beats: 1.25 },
-    ],
-    fingering: {
-      right: [
-        1, 3, 1, 3, 1, 2, 3, 1, 3, 1, 3, 1,
-        2,
-        1, 3, 1, 3, 1, 3, 2, 1, 3, 1, 3,
-        1,
-      ],
-    },
-  },
+  // Il manque ici une gamme chromatique, et sa place reste vide exprès.
+  // `scale-chromatic-one-octave` était main droite seule ; le mode ne travaille
+  // plus que les deux mains ensemble (09/08/2026), il est donc parti. Le
+  // remettre demande d'écrire le doigté chromatique de la **main gauche**, qui
+  // ne place pas le 2 aux mêmes endroits que la droite — et l'écrire sans
+  // l'avoir essayé au clavier serait inventer (plan/exercices-catalogue.md § 9,
+  // « ce que le harnais ne saura pas dire »). C'est pour cela que Gammes est la
+  // seule famille à 8 exercices sur 9.
   {
     id: "arpeggio-c-major-one-octave",
     family: "arpeggios",

@@ -80,6 +80,11 @@ const WRONG_FLASH_MS = 260;     // signalement d'une note fausse en mode Attente
 // Programme d'entraînement (04) pourra programmer l'un sans l'autre.
 const PRACTICE_FEATURE_ID = "song-practice";
 const BOUND_GRAB_PX = 14;       // zone de saisie d'une borne de passage (au doigt)
+// Portée de l'aimant qui cale une borne glissée sur un début ou une fin de
+// note. C'est une distance à l'écran, pas une durée : l'aimant garde la même
+// force au doigt quel que soit le morceau, et reste plus court que la zone de
+// saisie pour qu'attraper une borne ne la déplace jamais tout seul.
+const SNAP_GRAB_PX = 11;
 const ACCOMPANY_ALPHA = 0.28;   // opacité de la main non travaillée
 
 const COLORS = {
@@ -97,6 +102,7 @@ const COLORS = {
   cursor: "#ffae57",
   pedal: "#d2a8ff",
   bound: "#ffd166",          // bornes du passage travaillé
+  boundSnapped: "#ffffff",   // borne calée sur un début ou une fin de note
   outside: "rgba(3, 5, 8, .62)", // hors du passage : assombri, jamais masqué
   expected: "#ffffff",       // note attendue en mode Attente
   wrongKey: "#f87171",       // note fausse : signalée, sans rien changer d'autre
@@ -190,6 +196,7 @@ function createPracticeState() {
     songId: null,
     sectionId: null,     // null = morceau entier
     sections: [],
+    snappedBound: null,  // "start" | "end" : borne aimantée pendant un glissement
 
     repetitions: 0,      // tours effectués depuis l'entrée dans le passage
     cleanRuns: 0,
@@ -520,8 +527,29 @@ function buildSong(midi) {
     duration,
     maxNoteDuration,
     maxPedalDuration,
+    snapTimes: buildSnapTimes(notes),
     meta,
   };
+}
+
+// Instants sur lesquels une borne de passage peut se caler : chaque début et
+// chaque fin de note. Calculés une fois par morceau — un glissement de borne
+// interroge cette liste à chaque image, il n'est pas question de la reconstruire
+// à chaque fois. Les doublons sont retirés : un accord de cinq notes donne cinq
+// fois le même instant, et une note enchaînée à la suivante fait coïncider une
+// fin avec un début.
+function buildSnapTimes(notes) {
+  const times = [];
+  for (const note of notes) times.push(note.time, note.endTime);
+  times.sort((a, b) => a - b);
+
+  const unique = [];
+  for (const time of times) {
+    if (!unique.length || time - unique[unique.length - 1] > 1e-3) {
+      unique.push(time);
+    }
+  }
+  return unique;
 }
 
 // Transforme les changements de contrôle MIDI CC64 en périodes pendant
@@ -643,7 +671,34 @@ function upperBound(items, target, valueOf) {
 
 const noteStart = (note) => note.time;
 const measureTime = (time) => time;
+const snapTime = (time) => time;
 const pedalStart = (interval) => interval.start;
+
+// Où poser une borne glissée à `time` : sur le début ou la fin de note la plus
+// proche si le doigt en est assez près, sinon là où il est. Poser une borne au
+// pixel près est impossible au doigt, et une borne posée « à peu près » coupe
+// une note en deux — le passage commence alors sur une note déjà commencée,
+// que le mode Attente n'attendra jamais.
+function snapBoundTime(time) {
+  const times = state.song?.snapTimes;
+  if (!times?.length) return { time, snapped: false };
+
+  // Les deux instants qui encadrent le doigt suffisent : la liste est triée.
+  const after = lowerBound(times, time, snapTime);
+  let best = null;
+  for (const index of [after - 1, after]) {
+    const candidate = times[index];
+    if (candidate === undefined) continue;
+    if (best === null || Math.abs(candidate - time) < Math.abs(best - time)) {
+      best = candidate;
+    }
+  }
+
+  if (best === null || Math.abs(best - time) > SNAP_GRAB_PX / PIXELS_PER_SECOND) {
+    return { time, snapped: false };
+  }
+  return { time: best, snapped: true };
+}
 
 // ----------------------------------------------------------------------------
 //  Rendu
@@ -837,13 +892,21 @@ function drawPracticeSection(w, h) {
   if (yEnd > 0) ctx.fillRect(0, 0, w, Math.min(h, yEnd));
   if (yStart < h) ctx.fillRect(0, Math.max(0, yStart), w, h - Math.max(0, yStart));
 
-  ctx.strokeStyle = COLORS.bound;
-  ctx.lineWidth = 2;
-  line(0, crisp(yStart), w, crisp(yStart));
-  line(0, crisp(yEnd), w, crisp(yEnd));
+  const snapped = state.practice.snappedBound;
+  drawBoundLine(w, yStart, snapped === "start");
+  drawBoundLine(w, yEnd, snapped === "end");
 
   drawBoundHandle(4, yStart, "début");
   drawBoundHandle(4, yEnd, section.title);
+}
+
+// Une borne calée sur un début ou une fin de note change de couleur et
+// s'épaissit : sans ce signal, rien ne distingue à l'œil une borne aimantée
+// d'une borne posée à deux pixels de la note.
+function drawBoundLine(w, y, snapped) {
+  ctx.strokeStyle = snapped ? COLORS.boundSnapped : COLORS.bound;
+  ctx.lineWidth = snapped ? 3 : 2;
+  line(0, crisp(y), w, crisp(y));
 }
 
 function drawBoundHandle(x, y, label) {
@@ -1744,8 +1807,10 @@ function enterWaitIfDue(transportTime) {
 }
 
 // Reprend le défilement là où il s'était arrêté. `resume: false` sert à
-// l'annulation (pause, changement de réglage) : l'attente disparaît sans
-// relancer quoi que ce soit.
+// l'annulation qui s'accompagne d'un arrêt (la pause) : l'attente disparaît
+// sans relancer quoi que ce soit. Une annulation qui laisse la lecture en
+// cours, elle, doit appeler `resumeFrozenPlayback()` une fois son réglage
+// appliqué.
 function leaveWait({ resume = true } = {}) {
   const practice = state.practice;
   if (!practice.waiting) return;
@@ -1753,13 +1818,25 @@ function leaveWait({ resume = true } = {}) {
   practice.waiting = null;
   practice.hintKeys.clear();
   renderPracticeStatus();
-  if (!resume || !state.isPlaying) return;
+  if (resume) resumeFrozenPlayback();
+}
 
+// Relance le Transport et la boucle d'animation qu'une attente avait gelés.
+//
+// Le gel arrête l'horloge et les images sans toucher à `state.isPlaying` : la
+// lecture n'a jamais été interrompue, elle est simplement suspendue à une note.
+// Tout ce qui annule l'attente sans passer par la pause — choisir un passage,
+// changer de main, éteindre le mode Attente — laissait donc le bouton afficher
+// « en lecture » devant un rouleau figé, qu'il fallait débloquer par pause puis
+// play. « En lecture sans image programmée » ne peut vouloir dire que ça :
+// `tick()` en reprogramme une à chaque passage.
+function resumeFrozenPlayback() {
+  if (!state.isPlaying || state.animationFrame !== null) return;
+  const practice = state.practice;
   Tone.Transport.seconds = state.currentTime / state.speed;
   Tone.Transport.start();
   state.lastVisualFrame = -Infinity;
   practice.lastTransportTime = state.currentTime;
-  if (state.animationFrame !== null) cancelAnimationFrame(state.animationFrame);
   state.animationFrame = requestAnimationFrame(tick);
 }
 
@@ -1968,6 +2045,7 @@ function setPracticeEnabled(enabled) {
   applyLoopPoints();
   rebuildGates();
   beginPracticeRun();
+  resumeFrozenPlayback();
   if (state.audio.ready) buildPart(); // la main muette change avec le sous-mode
   renderPracticeBar(); // remesure le canvas : la barre change la hauteur utile
   drawImmediately();
@@ -1991,6 +2069,7 @@ function setPracticeHand(hand) {
   practice.hand = hand;
   leaveWait({ resume: false });
   refreshPracticeAudio();
+  resumeFrozenPlayback();
   renderPracticeBar();
   scheduleDraw();
 }
@@ -2046,6 +2125,7 @@ function setPracticeWait(wait) {
   state.practice.wait = wait;
   leaveWait({ resume: false });
   refreshPracticeAudio();
+  resumeFrozenPlayback();
   renderPracticeBar();
   scheduleDraw();
 }
@@ -2074,6 +2154,9 @@ function setActiveSection(sectionId) {
     setTime(bounds.startSeconds);
   }
   refreshPracticeAudio();
+  // Choisir un passage pendant une attente ne met pas la lecture en pause :
+  // le rouleau doit repartir seul, depuis la position du nouveau passage.
+  resumeFrozenPlayback();
   renderPracticeBar();
   drawImmediately();
 }
@@ -2144,6 +2227,13 @@ function moveSectionBound(which, time, { persist = true } = {}) {
   state.practice.sections = sectionStore.list(state.practice.songId);
   applyLoopPoints();
   rebuildGates();
+}
+
+// Position actuelle d'une borne du passage actif, en secondes du morceau.
+function boundSeconds(which) {
+  const section = activeSection();
+  if (!section) return null;
+  return which === "start" ? section.startSeconds : section.endSeconds;
 }
 
 // Borne saisissable sous le pointeur, ou null. Testée avant le défilement du
@@ -2635,7 +2725,17 @@ function attachInteractions(signal) {
   canvas.addEventListener("pointermove", (e) => {
     const p = pointerPos(e.clientX, e.clientY);
     if (draggingBound) {
-      moveSectionBound(draggingBound, screenYToTime(p.y), { persist: false });
+      const snap = snapBoundTime(screenYToTime(p.y));
+      moveSectionBound(draggingBound, snap.time, { persist: false });
+      // L'aimant n'est signalé que s'il a vraiment pris : `clampBounds` peut
+      // repousser la borne qu'on vient de poser (longueur minimale d'un
+      // passage, bord du morceau), et annoncer un calage qui n'a pas eu lieu
+      // serait pire que de ne rien annoncer.
+      const applied = boundSeconds(draggingBound);
+      state.practice.snappedBound =
+        snap.snapped && applied !== null && Math.abs(applied - snap.time) < 1e-3
+          ? draggingBound
+          : null;
       drawImmediately();
       return;
     }
@@ -2653,9 +2753,11 @@ function attachInteractions(signal) {
   const endDrag = (e) => {
     if (draggingBound) {
       draggingBound = null;
+      state.practice.snappedBound = null;
       canvas.style.cursor = "grab";
       sectionStore.flush();
       renderPracticeBar();
+      drawImmediately();
       return;
     }
     if (!dragging) return;
@@ -2673,6 +2775,7 @@ function attachInteractions(signal) {
     () => {
       dragging = false;
       draggingBound = null;
+      state.practice.snappedBound = null;
     },
     { signal }
   );

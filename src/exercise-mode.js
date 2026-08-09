@@ -11,9 +11,10 @@
 //  Elle tient le décompte, la pulsation et les répétitions ; c'est tout ce
 //  qu'elle sait, et c'est tout ce que dit son bilan (§ 9).
 //
-//  Le rouleau est un Canvas comme celui du mode Morceau, mais limité à
-//  l'étendue de l'exercice : deux octaves au plus, donc des touches larges au
-//  doigt là où les 88 touches en font des lamelles. Les deux rendus se
+//  Le rouleau est un Canvas comme celui du mode Morceau, et il dessine le même
+//  clavier complet de 88 touches : l'élève voit toujours où tombe l'exercice
+//  sur son instrument, au lieu d'un fragment recadré qui change à chaque
+//  exercice. Les deux rendus se
 //  ressemblent sans être le même ; l'extraction d'un `piano-roll.js` commun
 //  attend qu'un troisième mode en ait besoin, comme le veut plan/F1 § 6 (rien
 //  n'est extrait avant d'être réellement partagé).
@@ -24,7 +25,7 @@
 
 import * as Tone from "https://cdn.jsdelivr.net/npm/tone@14.8.49/+esm";
 import { createAudio, midiToNote } from "./audio.js";
-import { isWhite, noteDegreeName, octaveOf, pitchClass } from "./music.js";
+import { isWhite, MIDI_HIGH, MIDI_LOW, noteDegreeName, octaveOf, pitchClass } from "./music.js";
 import { PERFORMANCE_PROFILE } from "./perf.js";
 import {
   clampTempo,
@@ -40,7 +41,6 @@ import {
   exerciseById,
   exercisesOfFamily,
   FAMILIES,
-  supportsHand,
 } from "./exercises/catalog.js";
 import { leastRecentlyPracticed } from "./progress/views.js";
 import {
@@ -100,12 +100,23 @@ const END_TAIL_S = 0.4; // laisse la dernière note finir de sonner avant le bil
 // jamais tout seul (plan/03 § 10).
 const TEMPO_STEP = 4;
 
-const HAND_CHOICES = [
-  { id: "right", label: "Main droite" },
-  { id: "left", label: "Main gauche" },
-  { id: "both", label: "Les deux" },
-];
+// Le tempo proposé à l'ouverture de l'écran de réglages, quel que soit
+// l'exercice (09/08/2026). Le catalogue garde son `defaultTempo` par exercice —
+// c'est la vitesse à laquelle chacun a été pensé — mais le mode n'en fait plus
+// le point de départ : partir toujours du même repère évite de rerégler le
+// stepper à chaque changement d'exercice. Le tempo de la dernière séance reste
+// prioritaire quand on retrouve le même exercice (cf. `restoreSettings`).
+const DEFAULT_TEMPO = 90;
 
+// Le mode ne travaille plus que les deux mains ensemble (09/08/2026) : il n'y a
+// plus de main à choisir, donc plus de réglage — et `catalog.js` ne garde plus
+// un seul exercice qui ne saurait se jouer ainsi. La valeur reste nommée parce
+// que le générateur, le journal et le bilan continuent d'en parler.
+const HAND_MODE = "both";
+
+// La main d'une **note**, elle, existe toujours : le rouleau la colore, et le
+// bilan compte les fausses notes de chacune — c'est souvent la gauche qui suit
+// mal. C'est ce que sert cette table, pas un choix offert à l'utilisateur.
 const HAND_LABEL = { right: "Main droite", left: "Main gauche", both: "Les deux mains" };
 
 // Ce que la régularité rythmique dit de la pratique, quand le clavier MIDI l'a
@@ -119,12 +130,21 @@ const TIMING_TEXT = {
   none: "Aucune note reçue : rien n'a pu être mesuré.",
 };
 
-// Comportement du mode Les deux, annoncé avant le départ (plan/03 § 6).
+// Comment les deux mains se répartissent le motif, annoncé avant le départ
+// (plan/03 § 6). Depuis que la main ne se choisit plus, c'est ce libellé — et
+// non « Les deux mains », devenu constant — qui apprend quelque chose sur
+// l'exercice qu'on s'apprête à jouer.
 const BOTH_MODE_LABEL = {
   parallel: "mouvement parallèle, à l'octave",
   contrary: "mouvement contraire",
   alternating: "mains en alternance",
 };
+
+// Sans `bothMode`, l'exercice donne son propre motif à chaque main
+// (`patternByHand` : la cadence à quatre voix, le deux contre trois).
+function bothModeLabel(exercise) {
+  return BOTH_MODE_LABEL[exercise.bothMode] ?? "mains indépendantes";
+}
 
 // ----------------------------------------------------------------------------
 //  Fiche de la fonctionnalité (registre de la navigation)
@@ -163,8 +183,7 @@ function createModeState() {
 
     settings: {
       exerciseId: firstExercise.id,
-      hand: "right",
-      tempo: firstExercise.defaultTempo,
+      tempo: DEFAULT_TEMPO,
       repetitions: firstExercise.defaultRepetitions,
       metronome: true,
       demo: false, // par défaut, c'est l'utilisateur qui joue
@@ -287,7 +306,6 @@ function renderSetup() {
   root.appendChild(renderFamilyChoice());
   root.appendChild(renderDifficultyChoice());
   root.appendChild(renderExerciseChoice());
-  root.appendChild(renderHandChoice(exercise));
   root.appendChild(renderNumberChoice(
     "Tempo",
     `${state.settings.tempo} bpm`,
@@ -309,6 +327,9 @@ function renderSetup() {
 
   root.appendChild(el("p", "ex-goal", `But : ${exercise.goal}`));
   root.appendChild(el("p", "ex-instruction", exercise.instruction));
+  // Ce que font les deux mains est annoncé **avant** le départ (plan/03 § 6).
+  // C'était le rôle du bloc « Main travaillée » ; il a disparu, pas la question.
+  root.appendChild(el("p", "ex-hint", `Les deux mains : ${bothModeLabel(exercise)}.`));
 
   const startBtn = el("button", "btn ex-primary", "Commencer");
   startBtn.type = "button";
@@ -329,7 +350,16 @@ function renderSetup() {
   const study = renderStudyLibrary();
   if (study) root.appendChild(study);
 
+  // Le panneau défile lui-même (`.ex { overflow-y: auto }`) et le moindre
+  // réglage le redessine en entier : sans cette reprise, toucher « + » ou un
+  // interrupteur renvoyait en haut de l'écran à chaque fois, alors qu'on est en
+  // bas en train de régler. On ne reprend le défilement que d'un écran de
+  // réglages — revenir d'un exercice ou d'un bilan ouvre bien le panneau en haut.
+  const previous = container.firstElementChild;
+  const scroll = previous?.classList.contains("ex--setup") ? previous.scrollTop : 0;
+
   container.replaceChildren(root);
+  if (scroll > 0) root.scrollTop = scroll;
   state.ui = null;
 }
 
@@ -453,49 +483,6 @@ function renderExerciseChoice() {
     row.appendChild(button);
   }
   group.appendChild(row);
-  return group;
-}
-
-function renderHandChoice(exercise) {
-  const group = el("fieldset", "ex-choice");
-  group.appendChild(el("legend", "ex-choice-legend", "Main travaillée"));
-  const row = el("div", "ex-choice-row");
-
-  for (const choice of HAND_CHOICES) {
-    const button = el("button", "ex-choice-btn", choice.label);
-    button.type = "button";
-
-    // Une main n'est proposée que si son doigté est défini (plan/03 § 6).
-    const available = supportsHand(exercise, choice.id);
-    button.disabled = !available;
-    if (!available) {
-      button.title = "Doigté non défini pour cet exercice";
-      button.appendChild(el("span", "ex-choice-soon", "Bientôt"));
-    } else if (choice.id === "both" && exercise.bothMode) {
-      button.title = BOTH_MODE_LABEL[exercise.bothMode] ?? "";
-    }
-
-    const selected = state.settings.hand === choice.id;
-    button.setAttribute("aria-pressed", String(selected));
-    if (selected) button.classList.add("is-selected");
-
-    if (available) {
-      onClick(button, () => {
-        state.settings.hand = choice.id;
-        renderSetup();
-      });
-    }
-    row.appendChild(button);
-  }
-
-  group.appendChild(row);
-
-  // Le comportement des deux mains est annoncé **avant** le départ.
-  if (state.settings.hand === "both" && exercise.bothMode) {
-    group.appendChild(
-      el("p", "ex-hint", `Les deux mains : ${BOTH_MODE_LABEL[exercise.bothMode]}.`)
-    );
-  }
   return group;
 }
 
@@ -679,15 +666,8 @@ function selectExercise(id) {
   const exercise = exerciseById(id);
   if (!exercise) return;
   state.settings.exerciseId = id;
-  state.settings.tempo = exercise.defaultTempo;
+  state.settings.tempo = DEFAULT_TEMPO;
   state.settings.repetitions = exercise.defaultRepetitions;
-  // La main courante peut ne pas exister sur le nouvel exercice.
-  if (!supportsHand(exercise, state.settings.hand)) {
-    state.settings.hand =
-      HAND_CHOICES.map((choice) => choice.id).find((hand) =>
-        supportsHand(exercise, hand)
-      ) ?? "right";
-  }
   renderSetup();
 }
 
@@ -710,7 +690,7 @@ function beginRun() {
   const exercise = currentExercise();
   const grid = createBeatGrid({ bpm: state.settings.tempo, beatsPerBar: exercise.beatsPerBar });
   const run = generateExercise(exercise, {
-    hand: state.settings.hand,
+    hand: HAND_MODE,
     tempo: state.settings.tempo,
     repetitions: state.settings.repetitions,
     startTime: grid.startTime,
@@ -739,7 +719,7 @@ function beginRun() {
   state.practice = state.progress.openSession(exerciseFeature.id, {
     exerciseId: exercise.id,
     family: exercise.family,
-    handMode: state.settings.hand,
+    handMode: HAND_MODE,
     key: run.key,
     tempo: run.tempo,
     repetitions: run.repetitions,
@@ -772,7 +752,7 @@ function renderExercise() {
   const counters = el("div", "ex-run-counters");
   const repetition = el("span", "ex-run-rep");
   const tempoLabel = el("span", "ex-run-tempo", `${state.run.tempo} bpm`);
-  const handLabel = el("span", "ex-run-hand", HAND_LABEL[state.settings.hand]);
+  const handLabel = el("span", "ex-run-hand", bothModeLabel(exercise));
   counters.append(repetition, tempoLabel, handLabel);
 
   const actions = el("div", "ex-run-actions");
@@ -846,16 +826,14 @@ function leaveRun() {
 // ----------------------------------------------------------------------------
 //  Géométrie du rouleau
 //
-//  L'étendue dessinée est celle de l'exercice, élargie jusqu'à une touche
-//  blanche de chaque côté : les touches restent larges et rien ne défile
-//  latéralement (au plus deux octaves, contre 88 touches dans le mode Morceau).
+//  Le clavier est toujours dessiné en entier — les 88 touches, comme dans le
+//  mode Morceau — même quand l'exercice n'en emploie que cinq. Recadrer sur
+//  l'étendue de l'exercice donnait des touches plus larges, mais déplaçait les
+//  notes d'un exercice à l'autre : le même Do ne tombait jamais au même endroit,
+//  et rien ne disait où l'on se trouvait sur l'instrument réel.
 // ----------------------------------------------------------------------------
 function keyboardRange() {
-  let low = state.run.lowMidi;
-  let high = state.run.highMidi;
-  while (low > 0 && !isWhite(low)) low--;
-  while (high < 127 && !isWhite(high)) high++;
-  return { low, high };
+  return { low: MIDI_LOW, high: MIDI_HIGH };
 }
 
 function calculateKeyboardHeight(w, h) {
@@ -1090,10 +1068,11 @@ const FINGER_INSIDE_MIN_HEIGHT = 15;
 const FINGER_OUTSIDE_GAP = 2;
 
 function drawFinger(note, g, yTop, height, width) {
-  // Une touche noire à trois octaves d'écart fait une quinzaine de pixels : le
-  // chiffre y tient encore. Seule une largeur vraiment minuscule le fait
-  // renoncer, et alors rien d'autre ne serait lisible non plus.
-  const size = width >= 18 ? 12 : width >= 11 ? 10 : 0;
+  // Sur les 88 touches, une noire tombe sous les dix pixels de large : un
+  // chiffre de 9 px y tient encore, et c'est ce qui compte — un exercice
+  // technique sans doigté n'est plus un exercice technique. En dessous, rien
+  // d'autre ne serait lisible non plus.
+  const size = width >= 18 ? 12 : width >= 11 ? 10 : width >= 6 ? 9 : 0;
   if (size === 0) return;
 
   ctx.font = `600 ${size}px system-ui, sans-serif`;
@@ -1165,16 +1144,20 @@ function drawKeyboard(w, h) {
     }
   }
 
-  // Nom de chaque blanche : l'étendue est courte, autant la nommer entièrement
-  // plutôt que de ne marquer que les Do comme sur 88 touches.
+  // Sur 88 touches, une blanche est trop étroite pour porter son nom : on ne
+  // marque que les Do, comme dans le mode Morceau. Sur un écran assez large
+  // pour que le nom tienne, on nomme toutes les blanches — c'est plus utile à
+  // un débutant, et rien ne se chevauche.
+  const namesFit = layout.whiteKeyWidth >= 26;
   ctx.fillStyle = "#6b6355";
   ctx.font = "10px system-ui, sans-serif";
   ctx.textAlign = "center";
   for (let midi = layout.low; midi <= layout.high; midi++) {
     if (!isWhite(midi)) continue;
+    const isDo = pitchClass(midi) === 0;
+    if (!namesFit && !isDo) continue;
     const g = layout.geometries[midi];
-    const label = pitchClass(midi) === 0 ? `Do${octaveOf(midi)}` : noteDegreeName(midi);
-    ctx.fillText(label, g.centerX, h - 6);
+    ctx.fillText(isDo ? `Do${octaveOf(midi)}` : noteDegreeName(midi), g.centerX, h - 6);
   }
   ctx.textAlign = "left";
 
@@ -1473,7 +1456,7 @@ function recordCompletedRepetitions() {
 function recordRepetition(index) {
   const target = {
     exerciseId: state.run.exerciseId,
-    hand: state.settings.hand,
+    hand: HAND_MODE,
     key: state.run.key,
     tempo: state.run.tempo,
     repetition: index,
@@ -1776,7 +1759,7 @@ function renderSummary() {
   const root = el("div", "ex ex--summary");
   root.append(
     el("h1", "ex-heading", "Série terminée"),
-    el("p", "ex-lede", `${exercise.title} — ${HAND_LABEL[state.settings.hand]}`)
+    el("p", "ex-lede", `${exercise.title} — ${HAND_LABEL[HAND_MODE]}`)
   );
 
   const stats = el("ul", "ex-stats");
@@ -2048,8 +2031,10 @@ async function loadStudyPieces() {
 // été travaillé depuis le plus longtemps. Celui qu'on n'a jamais fait passe en
 // premier.
 //
-// Le reste des réglages — tempo, main, métronome, démonstration — vient bien de
-// la dernière séance : ce sont des préférences, pas un contenu à faire tourner.
+// Le reste des réglages — tempo, métronome, démonstration — vient bien de la
+// dernière séance : ce sont des préférences, pas un contenu à faire tourner. La
+// main n'en fait plus partie : elle ne se règle plus (`HAND_MODE`). Les séances
+// déjà écrites gardent leur `handMode`, on ne le relit simplement plus.
 function restoreSettings() {
   const last = lastSessionContext(state.progress.log(), exerciseFeature.id);
   if (!last) return;
@@ -2064,17 +2049,18 @@ function restoreSettings() {
   });
   const exercise = exerciseById(propose) ?? dernier;
   state.settings.exerciseId = exercise.id;
-  // Le tempo et le nombre de répétitions de l'exercice **proposé** priment sur
-  // ceux de la séance passée quand on change d'exercice : un trille ne se
-  // travaille pas au tempo d'un accord.
+  // Le nombre de répétitions de l'exercice **proposé** prime sur celui de la
+  // séance passée quand on change d'exercice. Le tempo, lui, repart du repère
+  // commun (`DEFAULT_TEMPO`) : il n'est repris de la dernière séance que si
+  // c'est le même exercice qu'on retrouve — un trille ne se travaille pas au
+  // tempo d'un accord.
   const memeExercice = exercise.id === last.exerciseId;
   state.settings.tempo = clampTempo(
-    memeExercice ? last.tempo ?? exercise.defaultTempo : exercise.defaultTempo
+    memeExercice ? last.tempo ?? DEFAULT_TEMPO : DEFAULT_TEMPO
   );
   state.settings.repetitions = clampRepetitions(
     memeExercice ? last.repetitions ?? exercise.defaultRepetitions : exercise.defaultRepetitions
   );
-  if (supportsHand(exercise, last.handMode)) state.settings.hand = last.handMode;
   if (typeof last.metronome === "boolean") state.settings.metronome = last.metronome;
   if (typeof last.demo === "boolean") state.settings.demo = last.demo;
   // `validated` dit si les notes ont été **vues**, pas si l'utilisateur le

@@ -43,40 +43,57 @@ export const HAND_BY_CLEF = {
 
 // Notes **ajoutées** par chaque niveau, par main (plan/02-lecture-notes.md § 4).
 // Le niveau ne joue que sur cette étendue : aucune limite de temps, aucune
-// altération. Le Do central appartient aux deux mains dès l'Intermédiaire : il
-// est le repère commun des deux clés, sous la portée en clé de sol et au-dessus
-// en clé de fa. Les deux groupes d'un même niveau occupent alors les mêmes
-// positions sur leur portée respective, en miroir.
+// altération.
+//
+// Les deux mains partent du Do central et s'en éloignent en miroir, par groupes
+// de quatre degrés (09/08/2026) : la droite monte — Do Ré Mi Fa, puis Sol La Si
+// Do —, la gauche descend — Do Si La Sol, puis Fa Mi Ré Do. Le Do central
+// appartient donc aux deux mains dès le premier niveau : il est le repère
+// commun des deux clés, sous la portée en clé de sol et au-dessus en clé de fa.
+// Les deux groupes d'un même niveau occupent ainsi exactement les mêmes
+// positions sur leur portée respective, et aucun groupe n'a de trou.
 const NEW_NOTES = {
+  // La position de Do central : quatre doigts posés, la main ne bouge pas.
   beginner: {
-    right: [60, 62, 64, 65, 67], // Do4 → Sol4, autour du Do central
-    left: [48, 50, 52, 53, 55],  // Do3 → Sol3, mêmes degrés une octave plus bas
+    right: [60, 62, 64, 65], // Do4 → Fa4
+    left: [55, 57, 59, 60],  // Sol3 → Do4, les mêmes degrés en miroir
   },
+  // L'octave refermée de chaque côté : Do4 → Do5 à droite, Do3 → Do4 à gauche.
   intermediate: {
-    // Le haut de la portée, jusqu'au Fa de la 5e ligne.
-    right: [69, 71, 72, 74, 76, 77], // La4 → Fa5
-    // Son miroir en clé de fa : le bas de la portée, et le haut jusqu'au Do
-    // central posé au-dessus, sur sa ligne supplémentaire. Le groupe est en
-    // deux morceaux parce que le Débutant occupe déjà son milieu.
-    left: [43, 45, 47, 57, 59, 60], // Sol2 → Si2, puis La3 → Do4
+    right: [67, 69, 71, 72], // Sol4 → Do5
+    left: [48, 50, 52, 53],  // Do3 → Fa3
   },
+  // Ce qu'il reste de portée : jusqu'au Fa de la 5e ligne en clé de sol,
+  // jusqu'au Sol de la 1re ligne en clé de fa. Après ce niveau, chaque main a
+  // vu toute sa portée.
   advanced: {
-    // Ce qui déborde encore : deux lignes supplémentaires du côté du Do
-    // central, une seule de l'autre côté.
+    right: [74, 76, 77], // Ré5 → Fa5
+    left: [43, 45, 47],  // Sol2 → Si2
+  },
+  // Au-delà de la portée, ses lignes supplémentaires des deux côtés : chaque
+  // main descend sous la sienne autant qu'elle monte au-dessus.
+  expert: {
     right: [57, 59, 79, 81], // La3, Si3, puis Sol5, La5
     left: [40, 41, 62, 64],  // Mi2, Fa2, puis Ré4, Mi4
   },
 };
 
-// Étendue réellement tirée à chaque niveau. L'Intermédiaire ne propose **que**
-// ses notes neuves (08/08/2026) : réviser le Débutant se fait en choisissant le
-// Débutant, pas en passant la moitié d'une séance d'Intermédiaire sur des
-// repères déjà installés. Le Difficile, lui, rassemble tout ce qui a été vu —
-// c'est le niveau où l'on lit la portée entière, sans exclure quoi que ce soit.
+// Tout ce qui s'écrit sur la portée elle-même, lignes supplémentaires exclues
+// (le Do central mis à part, qui est le repère de départ des deux mains).
+const STAFF_POOL = mergePools(NEW_NOTES.beginner, NEW_NOTES.intermediate, NEW_NOTES.advanced);
+
+// Étendue réellement tirée à chaque niveau. Les deux premiers ne proposent
+// **que** leurs notes neuves (08/08/2026) : réviser le Débutant se fait en
+// choisissant le Débutant, pas en passant la moitié d'une séance
+// d'Intermédiaire sur des repères déjà installés. Les deux derniers, eux,
+// rassemblent ce qui a été vu — le Difficile est le niveau où l'on lit la
+// portée entière, l'Expert celui où l'on y ajoute ses lignes supplémentaires,
+// sans plus rien exclure.
 const NOTE_POOLS = {
   beginner: NEW_NOTES.beginner,
   intermediate: NEW_NOTES.intermediate,
-  advanced: mergePools(NEW_NOTES.beginner, NEW_NOTES.intermediate, NEW_NOTES.advanced),
+  advanced: STAFF_POOL,
+  expert: mergePools(STAFF_POOL, NEW_NOTES.expert),
 };
 
 // Réunit plusieurs groupes main par main, triés par hauteur croissante : les
@@ -108,6 +125,7 @@ const HINT_AFTER_ERRORS = {
   beginner: 0, // aide disponible immédiatement
   intermediate: 1,
   advanced: 2,
+  expert: 2,
 };
 
 export function notePool(difficulty, hand) {

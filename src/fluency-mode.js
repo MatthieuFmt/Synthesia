@@ -51,6 +51,7 @@ const DIFFICULTY_CHOICES = [
   { id: "beginner", label: "Débutant" },
   { id: "intermediate", label: "Intermédiaire" },
   { id: "advanced", label: "Difficile" },
+  { id: "expert", label: "Expert" },
 ];
 
 const HAND_CHOICES = [
