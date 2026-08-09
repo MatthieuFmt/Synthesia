@@ -41,32 +41,57 @@ export const HAND_BY_CLEF = {
   bass: "left",
 };
 
-// Étendue des notes par niveau puis par main (plan/02-lecture-notes.md § 4).
+// Notes **ajoutées** par chaque niveau, par main (plan/02-lecture-notes.md § 4).
 // Le niveau ne joue que sur cette étendue : aucune limite de temps, aucune
 // altération. Le Do central appartient aux deux mains dès l'Intermédiaire : il
 // est le repère commun des deux clés, sous la portée en clé de sol et au-dessus
 // en clé de fa. Les deux groupes d'un même niveau occupent alors les mêmes
 // positions sur leur portée respective, en miroir.
-const NOTE_POOLS = {
+const NEW_NOTES = {
   beginner: {
     right: [60, 62, 64, 65, 67], // Do4 → Sol4, autour du Do central
     left: [48, 50, 52, 53, 55],  // Do3 → Sol3, mêmes degrés une octave plus bas
   },
   intermediate: {
-    // Toute la portée, du Do central — en dessous, sur sa ligne supplémentaire
-    // — au Fa de la 5e ligne.
-    right: [60, 62, 64, 65, 67, 69, 71, 72, 74, 76, 77], // Do4 → Fa5
-    // Même chose en clé de fa, où le Do central se retrouve au-dessus de la
-    // portée, sur sa ligne supplémentaire.
-    left: [43, 45, 47, 48, 50, 52, 53, 55, 57, 59, 60], // Sol2 → Do4
+    // Le haut de la portée, jusqu'au Fa de la 5e ligne.
+    right: [69, 71, 72, 74, 76, 77], // La4 → Fa5
+    // Son miroir en clé de fa : le bas de la portée, et le haut jusqu'au Do
+    // central posé au-dessus, sur sa ligne supplémentaire. Le groupe est en
+    // deux morceaux parce que le Débutant occupe déjà son milieu.
+    left: [43, 45, 47, 57, 59, 60], // Sol2 → Si2, puis La3 → Do4
   },
   advanced: {
-    // Étendue élargie de deux octaves : la portée débordée de deux lignes
-    // supplémentaires du côté du Do central, une seule de l'autre côté.
-    right: [57, 59, 60, 62, 64, 65, 67, 69, 71, 72, 74, 76, 77, 79, 81], // La3 → La5
-    left: [40, 41, 43, 45, 47, 48, 50, 52, 53, 55, 57, 59, 60, 62, 64], // Mi2 → Mi4
+    // Ce qui déborde encore : deux lignes supplémentaires du côté du Do
+    // central, une seule de l'autre côté.
+    right: [57, 59, 79, 81], // La3, Si3, puis Sol5, La5
+    left: [40, 41, 62, 64],  // Mi2, Fa2, puis Ré4, Mi4
   },
 };
+
+// Étendue réellement tirée à chaque niveau. L'Intermédiaire ne propose **que**
+// ses notes neuves (08/08/2026) : réviser le Débutant se fait en choisissant le
+// Débutant, pas en passant la moitié d'une séance d'Intermédiaire sur des
+// repères déjà installés. Le Difficile, lui, rassemble tout ce qui a été vu —
+// c'est le niveau où l'on lit la portée entière, sans exclure quoi que ce soit.
+const NOTE_POOLS = {
+  beginner: NEW_NOTES.beginner,
+  intermediate: NEW_NOTES.intermediate,
+  advanced: mergePools(NEW_NOTES.beginner, NEW_NOTES.intermediate, NEW_NOTES.advanced),
+};
+
+// Réunit plusieurs groupes main par main, triés par hauteur croissante : les
+// pools sont lus dans l'ordre ailleurs (marche par degré de portée du mode
+// défilant, étendue du clavier de réponse).
+function mergePools(...groups) {
+  const merged = {};
+  for (const group of groups) {
+    for (const [hand, notes] of Object.entries(group)) {
+      merged[hand] = [...(merged[hand] ?? []), ...notes];
+    }
+  }
+  for (const notes of Object.values(merged)) notes.sort((a, b) => a - b);
+  return merged;
+}
 
 // Mains réellement travaillées derrière un réglage de main. « Les deux » est le
 // seul réglage qui en couvre plusieurs : la main est alors tirée par question

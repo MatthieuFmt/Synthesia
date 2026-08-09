@@ -12,12 +12,19 @@ import { pickWeighted } from "./session-engine.js";
 
 export const NOTES_PER_SESSION = 30;
 
-// Distance en DEGRÉS DE PORTÉE (l'index dans le pool, pas des demi-tons MIDI :
+// Distance en NOTES DU POOL (l'index dans le pool, pas des demi-tons MIDI :
 // Mi-Fa et Si-Do ne valent qu'un demi-ton quand les autres degrés en valent
 // deux, donc marcher sur l'index est ce qui correspond à « la note voisine sur
 // la portée »). magnitude 1 = pas (2de), 2 = saut (3ce), au-delà = grand
 // intervalle. Progression pédagogique « pas d'abord, sauts ensuite, grands
 // intervalles progressivement » — plan/10-fluidite.md § 12.
+//
+// L'index vaut le degré de portée tant que le pool est d'un seul morceau. Le
+// groupe Intermédiaire main gauche ne l'est plus depuis le 08/08/2026 — il
+// enjambe les notes du Débutant —, et la marche y franchit donc son trou comme
+// un pas. C'est ce qui garde les deux moitiés du groupe accessibles ; le prix
+// est quelques 7es là où la table annonce une 2de, sur les deux seules notes qui
+// bordent le trou.
 export const DELTA_TABLES = {
   beginner: [
     { magnitude: 1, weight: 0.75 },

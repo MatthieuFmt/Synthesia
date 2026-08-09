@@ -71,9 +71,46 @@ au même titre qu'une note lue de travers.
 
 | Réglage | Valeurs | Origine |
 | --- | --- | --- |
-| Niveau | Débutant, Intermédiaire, Difficile | Les groupes de notes de [02 § 4](02-lecture-notes.md#groupes-de-notes-retenus), tels quels |
+| Niveau | Débutant, Intermédiaire, Difficile | Les groupes de notes de [02 § 4](02-lecture-notes.md#groupes-de-notes-retenus), redécoupés le 08/08/2026 (ci-dessous) |
 | Main | Droite (clé de sol), Gauche (clé de fa), Les deux | Idem 02 |
 | Vitesse | Tranquille 20, Soutenu 30, Rapide 45 notes/min | Propre à ce mode |
+
+### Un niveau ne réexpose pas le précédent (8 août 2026)
+
+Les trois niveaux de 02 étaient **emboîtés** : l'Intermédiaire contenait les
+cinq notes du Débutant, le Difficile contenait les onze de l'Intermédiaire. Sur
+une note fixe posée dix fois, cela ne coûtait rien. Sur un flux de trente notes,
+cela veut dire passer la moitié d'une séance d'Intermédiaire sur des repères
+déjà installés — et ne jamais voir assez souvent les notes qu'on est venu
+apprendre.
+
+`note-reading-engine.js` décrit désormais les notes que chaque niveau
+**ajoute**, et compose les groupes à partir de là :
+
+| Niveau | Main droite (clé de sol) | Main gauche (clé de fa) | Notes |
+| --- | --- | --- | --- |
+| **Débutant** | Do4 → Sol4 | Do3 → Sol3 | 5 |
+| **Intermédiaire** | La4 → Fa5 | Sol2 → Si2, La3 → Do4 | 6 |
+| **Difficile** | La3 → La5 | Mi2 → Mi4 | 15 |
+
+- **Intermédiaire** : seulement ce que le Débutant ne montre pas. Les deux
+  groupes gardent leurs positions en miroir sur leur portée respective, et le
+  Do central reste le repère qu'il y apprend.
+- **Difficile** : inchangé, et c'est voulu — il **rassemble** les trois niveaux.
+  C'est là qu'on lit la portée entière, sans exclure quoi que ce soit.
+
+Deux conséquences dans le code :
+
+- le groupe Intermédiaire main gauche est en **deux morceaux** (le Débutant
+  occupe son milieu). La marche pas/saut du § 12 travaille sur l'index du pool :
+  elle franchit ce trou comme un pas, ce qui garde les deux moitiés
+  accessibles, au prix de quelques 7es là où la table annonce une 2de. Le pool
+  reste entièrement couvert, c'est ce qui compte ;
+- le groupe Intermédiaire main droite (La4 → Fa5) tient dans moins d'une
+  octave mais **enjambe un Do**. `piano-dom.js` arrondissait à l'octave Do → Do
+  dès que le groupe faisait moins de douze demi-tons : ses notes hautes
+  seraient tombées hors du clavier de réponse, donc injouables. Le test porte
+  maintenant sur l'octave qui **contient** le groupe, pas sur sa largeur.
 
 En mode « Les deux », les deux portées défilent dans le même Canvas. Les mains
 sont alternées à parts égales sur une chronologie unique : deux notes de clés

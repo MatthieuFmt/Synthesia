@@ -41,6 +41,9 @@
   en proposait un seul indéfiniment. Il garde désormais la famille et le niveau
   et propose, dedans, le moins récemment travaillé —
   `leastRecentlyPracticed()` de `progress/views.js`, vérifié sur quatre séances)
+- [x] Attendre les bonnes notes, toujours, dès qu'un clavier écoute.
+  (§ 20, 08/08/2026 — le rouleau se fige sur chaque accord ; 24 vérifications
+  dans Chrome, gel, fausse note, pause en plein gel et bilan compris)
 
 ## 1. Objectif
 
@@ -721,3 +724,61 @@ La liste vient de `songs.json` via `song-library.js` (les entrées de nature
 `"exercice"`), et arrive après le premier rendu : l'écran de réglages ne doit
 pas attendre un `fetch` pour s'afficher, ni se redessiner par-dessus une séance
 en cours.
+
+## 20. Le rouleau attend les bonnes notes (8 août 2026)
+
+Le § 3 le prévoyait depuis le premier jour — « elle peut attendre les bonnes
+notes en mode guidé » — mais l'étape D s'était arrêtée à la mesure : les notes
+reçues étaient **jugées après coup**, le rouleau, lui, continuait de défiler
+qu'on joue juste, faux, ou rien du tout. Sur un exercice technique, c'est le
+défaut le plus coûteux : le doigt qui rate le troisième pas ne le rattrape
+jamais, la série s'achève quand même, et le bilan annonce 60 % sans que rien
+n'ait été appris.
+
+Le rouleau se fige donc désormais sur **chaque note — ou chaque accord —** et
+ne repart que quand elle est réellement jouée. Ce n'est pas un réglage de plus :
+dès que l'application reçoit les notes, elle attend.
+
+### Ce qui ouvre la porte, et ce qui ne l'ouvre pas
+
+- l'accord attend **toutes** ses notes, dans n'importe quel ordre, main gauche
+  et main droite comprises : c'est la règle de [06 § 7](06-travail-intelligent-morceau.md),
+  et `groupChords()` de `song-practice.js` est appelé tel quel plutôt que
+  recopié (même geste que 06 appelant `exercises/validate-run.js` : on réutilise
+  où c'est écrit, on ne déménage pas) ;
+- une **fausse note** est signalée — la touche rougit — sans faire reculer
+  l'exercice ni passer la note. Elle est comptée, c'est tout ;
+- les touches du rouleau valent des notes jouées : le mode reste pilotable au
+  doigt sur la tablette ;
+- le gel passe par le **Transport**, comme en 06 : c'est lui qui tient
+  l'horloge, donc le métronome s'arrête avec le rouleau et rien ne dérive. Une
+  pause de l'utilisateur en plein gel ne perd pas les notes déjà jouées de
+  l'accord en cours.
+
+### Deux exceptions, pour ne pas casser ce qui marchait
+
+L'attente ne s'applique pas **sans clavier qui écoute** : rien ne pourrait
+ouvrir la porte, et la pratique libre du § 3 resterait bloquée sur sa première
+note. Elle ne s'applique pas non plus **en démonstration** : c'est
+l'application qui joue, attendre l'élève n'aurait aucun sens. Les deux cas
+disent ce qu'ils font sur l'écran de réglages, avant de commencer — la règle de
+[F2 § 7](F2-entree-midi.md) tient toujours : le MIDI améliore, il n'est jamais
+un prérequis.
+
+### Ce que le bilan peut encore dire
+
+L'attente change la nature de ce qui est mesurable, et le § 9 exige de ne
+rapporter que le réel :
+
+- la **précision** n'a plus de sens : on ne franchit un accord qu'en le jouant
+  juste, donc elle vaudrait 100 % par construction ;
+- la **régularité** non plus : c'est l'élève qui donne le départ de chaque
+  note, l'écart avance/retard ne mesurerait que sa vitesse de lecture.
+  `meanFraction` est donc `null` au journal, comme une séance non mesurée ;
+- reste ce que seule l'attente sait dire, et qui vaut mieux qu'un pourcentage :
+  **combien d'accords sont sortis du premier coup**, combien de fausses notes
+  il a fallu, et **quels pas ont résisté**. Une série sans une seule fausse
+  note s'écrit `clean` au journal, les autres `flawed` — le même vocabulaire
+  qu'une série jugée après coup, ce qui garde [F3](F3-suivi-progression.md)
+  lisible d'un bout à l'autre. Le contexte de séance porte `wait: true` pour
+  que la relecture sache laquelle des deux mesures elle regarde.

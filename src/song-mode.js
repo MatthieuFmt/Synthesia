@@ -1323,7 +1323,15 @@ function drawImmediately() {
     cancelAnimationFrame(state.pendingDraw);
     state.pendingDraw = null;
   }
-  state.pendingUiSync = false;
+  // Le dessin immédiat annule l'image programmée : il doit reprendre à son
+  // compte le rafraîchissement d'interface qu'elle portait, sinon il est perdu.
+  // C'est ce qui laissait le curseur de position et l'horloge sur l'ancienne
+  // position après un saut à l'arrêt (choix d'un passage, passage créé plus
+  // loin), alors que le rouleau, lui, avait bien sauté.
+  if (state.pendingUiSync) {
+    state.pendingUiSync = false;
+    syncTransportUI(true);
+  }
   draw();
 }
 
@@ -2003,6 +2011,37 @@ function setPracticeLoop(loop) {
   renderPracticeBar();
 }
 
+// Retour immédiat au début du passage travaillé — au début du morceau si aucun
+// passage n'est choisi. Ce n'est **pas** un tour de boucle : ce qui vient d'être
+// joué est abandonné sans être jugé, sinon un demi-passage compterait comme une
+// exécution ratée. `beginPracticeRun` remet `lastTransportTime` en même temps
+// que les notes reçues : sans cela, `tick()` verrait le saut en arrière comme un
+// bouclage et compterait le tour qu'on vient justement d'annuler.
+function restartSection() {
+  if (!state.song) return;
+  const practice = state.practice;
+  const start = sectionBounds().startSeconds;
+  // Le gel de l'attente avait mis le Transport en pause : il faut le relancer
+  // nous-mêmes, `leaveWait()` reprendrait là où il gelait.
+  const wasFrozen = practice.waiting !== null && state.isPlaying;
+  practice.waiting = null;
+  practice.hintKeys.clear();
+
+  setTime(start); // repositionne aussi le Transport pendant la lecture
+  beginPracticeRun(start);
+
+  if (state.isPlaying) {
+    if (wasFrozen) Tone.Transport.start();
+    state.lastVisualFrame = -Infinity;
+    if (state.animationFrame !== null) cancelAnimationFrame(state.animationFrame);
+    state.animationFrame = requestAnimationFrame(tick);
+  }
+  // Le curseur de position et l'horloge suivent : `setTime` l'a demandé,
+  // `drawImmediately` l'honore.
+  renderPracticeStatus();
+  drawImmediately();
+}
+
 function setPracticeWait(wait) {
   state.practice.wait = wait;
   leaveWait({ resume: false });
@@ -2039,14 +2078,30 @@ function setActiveSection(sectionId) {
   drawImmediately();
 }
 
-// Nouveau passage à la position courante. Sa longueur par défaut est fixe : le
-// découpage par mesures ou par phrases (plan/06 § 5) reste à évaluer.
+// Où commence un nouveau passage : à la suite du précédent, parce qu'on découpe
+// un morceau en passages qui s'enchaînent, pas en passages qui se chevauchent.
+// « Le précédent », c'est celui qu'on travaille — on vient de le border, la
+// suite commence là où il finit —, sinon le dernier découpé du morceau. Sans
+// aucun passage, il ne reste que la position de lecture.
+function nextSectionStart() {
+  const previous = activeSection();
+  if (previous) return previous.endSeconds;
+  const sections = state.practice.sections;
+  if (!sections.length) return state.currentTime;
+  return sections.reduce((last, s) => Math.max(last, s.endSeconds), 0);
+}
+
+// Nouveau passage, dans le prolongement du précédent. Ses bornes restent
+// déplaçables aussitôt (glissement sur le rouleau, « Début ici », « Fin ici ») :
+// c'est un point de départ, pas un découpage imposé. Sa longueur par défaut est
+// fixe — le découpage par mesures ou par phrases (plan/06 § 5) reste à évaluer.
 function createSectionHere() {
   const practice = state.practice;
   if (!state.song || !practice.songId) return;
+  const from = nextSectionStart();
   const bounds = clampBounds(
-    state.currentTime,
-    state.currentTime + DEFAULT_SECTION_SECONDS,
+    from,
+    from + DEFAULT_SECTION_SECONDS,
     songDuration()
   );
   const section = sectionStore.create(practice.songId, bounds);
@@ -2158,6 +2213,28 @@ function renderPracticeBar() {
     loop.title = hasSection
       ? "Répéter le passage en boucle"
       : "Choisis un passage pour le répéter en boucle";
+  }
+
+  // Le retour au début reste actif sans passage : il ramène alors au début du
+  // morceau, ce qui a toujours un sens — inutile de le griser.
+  const restart = byId("practiceRestart");
+  if (restart) {
+    const label = hasSection
+      ? "Revenir au début du passage"
+      : "Revenir au début du morceau";
+    restart.title = label;
+    restart.setAttribute("aria-label", label);
+  }
+
+  // Le « + » n'ouvre pas un passage au même endroit selon qu'il y en a déjà :
+  // le bouton doit le dire avant qu'on clique.
+  const add = byId("practiceAdd");
+  if (add) {
+    const label = practice.sections.length
+      ? "Nouveau passage à la suite du précédent"
+      : "Nouveau passage à la position actuelle";
+    add.title = label;
+    add.setAttribute("aria-label", label);
   }
   for (const id of ["practiceRename", "practiceDelete", "practiceMarkStart", "practiceMarkEnd"]) {
     const button = byId(id);
@@ -2282,6 +2359,7 @@ function attachPracticeControls(signal) {
     setPracticeAccompany(!state.practice.accompany)
   );
   on("practiceLoop", "click", () => setPracticeLoop(!state.practice.loop));
+  on("practiceRestart", "click", restartSection);
   on("practiceWait", "click", () => setPracticeWait(!state.practice.wait));
   on("practiceApplyTempo", "click", () => {
     const suggestion = state.practice.suggestion;

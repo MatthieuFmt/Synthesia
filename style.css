@@ -2045,7 +2045,8 @@ body.force-landscape .landscape-btn { display: inline-flex; }
   .practice-btn { height: 30px; padding: 0 7px; }
   .practice-btn-label { display: none; }
   #practiceMarkStart,
-  #practiceMarkEnd { width: 30px; justify-content: center; padding: 0; }
+  #practiceMarkEnd,
+  #practiceRestart { width: 30px; justify-content: center; padding: 0; }
   .practice-bar .icon-btn { width: 30px; flex: 0 0 30px; height: 30px; }
   .practice-select { height: 30px; line-height: 28px; max-width: 108px; }
   .practice-status { flex-basis: 100%; }

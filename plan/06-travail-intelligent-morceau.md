@@ -2,7 +2,8 @@
 
 > Statut : **les cinq outils fonctionnent** depuis le 26/07/2026 — passages,
 > mains séparées, boucle, attente de la bonne note et tempo progressif, avec le
-> bilan qui va avec. Évolution directe de
+> bilan qui va avec. Deux commodités de découpage et de boucle ajoutées le
+> 08/08/2026 (§ 5 et § 10). Évolution directe de
 > [01 — Apprentissage d'un morceau](01-apprentissage-morceau.md), dont elle
 > tranche les décisions restées ouvertes.
 
@@ -81,6 +82,16 @@ de fin, et le tempo de travail atteint. Les passages d'un morceau doivent
 survivre à un rechargement de la page (voir
 [F3](F3-suivi-progression.md)).
 
+**Un passage créé s'enchaîne au précédent** (08/08/2026) : le second commence
+là où finit le premier, et ainsi de suite. On découpe un morceau en tranches
+qui se suivent, pas en tranches qui se chevauchent — après avoir bordé un
+passage, la suite du travail commence exactement à sa fin. « Le précédent »,
+c'est le passage travaillé s'il y en a un, sinon le dernier découpé du
+morceau ; sans aucun passage, le premier naît toujours à la position de
+lecture. Ce n'est qu'un point de départ : les deux bornes restent déplaçables
+aussitôt, au doigt sur le rouleau ou par « ⇤ / ⇥ ici ». C'est le seul acquis
+du découpage automatique (points 2 et 3 ci-dessus) qui n'ait rien à deviner.
+
 ## 6. Travail d'une main séparément
 
 - **Main droite seule** / **Main gauche seule** / **Les deux**.
@@ -157,6 +168,11 @@ Ajouts à l'écran du mode Morceau existant :
 - les bornes du passage actif, visibles et déplaçables sur la timeline ;
 - le sélecteur de main ;
 - les interrupteurs Boucle et Attente ;
+- **le retour au début du passage (⏮)**, ajouté le 08/08/2026 : une fausse note
+  au milieu d'une boucle se rattrape tout de suite, sans subir les quinze
+  secondes qui restent avant que le Transport ne reboucle. Il agit à l'arrêt
+  comme en lecture, et il ramène au début du morceau quand aucun passage n'est
+  choisi — il n'y a donc jamais lieu de le griser ;
 - le tempo de travail en pourcentage du tempo réel ;
 - le compteur de répétitions du passage en cours ;
 - l'accès au bilan du passage.
@@ -279,6 +295,19 @@ Le partage s'est fait dans ce sens-là, et pas autrement :
   Sans cela, il aurait été impossible de placer la borne d'un passage ailleurs
   que dans le passage lui-même. Appuyer sur ▶ hors des bornes ramène au début
   du passage.
+- **Un retour au début n'est pas un tour de boucle** (08/08/2026). Le bilan
+  compte des exécutions du passage : abandonner en cours de route pour
+  recommencer n'en est pas une, et la compter comme ratée ferait redescendre le
+  tempo (§ 8) pour la raison inverse de celle prévue. Le ⏮ jette donc les notes
+  reçues sans les juger — et remet au passage la position de référence de la
+  boucle d'animation, sans quoi le saut en arrière serait pris pour un bouclage
+  et compté comme le tour qu'on vient justement d'annuler.
+- **Le dessin immédiat doit reprendre la synchro d'interface en attente**
+  (08/08/2026). Il annule l'image programmée : s'il ne reprend pas ce qu'elle
+  portait, le rouleau saute mais le curseur de position et l'horloge restent en
+  arrière. Le symptôme n'apparaissait qu'à l'arrêt — en lecture, l'image
+  suivante rattrapait tout —, ce qui l'a laissé passer jusqu'à ce qu'un passage
+  naisse ailleurs que sous la tête de lecture.
 - **La barre de travail impose de remesurer le canvas.** Elle ajoute une ligne à
   l'en-tête, donc en retire au rouleau, sans qu'aucun `resize` de fenêtre ne
   soit émis : sans remesure, le tampon du canvas resterait à l'ancienne taille
@@ -396,6 +425,25 @@ l'instant où elle s'arrête.
   paysage sur la tablette et 81 px sur écran large ; le clavier garde entre 58 et
   116 px de haut, et retrouve toute sa place dès qu'on quitte le sous-mode.
 
+### Ajouts du 8 août 2026 (Chrome headless, 36 vérifications)
+
+Retour au début et enchaînement des passages, mesurés sur le vrai morceau
+chargé par l'application, en lisant ce qu'elle affiche et ce qu'elle écrit dans
+le stockage — jamais son état interne :
+
+- **Enchaînement** : le premier passage naît sous la tête de lecture, le second
+  exactement à la fin du premier alors que la tête de lecture a été éloignée
+  entre-temps ; le troisième suit la fin *déplacée* du passage actif. Les deux
+  bornes restent déplaçables au bouton juste après la création, et le libellé du
+  « + » annonce lequel des deux comportements s'applique.
+- **Retour au début** : à l'arrêt, en pleine lecture (le Transport repart des
+  bornes du passage, le rouleau continue d'avancer), et **pendant un gel du mode
+  Attente**, où le Transport était en pause — c'est le seul cas où le bouton
+  doit le relancer lui-même. Le bilan reste à « 0 tours » après un retour, alors
+  qu'un bouclage réel du Transport en compte bien un.
+- **Non-régression** : bornes de boucle exactes, aucune boucle laissée au mode
+  suivant.
+
 **Reste à faire à la main** : le toucher réel sur la tablette, le rendu à
 l'oreille (notamment que la main travaillée se taise bien en mode Attente
 pendant que l'accompagnement continue) et l'essai avec un vrai clavier MIDI —
@@ -417,7 +465,9 @@ navigateur, avec une horloge injectée.
 - Le découpage automatique par mesures est-il assez fiable avec les fichiers
   MIDI de la bibliothèque actuelle, dont les mesures ne sont pas toujours
   propres ? (toujours ouvert : le découpage reste manuel, avec une longueur par
-  défaut de 8 secondes)
+  défaut de 8 secondes — mais depuis le 08/08/2026 les passages s'enchaînent,
+  ce qui rend le découpage manuel bien moins fastidieux et repousse d'autant
+  l'intérêt d'un découpage deviné, cf. § 5)
 - Faut-il proposer une réduction du morceau (ne garder que la mélodie) pour
   les morceaux trop denses, ou est-ce hors périmètre ?
 - Faut-il gérer le doigté sur un morceau, ou le doigté reste-t-il réservé

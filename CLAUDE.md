@@ -59,7 +59,8 @@ src/piano-dom.js            # PARTAGÉ (10, 07) : clavier de réponse en <button
 src/song-library.js         # PARTAGÉ (01, 03) : catalogue songs.json chargé une fois,
                             # filtré par nature — morceau ou exercice (sans DOM)
 src/exercise-mode.js        # mode Exercices : rouleau Canvas étroit + transport + bilan
-                            # + liste des morceaux d'étude (ouverts dans 01)
+                            # + attente des bonnes notes + liste des morceaux
+                            # d'étude (ouverts dans 01)
 src/exercises/catalog.js    # définition des exercices (degrés de gamme, doigtés)
 src/exercises/generate-exercise.js  # motif → notes de la forme du mode Morceau (sans DOM)
 src/exercises/validate-run.js  # verdict d'une série jouée au clavier MIDI (sans DOM)
@@ -123,7 +124,11 @@ déplacer**. `exercises/validate-run.js` juge un passage de morceau exactement
 comme une série d'exercice — les bonnes notes au bon moment, `clean` ou
 `flawed` —, et `song-practice.js` l'appelle tel quel, `stepsToRework` comprise,
 sans qu'il quitte `exercises/`. Un fichier ne déménage que le jour où sa place
-actuelle devient trompeuse, pas au premier emprunt.
+actuelle devient trompeuse, pas au premier emprunt. L'emprunt joue **dans les
+deux sens** depuis le 08/08/2026 : le mode Exercices attend désormais les
+bonnes notes (plan/03 § 20) et appelle pour cela `groupChords()` et
+`nextGroupIndex()` de `song-practice.js`, là où elles sont écrites. Deux modes
+qui se rendent service ne justifient toujours pas un troisième fichier.
 
 Quatrième cas, avec le Programme d'entraînement (04) : **écrire une vue quand
 quelqu'un la demande**. `progress/views.js` ne contient qu'**une** des six vues

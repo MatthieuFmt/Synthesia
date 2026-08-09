@@ -29,18 +29,21 @@ export const MIN_KEY_WIDTH = 36;
 
 // Étendue à dessiner pour un groupe de notes (plan/02-lecture-notes.md § 4) :
 //
-//  - groupe plus étroit qu'une octave : on affiche l'octave Do → Do qui le
-//    contient, ses touches inutilisées servant de leurres ;
+//  - groupe qui tient dans une octave Do → Do : on affiche cette octave, ses
+//    touches inutilisées servant de leurres ;
 //  - groupe plus large : l'étendue exacte du groupe suffit — il compte déjà
 //    plus de dix candidats, et l'arrondir aux Do ajouterait quatre à sept
 //    touches, donc des touches trop fines.
+//
+// Le test porte sur l'octave, pas sur la largeur du groupe : un groupe de moins
+// de douze demi-tons peut enjamber un Do (La4 → Fa5 depuis le 08/08/2026), et
+// l'octave arrondie laisserait alors ses notes hautes hors du clavier — donc
+// injouables.
 export function keyboardRange(pool) {
   const lowest = Math.min(...pool);
   const highest = Math.max(...pool);
-  if (highest - lowest < 12) {
-    const start = lowest - pitchClass(lowest);
-    return { start, end: start + 12 };
-  }
+  const start = lowest - pitchClass(lowest);
+  if (highest <= start + 12) return { start, end: start + 12 };
   return { start: lowest, end: highest };
 }
 

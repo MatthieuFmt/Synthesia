@@ -171,6 +171,12 @@ Les deux groupes d'un même niveau occupent, dès l'Intermédiaire, exactement l
 mêmes positions sur leur portée : ce qui est appris d'une main se relit de
 l'autre au même endroit.
 
+> **Modifié le 08/08/2026 par [10 § 5](10-fluidite.md#un-niveau-ne-réexpose-pas-le-précédent-8-août-2026)**, seul
+> consommateur restant de ces groupes : l'Intermédiaire ne propose plus que les
+> notes **absentes** du Débutant (6 au lieu de 11). Le Débutant et le Difficile
+> sont inchangés, ce dernier rassemblant toujours l'ensemble. La table ci-dessus
+> décrit le mode retiré ; celle de 10 § 5 décrit le code.
+
 ### Clavier des grandes étendues
 
 Le clavier ne peut plus se contenter d'une octave dès l'Intermédiaire. Trois

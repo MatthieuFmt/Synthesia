@@ -213,6 +213,11 @@ Voir [le plan détaillé de la Lecture de notes](02-lecture-notes.md).
   (pratique libre : répétitions, tempo, durée — et aucun pourcentage, puisque
   rien n'est mesuré. Avec un clavier MIDI : notes justes, séries sans faute,
   par main, pas à retravailler et régularité rythmique)
+- [x] Attendre les bonnes notes plutôt que de défiler sans l'élève.
+  (08/08/2026, [§ 20](03-technique-doigts.md) : dès qu'un clavier écoute, le
+  rouleau se fige sur chaque accord — sauf en démonstration. Le bilan compte
+  alors ce que l'attente sait, « du premier coup » et fausses notes, et cesse
+  d'annoncer une précision que le gel rendrait toujours parfaite)
 
 Voir [le plan détaillé des Exercices techniques](03-technique-doigts.md).
 
@@ -383,6 +388,9 @@ Voir [le plan détaillé des Exercices de pédale](09-pedale.md).
 - [x] Produire un bilan : premier coup, précision, meilleure série, à revoir.
 - [x] Ajouter « Les deux mains » avec deux portées défilantes et des arrivées
   alternées, jamais simultanées entre clé de sol et clé de fa.
+- [x] Cesser de faire relire au niveau suivant ce que le précédent a installé.
+  (08/08/2026, [10 § 5](10-fluidite.md) : l'Intermédiaire ne propose plus que
+  les notes absentes du Débutant ; le Difficile, lui, rassemble tout)
 - [ ] Ajouter les altérations défilantes.
 
 Voir [le plan détaillé de la Lecture de notes](10-fluidite.md).

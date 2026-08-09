@@ -190,6 +190,12 @@
               aria-pressed="true" title="Jouer l'autre main en accompagnement">Accomp.</button>
             <button id="practiceLoop" class="btn practice-btn practice-switch" type="button"
               aria-pressed="true" title="Répéter le passage en boucle">Boucle</button>
+            <!-- Reprendre le tour en cours sans attendre la fin de la boucle :
+                 une fausse note en milieu de passage se rattrape tout de suite. -->
+            <button id="practiceRestart" class="btn practice-btn" type="button"
+              aria-label="Revenir au début du passage"
+              title="Revenir au début du passage"
+            ><span aria-hidden="true">⏮</span><span class="practice-btn-label">Au début</span></button>
             <button id="practiceWait" class="btn practice-btn practice-switch" type="button"
               aria-pressed="false" title="Attendre la bonne note avant de continuer">Attente</button>
           </div>

@@ -50,6 +50,12 @@ import {
   MIN_REPETITIONS,
 } from "./exercises/generate-exercise.js";
 import { summarizeMidiRun, validateRepetition } from "./exercises/validate-run.js";
+// Le mode Attente de 06 découpe déjà un flux de notes en accords à jouer d'un
+// coup : c'est exactement ce qu'il faut ici, et `song-practice.js` n'a rien de
+// propre au mode Morceau dans ces deux fonctions. On l'appelle où il est, comme
+// 06 appelle `exercises/validate-run.js` sans le déménager (CLAUDE.md,
+// « réutiliser sans déplacer »).
+import { groupChords, nextGroupIndex } from "./song-practice.js";
 import { midiInput } from "./midi-input.js";
 import { createProgressStore } from "./progress/store.js";
 import { lastSessionContext } from "./progress/review.js";
@@ -71,6 +77,7 @@ const COLORS = {
   leftHandDark: "#177a40",
   active: "#ffffff",
   cursor: "#ffae57",
+  wrongKey: "#f87171", // fausse note : signalée, sans rien changer d'autre (même teinte qu'en 06)
   finger: "#0b1220", // chiffre écrit **dans** la note, sur sa couleur claire
   fingerOutside: "#e6edf3", // chiffre écrit à côté, sur le fond du rouleau
   fingerOutsideBg: "rgba(13, 17, 23, .82)", // pastille derrière, pour rester lisible
@@ -86,6 +93,7 @@ const MIN_PIXELS_PER_BEAT = 26;
 const MAX_PIXELS_PER_BEAT = 120;
 
 const KEY_PRESS_MS = 220;
+const WRONG_FLASH_MS = 320; // fausse note : assez long pour être vu, assez court pour ne pas gêner
 const END_TAIL_S = 0.4; // laisse la dernière note finir de sonner avant le bilan
 
 // Un cran de métronome mécanique. Le bilan le **propose**, il ne l'applique
@@ -178,6 +186,11 @@ function createModeState() {
     // reçu, donc rien n'est mesuré et rien n'est affiché.
     midi: null,        // { stopNotes, played: [], reports: [] }
 
+    // Mode Attente (plan/03 § 20, 08/08/2026). Toujours actif dès que les notes
+    // sont reçues : le rouleau se fige sur chaque note ou accord attendu et ne
+    // repart que sur les bonnes touches.
+    wait: createWaitState(),
+
     currentTime: 0,    // position sur la timeline commune (0 = 1er temps du décompte)
     isPlaying: false,
     // Mis en pause *par l'utilisateur*. Distinct de `isPlaying`, faux aussi
@@ -200,6 +213,21 @@ function createModeState() {
     timers: new Set(),
     ui: null,
     layout: null,
+  };
+}
+
+function createWaitState() {
+  return {
+    active: false,
+    gates: [],          // accords attendus, dans l'ordre : { time, midis, notes }
+    next: -1,           // index du prochain accord à attendre, -1 = plus aucun
+    current: null,      // { index, repetition, fails } pendant le gel
+    remaining: null,    // notes de l'accord encore à jouer
+    wrongKeys: new Set(),
+    firstTry: 0,        // accords passés sans une seule fausse note
+    passed: 0,
+    wrongByRepetition: new Map(), // fausses notes, série par série
+    errorsByStep: new Map(),      // où ça a coincé : { step, errors, pitches }
   };
 }
 
@@ -519,7 +547,7 @@ function renderToggles() {
       "p",
       "ex-hint",
       state.settings.demo
-        ? "Démonstration : l'application joue les notes, tu écoutes ou tu suis."
+        ? "Démonstration : l'application joue les notes, tu écoutes ou tu suis — elle ne t'attend pas."
         : "Démonstration coupée : à toi de jouer, l'application ne sonne pas les notes."
     )
   );
@@ -560,16 +588,20 @@ function renderMidiChoice() {
     })
   );
   group.appendChild(row);
-  group.appendChild(
-    el(
-      "p",
-      "ex-hint",
-      state.settings.validate
-        ? `Notes lues sur « ${midi.activeDeviceName} » : le bilan dira lesquelles sont passées.`
-        : "Vérification coupée : le bilan ne dira rien de tes notes, comme en pratique libre."
-    )
-  );
+  group.appendChild(el("p", "ex-hint", midiHintText(midi)));
   return group;
+}
+
+// Ce que le clavier change réellement, dit avant de commencer : c'est la même
+// case qui fait vérifier les notes **et** attendre le rouleau (plan/03 § 20).
+function midiHintText(midi) {
+  if (!state.settings.validate) {
+    return "Vérification coupée : le rouleau défile seul et le bilan ne dira rien de tes notes, comme en pratique libre.";
+  }
+  if (state.settings.demo) {
+    return `Notes lues sur « ${midi.activeDeviceName} ». En démonstration, le rouleau ne t'attend pas : c'est l'application qui joue.`;
+  }
+  return `Notes lues sur « ${midi.activeDeviceName} » : le rouleau s'arrête sur chaque note et ne repart que quand tu l'as jouée juste.`;
 }
 
 // ----------------------------------------------------------------------------
@@ -700,6 +732,9 @@ function beginRun() {
   state.startedAt = Date.now();
 
   startMidiCapture();
+  // Les portes de l'attente se construisent après la capture : c'est elle qui
+  // dit si des notes seront reçues, donc si l'attente s'applique.
+  buildGates();
 
   state.practice = state.progress.openSession(exerciseFeature.id, {
     exerciseId: exercise.id,
@@ -711,8 +746,11 @@ function beginRun() {
     metronome: state.settings.metronome,
     demo: state.settings.demo,
     // Ce qui a réellement servi à juger, pas ce qui était demandé : une séance
-    // relue plus tard doit savoir si ses notes ont été vues.
+    // relue plus tard doit savoir si ses notes ont été vues, et si le rouleau
+    // l'a attendue — une série jouée en attente n'a pas la même valeur qu'une
+    // série jouée au fil du métronome.
     validated: state.midi !== null,
+    wait: state.wait.active,
   });
 
   renderExercise();
@@ -950,6 +988,7 @@ function draw() {
   drawKeyboard(w, h);
   drawPlayhead(w);
   drawCountIn(w, keyboardTop);
+  drawWaitBanner(w, keyboardTop);
 }
 
 function drawBlackColumns(h) {
@@ -1119,6 +1158,11 @@ function drawKeyboard(w, h) {
       roundRectBottom(g.x + 0.5, whiteTop, g.width - 1, whiteHeight, 4);
       ctx.fill();
     }
+    if (state.wait.wrongKeys.has(midi)) {
+      ctx.fillStyle = COLORS.wrongKey;
+      roundRectBottom(g.x + 0.5, whiteTop, g.width - 1, whiteHeight, 4);
+      ctx.fill();
+    }
   }
 
   // Nom de chaque blanche : l'étendue est courte, autant la nommer entièrement
@@ -1145,6 +1189,11 @@ function drawKeyboard(w, h) {
     ctx.fill();
     if (state.pressedKeys.has(midi)) {
       ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
+      roundRectBottom(g.x, whiteTop, g.width, blackHeight, 3);
+      ctx.fill();
+    }
+    if (state.wait.wrongKeys.has(midi)) {
+      ctx.fillStyle = COLORS.wrongKey;
       roundRectBottom(g.x, whiteTop, g.width, blackHeight, 3);
       ctx.fill();
     }
@@ -1194,6 +1243,39 @@ function drawCountIn(w, keyboardTop) {
   ctx.fillText("Prépare ta main", w / 2, keyboardTop / 2 + 52);
   ctx.textAlign = "left";
   ctx.textBaseline = "alphabetic";
+}
+
+// Mode Attente : dire pourquoi le rouleau ne bouge plus, et quelles notes il
+// réclame encore. Un rouleau figé sans explication passe pour un plantage — et
+// les touches attendues sont déjà allumées sur le clavier, puisqu'elles sont à
+// la ligne de lecture.
+function drawWaitBanner(w, keyboardTop) {
+  const wait = state.wait;
+  if (!wait.current) return;
+
+  const text = `En attente de ${noteNames(wait.remaining)}`;
+  ctx.font = "600 14px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  const width = ctx.measureText(text).width + 24;
+  const height = 26;
+  const y = Math.max(4, keyboardTop / 2 - height / 2);
+  ctx.fillStyle = COLORS.fingerOutsideBg;
+  roundRect(w / 2 - width / 2, y, width, height, height / 2);
+  ctx.fill();
+  ctx.fillStyle = COLORS.countIn;
+  ctx.fillText(text, w / 2, y + height / 2);
+
+  ctx.textAlign = "left";
+  ctx.textBaseline = "alphabetic";
+}
+
+function noteNames(midis) {
+  return [...midis]
+    .sort((a, b) => a - b)
+    .map((midi) => `${noteDegreeName(midi)}${octaveOf(midi)}`)
+    .join(" + ");
 }
 
 function drawImmediately() {
@@ -1351,6 +1433,11 @@ function tick(frameTime) {
   if (!state.isPlaying) return;
 
   state.currentTime = Math.max(0, Tone.Transport.seconds);
+
+  // Mode Attente : le rouleau se fige sur l'accord dû et rend la main. Il ne
+  // repartira que sur les bonnes notes (`leaveWait`), pas à l'image suivante.
+  if (enterWaitIfDue(state.currentTime)) return;
+
   recordCompletedRepetitions();
 
   const reachedEnd = state.currentTime >= state.run.endTime + END_TAIL_S;
@@ -1392,6 +1479,23 @@ function recordRepetition(index) {
     repetition: index,
   };
 
+  // En mode Attente, il n'y a rien à apparier : toutes les notes attendues ont
+  // été jouées, sinon la série ne serait pas finie. Ce que la série apprend,
+  // c'est le nombre de fausses notes qu'il a fallu pour y arriver — et le
+  // timing n'a pas de sens quand c'est l'élève qui donne le départ de chaque
+  // note (`meanFraction: null`, comme une séance sans mesure).
+  if (state.wait.active) {
+    const wrong = state.wait.wrongByRepetition.get(index) ?? 0;
+    const total = state.run.notes.filter((note) => note.repetition === index).length;
+    state.practice?.record({
+      type: "run",
+      target,
+      outcome: wrong === 0 ? "clean" : "flawed",
+      given: { correct: total, total, extras: wrong, meanFraction: null },
+    });
+    return;
+  }
+
   const report = validateSeries(index);
   if (!report) {
     state.practice?.record({ type: "repetition", target, outcome: "none" });
@@ -1430,6 +1534,159 @@ function finishRun() {
 }
 
 // ----------------------------------------------------------------------------
+//  Mode Attente (plan/03 § 20)
+//
+//  Le rouleau se fige sur chaque note — ou chaque accord — et ne repart que
+//  quand elle est réellement jouée. Ce n'est pas un réglage : dès que
+//  l'application reçoit les notes, elle attend. Un exercice technique se joue
+//  juste ou ne se joue pas, et défiler sans l'élève n'apprend rien.
+//
+//  Deux exceptions, pour ne pas rendre le mode inutilisable :
+//
+//   - **sans clavier qui écoute**, rien ne peut ouvrir la porte : la pratique
+//     libre reste le fonctionnement normal (plan/03 § 3, plan/F2 § 7 — le MIDI
+//     est toujours une amélioration optionnelle, jamais un prérequis) ;
+//   - **en démonstration**, c'est l'application qui joue : attendre l'élève
+//     n'aurait aucun sens.
+//
+//  Le gel se fait sur le Transport, comme dans le mode Morceau : c'est lui qui
+//  tient l'horloge, et le métronome comme le rouleau s'arrêtent avec lui.
+// ----------------------------------------------------------------------------
+function waitApplies() {
+  return state.midi !== null && !state.settings.demo;
+}
+
+function buildGates() {
+  const wait = createWaitState();
+  state.wait = wait;
+  if (!waitApplies()) return;
+
+  // Les notes sont déjà triées par temps : un accord est un paquet de notes
+  // attaquées ensemble, main gauche et main droite comprises.
+  wait.active = true;
+  wait.gates = groupChords(state.run.notes);
+  wait.next = nextGroupIndex(wait.gates, state.currentTime, -1e-3);
+}
+
+// Vrai si l'attente tient le rouleau : `tick()` s'arrête alors là.
+function enterWaitIfDue(time) {
+  const wait = state.wait;
+  if (!wait.active) return false;
+
+  // Reprise après une pause de l'utilisateur : l'attente était toujours en
+  // cours, et les notes déjà jouées de l'accord le restent. Il faut re-figer le
+  // Transport, que `play()` vient de relancer.
+  if (wait.current) {
+    freeze(wait.gates[wait.current.index].time);
+    return true;
+  }
+
+  const index = wait.next;
+  if (index < 0 || index >= wait.gates.length) return false;
+  const gate = wait.gates[index];
+  if (time < gate.time) return false;
+
+  wait.current = { index, repetition: gate.notes[0].repetition ?? 1, fails: 0 };
+  wait.remaining = new Set(gate.midis);
+  freeze(gate.time);
+  return true;
+}
+
+// Fige le rouleau exactement sur l'attaque de l'accord, plutôt que sur la
+// fraction d'image de dépassement. C'est le Transport qui tient l'horloge :
+// l'arrêter arrête du même coup le métronome et l'animation.
+function freeze(time) {
+  state.currentTime = time;
+  Tone.Transport.pause();
+  Tone.Transport.seconds = time;
+  if (state.animationFrame !== null) {
+    cancelAnimationFrame(state.animationFrame);
+    state.animationFrame = null;
+  }
+  syncRunUI();
+  drawImmediately();
+}
+
+// Reprend le défilement là où il s'était arrêté.
+function leaveWait() {
+  const wait = state.wait;
+  if (!wait.current) return;
+
+  wait.passed++;
+  if (wait.current.fails === 0) wait.firstTry++;
+  wait.next = wait.current.index + 1;
+  wait.current = null;
+  wait.remaining = null;
+  syncRunUI();
+
+  if (!state.isPlaying) {
+    drawImmediately();
+    return;
+  }
+  Tone.Transport.seconds = state.currentTime;
+  Tone.Transport.start();
+  state.lastVisualFrame = -Infinity;
+  if (state.animationFrame !== null) cancelAnimationFrame(state.animationFrame);
+  state.animationFrame = requestAnimationFrame(tick);
+}
+
+// Une note jouée par l'utilisateur, d'où qu'elle vienne : clavier physique ou
+// touches du rouleau. Hors attente, elle n'a rien à ouvrir — l'appelant l'a
+// déjà fait sonner et allumée sur le clavier.
+function notePlayed(midi) {
+  const wait = state.wait;
+  if (!wait.current) return;
+
+  // La bonne note ouvre la porte ; une fausse est signalée sans faire reculer
+  // l'exercice ni passer la note (même règle qu'en 06 § 7).
+  if (wait.remaining.delete(midi)) {
+    if (wait.remaining.size === 0) leaveWait();
+    else scheduleDraw();
+    return;
+  }
+
+  wait.current.fails++;
+  recordWrongPress(midi);
+  flashKey(wait.wrongKeys, midi, WRONG_FLASH_MS);
+}
+
+// Une fausse note s'inscrit sur la série en cours — pour le verdict de la
+// série — et sur le pas du motif — pour le « À retravailler » du bilan. Les
+// hauteurs retenues sont celles **attendues**, pas celle jouée : ce qu'on doit
+// retravailler est l'accord, pas le doigt qui a glissé.
+function recordWrongPress(midi) {
+  const wait = state.wait;
+  const { repetition, index } = wait.current;
+  wait.wrongByRepetition.set(repetition, (wait.wrongByRepetition.get(repetition) ?? 0) + 1);
+
+  const gate = wait.gates[index];
+  const step = gate.notes[0].step ?? 0;
+  if (!wait.errorsByStep.has(step)) {
+    wait.errorsByStep.set(step, { step, errors: 0, pitches: new Set(gate.midis) });
+  }
+  wait.errorsByStep.get(step).errors++;
+}
+
+// Ce que l'attente a réellement mesuré. `null` quand elle n'a pas servi : le
+// bilan ne montre alors rien plutôt que des zéros trompeurs.
+function waitSummary() {
+  const wait = state.wait;
+  if (!wait.active || wait.passed === 0) return null;
+
+  const wrong = [...wait.wrongByRepetition.values()].reduce((sum, n) => sum + n, 0);
+  const toRework = [...wait.errorsByStep.values()]
+    .sort((a, b) => b.errors - a.errors || a.step - b.step)
+    .slice(0, 2)
+    .map((entry) => ({
+      step: entry.step,
+      errors: entry.errors,
+      label: noteNames(entry.pitches),
+    }));
+
+  return { passed: wait.passed, firstTry: wait.firstTry, wrong, toRework };
+}
+
+// ----------------------------------------------------------------------------
 //  Capture des notes du clavier physique
 //
 //  Les notes reçues sont ramenées sur l'horloge de l'exercice. L'horodatage du
@@ -1445,6 +1702,18 @@ function startMidiCapture() {
   capture.stopNotes = midiInput.onNote((event) => {
     if (event.type !== "noteon") return;
     if (!state || state.stopped || !state.isPlaying) return;
+
+    flashKey(state.pressedKeys, event.midi, KEY_PRESS_MS);
+
+    // En mode Attente, l'exercice ne défile plus tout seul : l'instant d'une
+    // note est celui où l'élève ouvre la porte, il ne mesure aucune régularité.
+    // On ne collecte donc rien pour le jugement avance/retard — le bilan dit ce
+    // que l'attente, elle, a réellement vu.
+    if (state.wait.active) {
+      notePlayed(event.midi);
+      return;
+    }
+
     const lateness = Math.max(0, performance.now() - event.timestamp) / 1000;
     capture.played.push({
       midi: event.midi,
@@ -1520,12 +1789,15 @@ function renderSummary() {
 
   // Avec un clavier MIDI, on ajoute ce qui a réellement été mesuré (plan/03 § 9).
   // Sans lui, on dit pourquoi il n'y a rien à ajouter.
+  const waitReport = waitSummary();
   const midiReport =
-    state.midi && state.midi.reports.length > 0
+    !waitReport && state.midi && state.midi.reports.length > 0
       ? summarizeMidiRun(state.midi.reports)
       : null;
 
-  if (midiReport) {
+  if (waitReport) {
+    renderWaitReport(root, waitReport);
+  } else if (midiReport) {
     root.appendChild(el("h2", "ex-subheading", "Tes notes"));
 
     const played = el("ul", "ex-stats");
@@ -1624,6 +1896,54 @@ function renderSummary() {
   state.layout = null;
 }
 
+// ----------------------------------------------------------------------------
+//  Bilan d'une séance en mode Attente
+//
+//  L'attente ne mesure ni précision ni régularité : elle ne laisse pas passer
+//  une note fausse, et c'est l'élève qui donne le départ de chacune. Ce qu'elle
+//  sait dire, en revanche, aucune autre séance ne le sait : combien d'accords
+//  sont sortis **du premier coup**, et lesquels ont résisté.
+// ----------------------------------------------------------------------------
+function renderWaitReport(root, report) {
+  root.appendChild(el("h2", "ex-subheading", "Tes notes"));
+
+  const stats = el("ul", "ex-stats");
+  stats.append(
+    statItem(`${report.firstTry} / ${report.passed}`, "du premier coup"),
+    statItem(
+      `${Math.round((report.firstTry / report.passed) * 100)} %`,
+      "sans hésitation"
+    ),
+    statItem(String(report.wrong), report.wrong > 1 ? "fausses notes" : "fausse note")
+  );
+  root.appendChild(stats);
+
+  root.appendChild(
+    el(
+      "p",
+      "ex-tendency",
+      report.wrong === 0
+        ? "Aucune fausse note : le rouleau ne t'a jamais attendu pour rien."
+        : "Le rouleau t'a attendu à chaque note : la régularité, elle, ne se mesure qu'en jouant au fil du métronome."
+    )
+  );
+
+  if (report.toRework.length > 0) {
+    root.appendChild(el("h2", "ex-subheading", "À retravailler"));
+    const list = el("ul", "ex-review");
+    for (const entry of report.toRework) {
+      list.appendChild(
+        el(
+          "li",
+          "ex-review-item",
+          `Pas ${entry.step + 1} — ${entry.label} : ${entry.errors} fausse${entry.errors > 1 ? "s" : ""} note${entry.errors > 1 ? "s" : ""} avant de passer`
+        )
+      );
+    }
+    root.appendChild(list);
+  }
+}
+
 function statItem(value, label) {
   const item = el("li", "ex-stat");
   item.append(el("span", "ex-stat-value", value), el("span", "ex-stat-label", label));
@@ -1659,21 +1979,31 @@ function formatDuration(seconds) {
 // ----------------------------------------------------------------------------
 async function pressKey(midi) {
   const session = state;
-  session.pressedKeys.add(midi);
-  scheduleDraw();
-  const timer = setTimeout(() => {
-    session.keyPressTimers.delete(timer);
-    if (session.stopped) return;
-    session.pressedKeys.delete(midi);
-    scheduleDraw();
-  }, KEY_PRESS_MS);
-  session.keyPressTimers.add(timer);
+  flashKey(session.pressedKeys, midi, KEY_PRESS_MS);
+  // Une touche du rouleau vaut une note jouée : elle ouvre l'attente comme le
+  // ferait le clavier physique.
+  notePlayed(midi);
 
   try {
     await session.audio.playNote(midi);
   } catch (error) {
     console.error("Impossible de jouer la note.", error);
   }
+}
+
+// Allume une touche un court instant. Le même mécanisme sert à la touche
+// pressée et à la fausse note : deux ensembles, deux couleurs, un seul timer.
+function flashKey(keys, midi, duration) {
+  const session = state;
+  keys.add(midi);
+  scheduleDraw();
+  const timer = setTimeout(() => {
+    session.keyPressTimers.delete(timer);
+    if (session.stopped) return;
+    keys.delete(midi);
+    scheduleDraw();
+  }, duration);
+  session.keyPressTimers.add(timer);
 }
 
 // ----------------------------------------------------------------------------
