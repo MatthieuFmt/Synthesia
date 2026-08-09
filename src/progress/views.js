@@ -14,6 +14,12 @@
 //  souvent confondues, exercices maîtrisés, tempo maximal propre et évolution
 //  par main. Toutes se calculent depuis le journal brut, sans migration.
 //
+//  Deux se sont ajoutées depuis, chacune le jour où quelqu'un l'a demandée :
+//  « ce qui n'a pas été travaillé depuis le plus longtemps » (30/07/2026, pour
+//  le catalogue de 99 exercices) et « le temps réellement pratiqué »
+//  (09/08/2026, pour que le Programme cesse de cocher un bloc de huit minutes
+//  au bout de vingt secondes).
+//
 //  Aucun DOM, aucun Canvas.
 // ============================================================================
 
@@ -94,6 +100,41 @@ export function completedSessions(log, options = {}) {
 export function sessionMinutes(session) {
   if (session.startedAt === null || session.endedAt === null) return null;
   return Math.max(0, Math.round((session.endedAt - session.startedAt) / 60000));
+}
+
+// ----------------------------------------------------------------------------
+//  Temps réellement pratiqué (plan/F3 § 6, huitième vue — 09/08/2026)
+//
+//  Combien de temps a-t-on passé sur une fonctionnalité pendant une fenêtre ?
+//  La somme des durées de séance. Une séance ouverte puis refermée aussitôt
+//  pèse donc zéro, ce qui est exactement le but : le Programme cochait un bloc
+//  de huit minutes dès qu'une séance était allée à son bilan, fût-elle de vingt
+//  secondes (plan/04 § 7).
+//
+//  Les séances **abandonnées comptent ici**, contrairement à
+//  `completedSessions()`. Ce sont deux questions différentes — « est-on allé
+//  jusqu'au bilan ? » se lit sur l'`outcome`, « combien de temps a-t-on
+//  joué ? » sur les bornes — et cette vue ne répond qu'à la seconde : dix
+//  minutes de travail quittées sans bilan restent dix minutes de travail.
+//
+//  Une séance sans ses deux bornes (encore ouverte, ou dont le `session-start`
+//  a été emporté par le plafond du journal) ne dure rien de mesurable : elle est
+//  ignorée plutôt que devinée.
+// ----------------------------------------------------------------------------
+export function practicedMillis(log, options = {}) {
+  let total = 0;
+  for (const session of sessions(log, options)) {
+    if (session.startedAt === null || session.endedAt === null) continue;
+    total += Math.max(0, session.endedAt - session.startedAt);
+  }
+  return total;
+}
+
+// Le même temps, en minutes entières. C'est cette valeur qui est **à la fois**
+// affichée et comparée à la durée d'un bloc : arrondir des deux côtés évite
+// qu'un bloc annoncé « 8 / 8 min » reste obstinément à faire.
+export function practicedMinutes(log, options = {}) {
+  return Math.round(practicedMillis(log, options) / 60000);
 }
 
 // ----------------------------------------------------------------------------

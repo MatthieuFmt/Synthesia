@@ -37,7 +37,7 @@ const SELF_ID = "training";
 // Écouter un morceau n'est pas une séance : c'est le travail d'un passage qui
 // en est une (plan/06, plan/04 § 10).
 const FEATURE_HINTS = {
-  song: "Compte quand un passage est travaillé (bouton Travail).",
+  song: "Le temps compte quand un passage est travaillé (bouton Travail).",
 };
 
 const RECAP_DAYS = 7;
@@ -180,14 +180,22 @@ function renderBlocks(plan) {
 
 function renderBlockItem(block, position) {
   const item = el("li", "tp-item");
-  item.dataset.state = block.done ? "done" : "todo";
+  item.dataset.state = block.done ? "done" : block.started ? "started" : "todo";
 
   const main = el("div", "tp-item-main");
   const head = el("div", "tp-item-head");
   head.append(
     el("span", "tp-item-step", block.done ? "✓" : String(position)),
     el("span", "tp-item-title", featureTitle(block.featureId)),
-    el("span", "tp-item-minutes", `${block.minutes} min`)
+    // Un bloc entamé montre le chemin parcouru : il ne se coche qu'une fois sa
+    // durée réellement pratiquée (plan/04 § 7).
+    el(
+      "span",
+      "tp-item-minutes",
+      block.started
+        ? `${block.practicedMinutes} / ${block.minutes} min`
+        : `${block.minutes} min`
+    )
   );
   main.appendChild(head);
   main.appendChild(el("span", "tp-item-meta", `${block.label} — ${block.why}`));
@@ -196,11 +204,16 @@ function renderBlockItem(block, position) {
   if (hint) main.appendChild(el("span", "tp-item-hint", hint));
 
   const side = el("div", "tp-item-side");
-  side.appendChild(el("span", "tp-item-state", block.done ? "Fait" : "À faire"));
+  side.appendChild(
+    el("span", "tp-item-state", block.done ? "Fait" : block.started ? "En cours" : "À faire")
+  );
 
   // Le bouton reste proposé même quand le bloc est fait : pratiquer plus que
   // prévu ne doit jamais être empêché (plan/04 § 10).
-  const start = button("btn tp-start", block.done ? "Refaire" : "Démarrer");
+  const start = button(
+    "btn tp-start",
+    block.done ? "Refaire" : block.started ? "Continuer" : "Démarrer"
+  );
   onClick(start, () => switchTo(block.featureId));
   side.appendChild(start);
 
@@ -282,8 +295,10 @@ function renderDuration() {
     el(
       "p",
       "tp-note",
-      "La durée reste indicative : rien ne s'arrête tout seul. En dessous de " +
-        "quinze minutes, la séance se réduit aux blocs les plus importants."
+      "Rien ne s'arrête tout seul : un bloc se coche une fois sa durée " +
+        "réellement pratiquée, et tu peux toujours continuer au-delà. En " +
+        "dessous de quinze minutes, la séance se réduit aux blocs les plus " +
+        "importants."
     )
   );
   return section;

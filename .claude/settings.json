@@ -9,7 +9,18 @@
       "Bash(rm -rf profile)",
       "Bash(\"C:/Program Files/Google/Chrome/Application/chrome.exe\" --headless=new --no-sandbox --disable-gpu --window-size=880,620 --virtual-time-budget=20000 --user-data-dir=\"C:/Users/matt1/AppData/Local/Temp/claude/d--Documents-dev-Synthesia/fe0b155b-61e6-47d4-93d6-ae313be583e7/scratchpad/profile\" --screenshot=\"C:\\\\Users\\\\matt1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\d--Documents-dev-Synthesia\\\\fe0b155b-61e6-47d4-93d6-ae313be583e7\\\\scratchpad\\\\exercices2.png\" \"http://localhost:8411/index.html?scenario=shot\")",
       "Bash('C:/Program Files/Google/Chrome/Application/chrome.exe' --headless=new --no-sandbox --disable-gpu --user-data-dir=C:/Users/matt1/AppData/Local/Temp/claude/d--Documents-dev-Synthesia/e57d0c6e-94c3-4ee9-976e-89573bfe4162/scratchpad/profile2 --window-size=1300,760 --virtual-time-budget=20000 '--screenshot=C:\\\\Users\\\\matt1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\d--Documents-dev-Synthesia\\\\e57d0c6e-94c3-4ee9-976e-89573bfe4162\\\\scratchpad\\\\shot.png' http://localhost:8421/_harness/check.html)",
-      "Bash(node check-pools.mjs)"
+      "Bash(node check-pools.mjs)",
+      "Bash(node --experimental-default-type=module verif-coach.mjs)",
+      "Bash(rm -f results.ndjson server.log)",
+      "Bash(node server.js)",
+      "Bash(rm -rf profil)",
+      "Bash(\"C:/Program Files/Google/Chrome/Application/chrome.exe\" --headless=new --no-sandbox --disable-gpu --user-data-dir=\"C:\\\\Users\\\\matt1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\d--Documents-dev-Synthesia\\\\f0940b56-a211-4c6f-b1d6-f202066d7141\\\\scratchpad\\\\profil\" --screenshot=\"C:\\\\Users\\\\matt1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\d--Documents-dev-Synthesia\\\\f0940b56-a211-4c6f-b1d6-f202066d7141\\\\scratchpad\\\\panel.png\" --window-size=760,2400 --virtual-time-budget=8000 \"http://localhost:8457/_harness/panel.html\")",
+      "Bash(rm -f results.ndjson)",
+      "Bash(\"C:/Program Files/Google/Chrome/Application/chrome.exe\" --headless=new --no-sandbox --disable-gpu --user-data-dir=\"C:\\\\Users\\\\matt1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\d--Documents-dev-Synthesia\\\\f0940b56-a211-4c6f-b1d6-f202066d7141\\\\scratchpad\\\\profil\" --screenshot=\"C:\\\\Users\\\\matt1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\d--Documents-dev-Synthesia\\\\f0940b56-a211-4c6f-b1d6-f202066d7141\\\\scratchpad\\\\programme.png\" --window-size=800,1250 --virtual-time-budget=20000 \"http://localhost:8457/_harness/programme.html\")",
+      "Bash(node -e ' *)",
+      "Bash(netstat -ano)",
+      "Bash(taskkill //F //PID 13080)",
+      "Bash(grep -n \"done\\\\`\\\\|en \\\\`done\\\\|abandoned\\\\|indicative\\\\|terminée aujourd\" plan/04-programme-entrainement.md)"
     ]
   }
 }

@@ -77,10 +77,12 @@ export function createTodayPanel({ features, onOpen, onSettings, signal }) {
     const next = plan.nextBlock;
     const go = el("button", "btn today-go");
     go.type = "button";
-    go.textContent =
-      plan.doneCount === 0
-        ? `Commencer · ${next.label}`
-        : `Continuer · ${next.label}`;
+    // « Continuer » dès qu'un bloc a été entamé, même si aucun n'est fini :
+    // reprendre un bloc commencé n'est pas commencer la séance.
+    const begun = plan.doneCount > 0 || plan.blocks.some((block) => block.started);
+    go.textContent = begun
+      ? `Continuer · ${next.label}`
+      : `Commencer · ${next.label}`;
     go.addEventListener("click", () => onOpen(next.featureId), { signal });
     footer.appendChild(go);
     footer.appendChild(
@@ -111,9 +113,18 @@ export function createTodayPanel({ features, onOpen, onSettings, signal }) {
   };
 }
 
+// Ce que la ligne annonce à droite. Un bloc ne se coche qu'une fois sa durée
+// réellement pratiquée (plan/04 § 7) : tant qu'il est en route, on montre le
+// chemin parcouru plutôt qu'une simple durée.
+function blockMeta(block) {
+  if (block.done) return "Fait";
+  if (block.started) return `${block.practicedMinutes} / ${block.minutes} min`;
+  return `${block.minutes} min`;
+}
+
 function renderBlock(block, position, titles, onOpen, signal) {
   const item = el("li", "today-item");
-  item.dataset.state = block.done ? "done" : "todo";
+  item.dataset.state = block.done ? "done" : block.started ? "started" : "todo";
 
   const button = el("button", "today-item-btn");
   button.type = "button";
@@ -128,7 +139,7 @@ function renderBlock(block, position, titles, onOpen, signal) {
     el("span", "today-item-slot", block.label)
   );
 
-  const meta = el("span", "today-item-meta", block.done ? "Fait" : `${block.minutes} min`);
+  const meta = el("span", "today-item-meta", blockMeta(block));
 
   button.append(mark, text, meta);
   item.appendChild(button);

@@ -1804,6 +1804,13 @@ body {
   color: #fff;
 }
 
+/* Bloc entamé mais pas encore fini : ni effacé comme un bloc fait, ni neutre
+   comme un bloc auquel on n'a pas touché. */
+.tp-item[data-state="started"] .tp-item-step {
+  border-color: var(--cursor);
+  color: var(--cursor);
+}
+
 .tp-item-minutes {
   flex: 0 0 auto;
   font-size: 13px;
@@ -1841,7 +1848,8 @@ body {
   color: var(--muted);
 }
 
-.tp-item[data-state="todo"] .tp-item-state {
+.tp-item[data-state="todo"] .tp-item-state,
+.tp-item[data-state="started"] .tp-item-state {
   border-color: rgba(255, 174, 87, .5);
   color: var(--cursor);
 }
@@ -2532,6 +2540,15 @@ body.force-landscape .song-info { margin-top: 6px; font-size: 12px; }
   background: #1f9d55;
   color: #fff;
 }
+
+/* Bloc entamé : la pastille s'allume sans se cocher — le compteur « 5 / 8 min »
+   à droite dit le reste. */
+.today-item[data-state="started"] .today-mark {
+  border-color: var(--cursor);
+  color: var(--cursor);
+}
+
+.today-item[data-state="started"] .today-item-meta { color: var(--cursor); }
 
 .today-item-text {
   flex: 1 1 auto;

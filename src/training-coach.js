@@ -24,9 +24,14 @@
 //  2. **Un bloc trop court n'existe pas.** Sous MIN_BLOCK_MINUTES, on retire
 //     le créneau le moins prioritaire et on redistribue : mieux vaut trois
 //     vrais blocs que quatre miettes.
+//  3. **Un bloc est fait quand il a été joué, pas quand il a été ouvert.** Ce
+//     qui le coche est le temps réellement passé aujourd'hui dans la
+//     fonctionnalité, comparé à la durée du bloc. Ouvrir un morceau et
+//     ressortir aussitôt ne vaut rien ; huit minutes de travail valent le bloc
+//     « Morceau » de huit minutes (plan/04 § 7, révisé le 09/08/2026).
 // ============================================================================
 
-import { completedSessions } from "./progress/views.js";
+import { completedSessions, practicedMinutes } from "./progress/views.js";
 import {
   DEFAULT_DAILY_MINUTES,
   normalizeDailyMinutes,
@@ -185,10 +190,12 @@ export function planDay(
   }
 
   const blocks = allocate(chosen, budget).map((entry) => {
-    const doneToday = completedSessions(log, {
-      featureIds: sessionFeatureIds(entry.featureId),
-      from: dayStart,
-    });
+    const featureIds = sessionFeatureIds(entry.featureId);
+    // Ce qui coche le bloc : le temps passé aujourd'hui, et lui seul. Une
+    // séance terminée reste une information utile (la rotation du § 5 s'en
+    // sert), mais elle ne suffit plus à valider un bloc.
+    const practiced = practicedMinutes(log, { featureIds, from: dayStart });
+    const doneToday = completedSessions(log, { featureIds, from: dayStart });
     const last = doneToday[doneToday.length - 1] ?? null;
     return {
       slotId: entry.slot.id,
@@ -196,7 +203,12 @@ export function planDay(
       why: entry.slot.why,
       featureId: entry.featureId,
       minutes: entry.minutes,
-      done: doneToday.length > 0,
+      practicedMinutes: practiced,
+      remainingMinutes: Math.max(0, entry.minutes - practiced),
+      done: practiced >= entry.minutes,
+      // Commencé mais pas fini : les deux écrans le montrent autrement qu'un
+      // bloc auquel on n'a pas touché.
+      started: practiced > 0 && practiced < entry.minutes,
       doneCount: doneToday.length,
       doneAt: last ? last.endedAt ?? null : null,
     };
@@ -209,7 +221,9 @@ export function planDay(
     dayStart,
     blocks,
     doneCount: blocks.length - remaining.length,
-    remainingMinutes: remaining.reduce((sum, block) => sum + block.minutes, 0),
+    // Le temps qui reste, pas la somme des blocs pas finis : un bloc de huit
+    // minutes déjà travaillé cinq minutes n'en réclame plus que trois.
+    remainingMinutes: remaining.reduce((sum, block) => sum + block.remainingMinutes, 0),
     // Une séance sans aucun bloc n'est pas une séance terminée : c'est un
     // registre vide. L'écran doit le dire autrement.
     complete: blocks.length > 0 && remaining.length === 0,

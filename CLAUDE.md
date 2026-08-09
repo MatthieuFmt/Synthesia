@@ -76,8 +76,9 @@ src/progress/store.js       # PARTAGÉ (F3) : journal d'évènements dans localS
                             # export, compaction (les bornes de séance survivent)
 src/progress/review.js      # PARTAGÉ (F3) : ce qu'il faut faire revenir en priorité —
                             # le plus raté, et le moins vu récemment
-src/progress/views.js       # PARTAGÉ (F3) : les six vues calculées (séances, confusions,
-                            # maîtrise, tempo propre, évolution par main)
+src/progress/views.js       # PARTAGÉ (F3) : les vues calculées (séances, confusions,
+                            # maîtrise, tempo propre, évolution par main, ancienneté,
+                            # temps réellement pratiqué)
 src/progress-mode.js        # écran Progression (F3 étape E) : vues + export/effacement ;
                             # n'écrit jamais de séance au journal
 src/music.js                # PARTAGÉ : noms latins, hauteurs MIDI, positions sur portée
@@ -142,6 +143,14 @@ La refonte du 27/07/2026 au soir — le programme est désormais **écrit par
 l'application** pour un budget quotidien, plus composé par l'utilisateur — n'a
 pas davantage demandé de vue nouvelle : la rotation « la moins vue récemment »
 se lit avec `completedSessions(log, { featureIds, to })`, qui existait déjà.
+
+La correction du 09/08/2026 confirme la règle par l'autre bout : le Programme
+cochait un bloc de huit minutes dès qu'une séance était allée à son bilan,
+fût-elle de vingt secondes. Il a fallu une vue de plus — `practicedMillis()`,
+le temps réellement passé — mais **aucune donnée nouvelle** (les bornes de
+séance étaient là depuis le premier jour) et **aucune fonctionnalité
+modifiée**, pour la troisième fois. Une bonne vue s'écrit tard ; un bon format
+d'évènement se fige tôt.
 
 Cinquième cas, avec l'Entraînement de l'oreille (07) : **extraire sans changer
 la surface**. `session-engine.js` et `piano-dom.js` sont sortis de 02 le jour où
