@@ -239,13 +239,14 @@ function renderRun() {
 
   const status = el("div", "fl-status");
   const progress = el("span", "fl-progress");
+  const noteName = el("span", "fl-note-name");
   const streak = el("span", "fl-streak");
   const meta = el(
     "span",
     "fl-meta",
     `${runClefLabel(state.run)} · ${state.run.notesPerMinute} notes/min`
   );
-  status.append(progress, streak, meta);
+  status.append(progress, noteName, streak, meta);
 
   const canvas = el("canvas", "fl-canvas");
   canvas.setAttribute(
@@ -286,6 +287,7 @@ function renderRun() {
 
   state.ui = {
     progress,
+    noteName,
     streak,
     instruction,
     feedback,
@@ -514,6 +516,9 @@ function pressKey(midi) {
   const note = run.notes[index];
 
   if (midi === note.midi) {
+    const key = state.piano.key(midi);
+    key?.classList.add("is-correct");
+    setTimeout(() => key?.classList.remove("is-correct"), 400);
     resolveNote(index, "correct");
     return;
   }
@@ -525,7 +530,9 @@ function pressKey(midi) {
   const key = state.piano.key(midi);
   key?.classList.add("is-wrong");
   setTimeout(() => key?.classList.remove("is-wrong"), 300);
-  state.ui.feedback.textContent = `Ce n'est pas ${noteDegreeName(midi)}.`;
+  const expectedName = `${noteDegreeName(note.midi)}${octaveOf(note.midi)}`;
+  const playedName = `${noteDegreeName(midi)}${octaveOf(midi)}`;
+  state.ui.feedback.textContent = `${playedName} — Non, il faut jouer ${expectedName}.`;
   state.ui.feedback.dataset.status = "wrong";
   refreshStatus();
 
@@ -551,12 +558,13 @@ function resolveNote(index, status) {
     if (note.wrongPresses === 0) run.firstTry++;
     run.streak++;
     run.bestStreak = Math.max(run.bestStreak, run.streak);
-    state.ui.feedback.textContent = "";
-    state.ui.feedback.dataset.status = "";
+    const name = `${noteDegreeName(note.midi)}${octaveOf(note.midi)}`;
+    state.ui.feedback.textContent = `${name} — Bien !`;
+    state.ui.feedback.dataset.status = "correct";
   } else {
     run.missed++;
     run.streak = 0;
-    state.ui.feedback.textContent = `Manquée : c'était ${noteDegreeName(note.midi)}.`;
+    state.ui.feedback.textContent = `Manquée : c'était ${noteDegreeName(note.midi)}${octaveOf(note.midi)}.`;
     state.ui.feedback.dataset.status = "wrong";
   }
 
@@ -588,7 +596,19 @@ function refreshStatus() {
   const ui = state.ui;
   if (!ui) return;
   ui.progress.textContent = `${run.correct + run.missed} / ${run.notes.length}`;
+  ui.noteName.textContent = runNoteName();
   ui.streak.textContent = `Série : ${run.streak}`;
+}
+
+// Nom de la note attendue, avec octave. Sert d'affichage permanent sur l'écran
+// d'exercice, sous le Canvas : l'élève voit la portée ET le nom écrit (plan/02
+// § 5, « Le nom de la note est toujours lisible »).
+function runNoteName() {
+  const run = state.run;
+  if (!run || run.finished) return "";
+  const expected = run.notes.find((n) => n.status === "pending");
+  if (!expected) return "";
+  return `${noteDegreeName(expected.midi)}${octaveOf(expected.midi)}`;
 }
 
 // ----------------------------------------------------------------------------

@@ -2337,6 +2337,15 @@ body.force-landscape .song-info { margin-top: 6px; font-size: 12px; }
 
 .fl-progress { font-weight: 600; color: var(--text); }
 
+/* Nom de la note attendue : affiché en permanence sous le Canvas, en gros et
+   centré — l'élève voit la portée ET le nom écrit (plan/02 § 5). */
+.fl-note-name {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--cursor);
+  font-variant-numeric: tabular-nums;
+}
+
 /* La portée défilante : une bande Canvas, mêmes couleurs papier que les
    portées SVG de 02 et 08. */
 .fl-canvas {
@@ -2355,6 +2364,7 @@ body.force-landscape .song-info { margin-top: 6px; font-size: 12px; }
 }
 
 .fl-feedback { min-height: 22px; margin: 0; font-size: 14px; color: var(--muted); }
+.fl-feedback[data-status="correct"] { color: #4ade80; }
 .fl-feedback[data-status="wrong"] { color: #f87171; }
 
 .fl-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
@@ -2441,6 +2451,7 @@ body.force-landscape .song-info { margin-top: 6px; font-size: 12px; }
   .fl-lede { display: none; }
   .fl-canvas { height: 130px; }
   .fl-keyboard { height: 104px; }
+  .fl-note-name { font-size: 18px; }
 }
 
 @media (orientation: landscape) and (max-height: 520px) {
@@ -2448,6 +2459,7 @@ body.force-landscape .song-info { margin-top: 6px; font-size: 12px; }
   .fl-lede { display: none; }
   .fl-canvas { height: 110px; }
   .fl-keyboard { height: 92px; }
+  .fl-note-name { font-size: 16px; }
 }
 
 /* ============================================================
