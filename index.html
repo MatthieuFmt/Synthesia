@@ -70,6 +70,21 @@
              y compris sur petit écran. -->
         <div class="song-main-controls">
           <div class="controls">
+            <!-- Bluetooth compact : même action que le panneau de l'accueil,
+                 mais en icône pour ne pas allonger la barre du morceau. -->
+            <button
+              id="songBluetoothBtn"
+              class="btn icon-btn song-bluetooth-btn"
+              type="button"
+              aria-pressed="false"
+              aria-label="Connecter un clavier Bluetooth"
+              title="Connecter un clavier Bluetooth"
+            >
+              <svg class="toolbar-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m7 7 10 10-5 5V2l5 5L7 17" />
+              </svg>
+            </button>
+
             <select id="songSelect" class="song-select">
               <option value="">Bibliothèque de morceaux…</option>
             </select>
@@ -122,7 +137,8 @@
             </button>
           </div>
 
-          <!-- Barre de transport : lecture / curseur de position -->
+          <!-- Barre de transport : lecture / curseur de position.
+               En sous-mode Travail, la lecture reste allumée. -->
           <div class="transport">
             <button id="playBtn" class="btn play-btn" aria-label="Lecture / Pause">
               ▶
@@ -141,10 +157,10 @@
         </div>
 
         <!-- =================================================================
-             Sous-mode Travail : passages, main travaillée, boucle, attente et
-             tempo de travail (plan/06 § 10). Cette ligne n'apparaît que
-             lorsque le bouton Travail est enfoncé : l'écran de lecture simple
-             ne doit pas en être surchargé.
+             Sous-mode Travail : passages et main travaillée (plan/06 § 10).
+             Boucle, accompagnement et attente sont toujours actifs : ils
+             n'ont pas de bouton. Cette ligne n'apparaît que lorsque le
+             bouton Travail est enfoncé.
              ============================================================== -->
         <div id="practiceBar" class="practice-bar" hidden>
           <div class="practice-group">
@@ -186,18 +202,12 @@
           </div>
 
           <div class="practice-group">
-            <button id="practiceAccompany" class="btn practice-btn practice-switch" type="button"
-              aria-pressed="true" title="Jouer l'autre main en accompagnement">Accomp.</button>
-            <button id="practiceLoop" class="btn practice-btn practice-switch" type="button"
-              aria-pressed="true" title="Répéter le passage en boucle">Boucle</button>
             <!-- Reprendre le tour en cours sans attendre la fin de la boucle :
                  une fausse note en milieu de passage se rattrape tout de suite. -->
             <button id="practiceRestart" class="btn practice-btn" type="button"
               aria-label="Revenir au début du passage"
               title="Revenir au début du passage"
             ><span aria-hidden="true">⏮</span><span class="practice-btn-label">Au début</span></button>
-            <button id="practiceWait" class="btn practice-btn practice-switch" type="button"
-              aria-pressed="false" title="Attendre la bonne note avant de continuer">Attente</button>
           </div>
 
           <!-- Le tempo de travail n'est pas ici : c'est la vitesse de lecture
@@ -205,8 +215,6 @@
                ouvert. En avoir deux copies était un doublon. -->
           <div class="practice-status">
             <span id="practiceStatusText" class="practice-status-text" role="status"></span>
-            <button id="practiceApplyTempo" class="btn practice-btn practice-suggest"
-              type="button" hidden></button>
           </div>
         </div>
       </div>

@@ -68,15 +68,17 @@ src/midi-input.js           # PARTAGÉ : Web MIDI + Bluetooth, appareils, notes
                             # normalisées (sans DOM) — un mode ne voit qu'une liste
 src/midi-bluetooth.js       # transport BLE-MIDI (Web Bluetooth) : connexion et
                             # décodage des paquets ; seul midi-input.js l'appelle
-src/midi-controls.js        # PARTAGÉ : panneau de connexion, affiché sur l'accueil
+src/midi-controls.js        # PARTAGÉ : panneau de connexion (accueil) + icône
+                            # Bluetooth du mode Morceau
 src/progress/store.js       # PARTAGÉ : journal d'évènements dans localStorage,
                             # export, compaction (les bornes de séance survivent)
 src/progress/review.js      # PARTAGÉ : ce qu'il faut faire revenir en priorité —
                             # le plus raté, et le moins vu récemment
 src/progress/views.js       # PARTAGÉ : les vues calculées (séances, temps réellement
                             # pratiqué…)
-src/progress-mode.js        # écran Progression : vues + export/effacement ;
-                            # n'écrit jamais de séance au journal
+src/progress-mode.js        # écran Progression : vues + export/effacement du
+                            # journal ; export et import des passages.
+                            # N'écrit jamais de séance au journal
 src/music.js                # PARTAGÉ : noms latins, hauteurs MIDI, positions sur portée
 src/audio.js                # PARTAGÉ : createAudio() → ensureReady/playNote/dispose
 src/perf.js                 # PARTAGÉ : profil de l'appareil (canvas bridé, audio léger)
@@ -178,7 +180,7 @@ Pas de licence, pas d'authentification, pas de compte utilisateur, pas de télé
 - **Deux transports, une seule liste d'appareils** : le Web MIDI (USB) et le Bluetooth (`midi-bluetooth.js`, Web Bluetooth). Android ne montre **pas** les claviers BLE au Web MIDI : c'est pour ça que le second existe. Un clavier Bluetooth entre dans `midi-input.js` sous la forme d'une entrée Web MIDI (un objet qui porte `onmidimessage`) — aucun mode ne sait, ni n'a à savoir, par où arrive une note.
 - **Contexte sécurisé obligatoire** : servie en `http://` sur une adresse locale, la page n'a **ni** `navigator.requestMIDIAccess` **ni** `navigator.bluetooth`. Le panneau le dit explicitement (`state.environment`) ; ne pas retirer ce diagnostic, c'est la panne la plus fréquente sur tablette.
 - **Contrairement à l'audio, l'état MIDI survit à `stop()`** : une permission accordée et un appareil choisi n'ont aucune raison d'être redemandés à chaque changement de mode. C'est l'exception assumée à la règle « rien ne survit à stop() ».
-- **Un mode s'abonne, il ne configure rien** : `onMidiNote(cb)` rend sa fonction de désabonnement, à appeler dans `stop()`. Le panneau de connexion vit sur l'accueil, pas dans les modes.
+- **Un mode s'abonne, il ne configure rien** : `onMidiNote(cb)` rend sa fonction de désabonnement, à appeler dans `stop()`. Le panneau de connexion vit sur l'accueil. Le mode Morceau n'en reprend que le bouton Bluetooth, en icône.
 - **Le MIDI est toujours optionnel.** Aucun mode ne doit devenir inutilisable sans clavier branché, sans permission, ou dans un navigateur sans Web MIDI.
 - **Seules les notes sont traitées** (pas de CC). `midi-input.js` reste le seul endroit qui écoute le MIDI.
 - **Utiliser `event.timestamp`, pas « maintenant »**, dès qu'un jugement de timing est en jeu : quelques millisecondes séparent l'arrivée d'un message de son traitement, et c'est l'ordre de grandeur que la fenêtre de tolérance mesure. Conversion vers l'horloge du Transport : `Tone.Transport.seconds − (performance.now() − event.timestamp) / 1000`.

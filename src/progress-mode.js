@@ -5,7 +5,9 @@
 //  ce que les vues de `progress/views.js` savent calculer — régularité, notes
 //  confondues, exercices maîtrisés, tempo maximal propre, évolution par main —
 //  et rend à l'utilisateur la maîtrise de ses données : export en fichier
-//  JSON et effacement (plan/F3-suivi-progression.md § 8 et étape E).
+//  JSON et effacement (plan/F3-suivi-progression.md § 8 et étape E). Les
+//  passages du mode Morceau sont un autre journal : ils s'exportent et se
+//  réimportent ici, sans jamais être écrits dans le journal de séances.
 //
 //  Des listes, pas de graphiques : c'est la décision de lisibilité sur mobile
 //  laissée ouverte en F3 § 13, tranchée ici. Rien ne bouge, rien ne défile
@@ -18,6 +20,7 @@
 import { noteDegreeName, octaveOf } from "./music.js";
 import { exerciseById } from "./exercises/catalog.js";
 import { createProgressStore } from "./progress/store.js";
+import { sectionStore } from "./song-practice.js";
 import {
   completedSessions,
   confusedTargets,
@@ -282,7 +285,7 @@ function renderData(log) {
       "p",
       "pg-note",
       `${log.length} évènement${log.length > 1 ? "s" : ""} dans le journal local. ` +
-        "Changer de navigateur ou vider son cache efface tout : l'export est la seule sauvegarde."
+        "Changer de navigateur ou vider son cache efface le journal : l'export est sa seule sauvegarde."
     )
   );
 
@@ -308,7 +311,103 @@ function renderData(log) {
 
   actions.append(exportBtn, clearBtn);
   box.appendChild(actions);
+
+  box.appendChild(el("p", "pg-note", passagesBackupText(sectionStore.passageCount())));
+
+  const passageActions = el("div", "pg-actions");
+  const exportPassages = el("button", "btn pg-secondary", "Exporter les passages");
+  exportPassages.type = "button";
+  onClick(exportPassages, exportSections);
+
+  const importPassages = el("button", "btn pg-secondary", "Importer les passages");
+  importPassages.type = "button";
+  const file = el("input");
+  file.type = "file";
+  file.accept = "application/json,.json";
+  file.className = "visually-hidden";
+  file.tabIndex = -1;
+  file.setAttribute("aria-hidden", "true");
+  onClick(importPassages, () => file.click());
+  file.addEventListener("change", () => readSectionFile(file), {
+    signal: listeners.signal,
+  });
+
+  passageActions.append(exportPassages, importPassages, file);
+  box.appendChild(passageActions);
+
+  if (state.sectionNotice) {
+    box.appendChild(
+      el(
+        "p",
+        state.sectionNotice.tone === "warning" ? "pg-warning" : "pg-note",
+        state.sectionNotice.text
+      )
+    );
+  }
   return box;
+}
+
+function passagesBackupText(count) {
+  const label =
+    count === 0
+      ? "Aucun passage enregistré"
+      : count === 1
+        ? "1 passage enregistré"
+        : `${count} passages enregistrés`;
+  return (
+    `${label}. Vider le cache du navigateur efface cette liste : ` +
+    "le fichier exporté se réimporte ici."
+  );
+}
+
+function exportSections() {
+  const payload = sectionStore.exportPayload();
+  const blob = new Blob([JSON.stringify(payload)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  const day = new Date().toISOString().slice(0, 10);
+  anchor.href = url;
+  anchor.download = `synthesia-passages-${day}.json`;
+  anchor.click();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+function readSectionFile(input) {
+  const file = input.files?.[0];
+  input.value = "";
+  if (!file) return;
+  const reader = new FileReader();
+  reader.addEventListener("load", () => {
+    if (!state) return;
+    let payload = null;
+    try {
+      payload = JSON.parse(String(reader.result));
+    } catch {
+      payload = null;
+    }
+    const result = payload ? sectionStore.importPayload(payload) : { ok: false, reason: "unreadable" };
+    state.sectionNotice = sectionNoticeFor(result);
+    render();
+  });
+  reader.readAsText(file);
+}
+
+function sectionNoticeFor(result) {
+  if (!result.ok) {
+    return {
+      tone: "warning",
+      text:
+        result.reason === "unwritable"
+          ? "Impossible d'enregistrer les passages dans ce navigateur."
+          : "Ce fichier n'est pas un export de passages.",
+    };
+  }
+  if (result.added > 1) return { tone: "note", text: `${result.added} passages repris.` };
+  if (result.added === 1) return { tone: "note", text: "1 passage repris." };
+  if (result.incoming > 0) {
+    return { tone: "note", text: "Ces passages sont déjà enregistrés." };
+  }
+  return { tone: "warning", text: "Ce fichier ne contient aucun passage." };
 }
 
 // Export : un fichier téléchargé, sans serveur — le lien est révoqué après le
@@ -357,6 +456,7 @@ function start(host) {
     progress: createProgressStore(),
     clearArmed: false,
     disarmTimer: null,
+    sectionNotice: null,
   };
 
   // La compaction se fait ici, chez le seul consommateur global du journal :

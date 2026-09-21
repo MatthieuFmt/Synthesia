@@ -5,11 +5,12 @@
 //  et un affichage des notes reçues qui permet de vérifier que la chaîne marche
 //  avant qu'une fonctionnalité s'en serve (plan/F2-entree-midi.md § 14).
 //
-//  Un seul panneau à la fois, sur l'écran d'accueil : c'est là qu'on branche son
+//  Le panneau complet vit sur l'écran d'accueil : c'est là qu'on branche son
 //  clavier avant de choisir un exercice, et l'accueil n'appartient à aucune
-//  fonctionnalité. L'état, lui, survit au changement de mode — une permission
-//  accordée et un appareil choisi n'ont aucune raison d'être redemandés
-//  (cf. l'instance partagée de `midi-input.js`).
+//  fonctionnalité. Le mode Morceau n'en reprend que le bouton Bluetooth, en
+//  icône (`syncBluetoothButton`). L'état, lui, survit au changement de mode —
+//  une permission accordée et un appareil choisi n'ont aucune raison d'être
+//  redemandés (cf. l'instance partagée de `midi-input.js`).
 // ============================================================================
 
 import { midiInput } from "./midi-input.js";
@@ -115,6 +116,38 @@ function statusTone(state) {
   return "pending";
 }
 
+// Ce que partagent le bouton « Bluetooth » de l'accueil et l'icône du mode
+// Morceau : visible seulement si le Bluetooth web existe (ou si un clavier est
+// déjà là), inactif pendant la recherche, et un libellé qui dit l'action ou
+// l'erreur. Le texte visible, lui, reste à la charge de l'appelant.
+export function syncBluetoothButton(button, state) {
+  const bluetooth = state.bluetooth;
+  button.hidden = !bluetooth.supported && !bluetooth.connected;
+  button.disabled = bluetooth.connecting;
+  button.setAttribute("aria-pressed", bluetooth.connected ? "true" : "false");
+  if (bluetooth.error && !bluetooth.connected && !bluetooth.connecting) {
+    button.dataset.tone = "error";
+  } else {
+    delete button.dataset.tone;
+  }
+  const label = bluetooth.connecting
+    ? "Recherche d'un clavier Bluetooth…"
+    : bluetooth.error && !bluetooth.connected
+      ? bluetooth.error
+      : bluetooth.connected
+        ? "Déconnecter le clavier Bluetooth"
+        : "Connecter un clavier Bluetooth";
+  button.title = label;
+  button.setAttribute("aria-label", label);
+}
+
+// Appel direct, sans `await` : le sélecteur Bluetooth exige un geste de
+// l'utilisateur, et le moindre délai avant `requestDevice` le fait échouer.
+export function toggleBluetooth() {
+  if (midiInput.state().bluetooth.connected) midiInput.disconnectBluetooth();
+  else midiInput.connectBluetooth();
+}
+
 export function createMidiPanel({ signal }) {
   const root = el("section", "midi");
   root.setAttribute("aria-label", "Clavier MIDI");
@@ -146,18 +179,9 @@ export function createMidiPanel({ signal }) {
 
   // Android ne montre pas les claviers Bluetooth au Web MIDI : ce bouton ouvre
   // le sélecteur du navigateur, qui parle directement au clavier (F2 § 16).
-  // Appel direct dans l'écouteur, sans `await` avant : le sélecteur exige un
-  // geste de l'utilisateur.
   const bluetooth = el("button", "btn midi-btn", "Bluetooth");
   bluetooth.type = "button";
-  bluetooth.addEventListener(
-    "click",
-    () => {
-      if (midiInput.state().bluetooth.connected) midiInput.disconnectBluetooth();
-      else midiInput.connectBluetooth();
-    },
-    { signal }
-  );
+  bluetooth.addEventListener("click", () => toggleBluetooth(), { signal });
 
   // Liste déroulante plutôt qu'un mini-clavier (décision ouverte de F2 § 13) :
   // un `<select>` natif est la cible tactile la plus sûre, et le nom de
@@ -221,12 +245,8 @@ export function createMidiPanel({ signal }) {
       (state.status === MIDI_STATUS.unsupported && !state.bluetooth.connected);
     refresh.hidden = state.status !== MIDI_STATUS.ready;
 
-    bluetooth.hidden = !state.bluetooth.supported && !state.bluetooth.connected;
-    bluetooth.disabled = state.bluetooth.connecting;
+    syncBluetoothButton(bluetooth, state);
     bluetooth.textContent = state.bluetooth.connected ? "Bluetooth ✕" : "Bluetooth";
-    bluetooth.title = state.bluetooth.connected
-      ? "Déconnecter le clavier Bluetooth"
-      : "Connecter un clavier Bluetooth";
 
     const details = diagnosticText(state);
     diagnostic.textContent = details;

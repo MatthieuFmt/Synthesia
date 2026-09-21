@@ -31,22 +31,20 @@ import { isForcedLandscape, VIEWPORT_CHANGE_EVENT } from "./viewport.js";
 import { PERFORMANCE_PROFILE } from "./perf.js";
 import { createAudio, midiToNote } from "./audio.js";
 import { midiInput } from "./midi-input.js";
+import { syncBluetoothButton, toggleBluetooth } from "./midi-controls.js";
 import { createProgressStore } from "./progress/store.js";
 import {
   clampBounds,
   clampTempoPercent,
-  createSectionStore,
   DEFAULT_SECTION_SECONDS,
-  evaluateRun,
   expectedNotes,
   groupChords,
   HELP_AFTER_FAILS,
   isMastered,
   isWorkedHand,
   nextGroupIndex,
-  notesToRework,
+  sectionStore,
   songIdFromTitle,
-  suggestTempo,
   TEMPO_STEP_PERCENT,
   WHOLE_SONG_ID,
 } from "./song-practice.js";
@@ -190,23 +188,13 @@ function createPracticeState() {
   return {
     enabled: false,
     hand: "both",        // main travaillée
-    accompany: true,     // l'autre main est jouée par l'application, ou masquée
-    loop: true,
-    wait: false,
     songId: null,
     sectionId: null,     // null = morceau entier
     sections: [],
     snappedBound: null,  // "start" | "end" : borne aimantée pendant un glissement
 
     repetitions: 0,      // tours effectués depuis l'entrée dans le passage
-    cleanRuns: 0,
-    flawedStreak: 0,
-    played: [],          // notes jouées pendant le tour en cours (horloge morceau)
-    lastReport: null,    // jugement du dernier tour, ou null si rien n'a été mesuré
-    reports: [],         // tours jugés, pour les notes à revoir (les 20 derniers)
-    suggestion: null,    // proposition de tempo, jamais appliquée d'office
-
-    groups: [],          // accords attendus, pour le mode Attente
+    groups: [],          // accords attendus : le rouleau s'arrête dessus
     nextGroup: -1,
     waiting: null,       // { index, remaining: Set, fails }
     hintKeys: new Set(), // touches montrées après plusieurs échecs
@@ -214,10 +202,6 @@ function createPracticeState() {
     lastTransportTime: 0,
   };
 }
-
-// Le journal des passages survit à la session : il est relu au démarrage du
-// mode et réécrit à chaque modification (plan/06 § 5).
-const sectionStore = createSectionStore();
 
 // Vrai tant que la session en cours peut dessiner. Les rappels différés
 // (requestAnimationFrame, setTimeout, promesses) passent par ici pour ne
@@ -265,9 +249,6 @@ function saveSettings() {
     practice: {
       enabled: practice.enabled,
       hand: practice.hand,
-      accompany: practice.accompany,
-      loop: practice.loop,
-      wait: practice.wait,
       sectionId: practice.sectionId,
     },
   };
@@ -820,8 +801,8 @@ function drawMeasureLines(w, h) {
 }
 
 // Notes : rectangles arrondis colorés par main, surbrillance si en cours.
-// En sous-mode Travail, la main non travaillée s'efface (accompagnement) ou
-// disparaît (plan/06 § 6), et la note attendue est cerclée de blanc.
+// En sous-mode Travail, l'autre main reste visible : elle est jouée en
+// accompagnement. La note attendue est cerclée de blanc.
 function drawNotes(first, afterLast) {
   const h = layout.height;
   const now = state.currentTime;
@@ -836,8 +817,6 @@ function drawNotes(first, afterLast) {
     if (yBottom < -50 || yTop > h + 50) continue;
 
     const worked = !separateHands || n.hand === practice.hand;
-    if (!worked && !practice.accompany) continue;
-
     const g = noteGeometry(n.midi);
     const isRight = n.hand === "right";
     const isActive = now >= n.time && now <= n.endTime;
@@ -1159,14 +1138,9 @@ function computeActiveKeys() {
   );
   const afterLast = upperBound(state.song.notes, now, noteStart);
   const practice = state.practice;
-  const separateHands = practice.enabled && practice.hand !== "both";
   for (let index = first; index < afterLast; index++) {
     const note = state.song.notes[index];
     if (now > note.endTime) continue;
-    // Main masquée : sa touche ne s'allume pas non plus.
-    if (separateHands && note.hand !== practice.hand && !practice.accompany) {
-      continue;
-    }
     // En mode Attente, la touche cherchée ne s'allume pas d'elle-même : ce
     // serait donner la réponse, et l'aide du § 7 n'aurait plus lieu d'être.
     // Elle s'allume dès qu'elle est jouée, ce qui vaut retour immédiat.
@@ -1584,7 +1558,23 @@ function pause({ refresh = true } = {}) {
 }
 
 function togglePlay() {
+  // En Travail, la lecture reste allumée : le bouton ne sert plus à la couper.
+  // S'il est encore à l'arrêt (audio pas prêt, morceau qui vient de changer),
+  // l'appui la relance.
+  if (state.practice.enabled) {
+    if (!state.isPlaying) play();
+    return;
+  }
   state.isPlaying ? pause() : play();
+}
+
+// Le Travail emporte la lecture avec lui. Appelé à l'ouverture du sous-mode
+// et après chaque changement de morceau, tant que le Travail est ouvert.
+function ensurePracticePlaying() {
+  if (!state?.practice.enabled || !state.song || state.isPlaying || state.playPending) {
+    return;
+  }
+  play();
 }
 
 // Change la vitesse de lecture sans perdre la position courante (en temps
@@ -1610,7 +1600,18 @@ function updateSpeedLabel() {
 }
 
 function updatePlayButton() {
-  document.getElementById("playBtn").textContent = state.isPlaying ? "⏸" : "▶";
+  const button = document.getElementById("playBtn");
+  if (!button) return;
+  const practiceOn = Boolean(state?.practice.enabled);
+  // En Travail le bouton reste enfoncé, même pendant le court instant où
+  // l'audio n'a pas encore démarré : c'est un état du sous-mode, pas un
+  // interrupteur.
+  button.textContent = state?.isPlaying || practiceOn ? "⏸" : "▶";
+  button.setAttribute("aria-pressed", String(practiceOn));
+  button.setAttribute(
+    "aria-label",
+    practiceOn ? "Lecture en cours" : "Lecture / Pause"
+  );
 }
 
 // Boucle d'animation pendant la lecture : suit le transport audio
@@ -1634,16 +1635,10 @@ function tick(frameTime) {
       completeRun();
       beginPracticeRun(bounds.startSeconds);
       state.lastVisualFrame = -Infinity;
-    } else if (!practice.loop && transportTime >= bounds.endSeconds - 1e-3) {
-      setTime(bounds.endSeconds, { fromTransport: true });
-      completeRun();
-      pause({ refresh: false });
-      syncTransportUI(true);
-      return;
     }
     practice.lastTransportTime = transportTime;
 
-    if (practice.wait && enterWaitIfDue(transportTime)) return;
+    if (enterWaitIfDue(transportTime)) return;
   }
 
   const reachedEnd = transportTime >= songDuration() - 1e-3;
@@ -1660,7 +1655,22 @@ function tick(frameTime) {
   }
 
   if (reachedEnd) {
-    if (practice.enabled) completeRun();
+    // Un morceau vide n'a pas de début auquel revenir : on s'arrête, sinon
+    // chaque image compterait un tour.
+    if (practice.enabled && bounds.endSeconds > bounds.startSeconds + 1e-2) {
+      // Pas de pause : la lecture fait partie du Travail. On reprend au début
+      // du passage (du morceau entier, s'il n'y a pas de passage).
+      completeRun();
+      const start = bounds.startSeconds;
+      state.currentTime = start;
+      Tone.Transport.seconds = start / state.speed;
+      beginPracticeRun(start);
+      syncTransportUI(true);
+      drawImmediately();
+      state.lastVisualFrame = -Infinity;
+      state.animationFrame = requestAnimationFrame(tick);
+      return;
+    }
     pause({ refresh: false });
     syncTransportUI(true);
     return;
@@ -1671,10 +1681,13 @@ function tick(frameTime) {
 // ============================================================================
 //  Sous-mode Travail — Feature 06
 //
-//  Cinq outils combinables (plan/06 § 4) posés sur le lecteur existant :
-//  passages, main travaillée, boucle, attente de la bonne note et tempo de
-//  travail. Ce qui se calcule sans écran vit dans `song-practice.js` ; ce qui
-//  suit relie ces règles au Transport, au rouleau et à la barre de commandes.
+//  Passages, main travaillée et tempo de travail, posés sur le lecteur
+//  existant (plan/06 § 4). La lecture, la boucle, l'accompagnement et
+//  l'attente ne se coupent pas : le rouleau avance, un passage se répète,
+//  l'autre main est jouée, et l'on s'arrête sur chaque note de la main
+//  travaillée.
+//  Ce qui se calcule sans écran vit dans `song-practice.js` ; ce qui suit
+//  relie ces règles au Transport, au rouleau et à la barre de commandes.
 // ============================================================================
 
 function activeSection() {
@@ -1700,35 +1713,21 @@ function tempoPercent() {
   return Math.round(state.speed * 100);
 }
 
-function targetTempoPercent() {
-  return activeSection()?.targetTempoPercent ?? 100;
-}
-
-// Durée d'un temps, sur l'horloge du morceau (non dilatée par le tempo de
-// travail) : la fenêtre de tolérance reste une fraction de temps, donc la même
-// exigence musicale à 60 % qu'à 100 %.
-function secondsPerBeat() {
-  const bpm = state.song?.meta.bpm || 120;
-  return 60 / bpm;
-}
-
-// Une note est jouée par l'application si elle n'est pas à la charge de
-// l'utilisateur : la main d'accompagnement toujours, la main travaillée
-// seulement hors mode Attente.
+// L'autre main est jouée par l'application. La main travaillée ne l'est pas :
+// c'est l'utilisateur qui la joue, et le rouleau attend sa note.
 function isAudibleNote(note, session) {
   const practice = session.practice;
   if (!practice.enabled) return true;
-  if (!isWorkedHand(note, practice.hand)) return practice.accompany;
-  return !practice.wait;
+  if (!isWorkedHand(note, practice.hand)) return true;
+  return false;
 }
 
-// La boucle n'existe que pour un passage : sur « Morceau entier », il n'y a pas
-// de fin à laquelle revenir. Le réglage reste mémorisé — il se rallume dès
-// qu'un passage est choisi — mais il ne s'applique pas, et c'est ce que disent
-// le bouton grisé et le bilan muet.
+// La boucle est toujours voulue, et elle n'a de sens que pour un passage :
+// sur « Morceau entier », il n'y a pas de fin à laquelle revenir. Le bilan
+// reste muet dans ce cas, faute de tours à compter.
 function isLooping() {
   const practice = state.practice;
-  return practice.enabled && practice.loop && activeSection() !== null;
+  return practice.enabled && activeSection() !== null;
 }
 
 function applyLoopPoints() {
@@ -1756,16 +1755,15 @@ function applyLoopPoints() {
 // ----------------------------------------------------------------------------
 function beginPracticeRun(from = state.currentTime) {
   const practice = state.practice;
-  practice.played = [];
   practice.lastTransportTime = from;
-  practice.nextGroup = practice.wait ? firstGateFrom(from) : -1;
+  practice.nextGroup = practice.enabled ? firstGateFrom(from) : -1;
 }
 
 // Accords attendus du passage, pour la main travaillée uniquement : « les notes
 // de la main d'accompagnement ne bloquent jamais le défilement » (plan/06 § 6).
 function rebuildGates() {
   const practice = state.practice;
-  if (!state.song || !practice.enabled || !practice.wait) {
+  if (!state.song || !practice.enabled) {
     practice.groups = [];
     practice.nextGroup = -1;
     return;
@@ -1840,25 +1838,11 @@ function resumeFrozenPlayback() {
   state.animationFrame = requestAnimationFrame(tick);
 }
 
-// ----------------------------------------------------------------------------
-//  Une note jouée par l'utilisateur (piano à l'écran ou clavier physique)
-//
-//  `lateness` est le retard, en secondes réelles, entre l'instant du message et
-//  celui où il est traité — nul pour un clic. Converti en temps morceau, il
-//  vaut ce retard multiplié par le tempo de travail.
-// ----------------------------------------------------------------------------
-function notePlayed(midi, lateness = 0) {
+// Une note jouée par l'utilisateur, au clavier de l'écran ou au clavier
+// physique. En Travail, seule la note attendue fait avancer le rouleau.
+function notePlayed(midi) {
   const practice = state.practice;
-  if (!practice.enabled) return;
-
-  if (state.isPlaying && !practice.waiting) {
-    practice.played.push({
-      midi,
-      time: Math.max(0, (Tone.Transport.seconds - lateness) * state.speed),
-    });
-  }
-
-  if (!practice.waiting) return;
+  if (!practice.enabled || !practice.waiting) return;
 
   // Mode Attente : la bonne note ouvre la porte, une fausse est signalée sans
   // faire reculer le morceau ni passer la note (plan/06 § 7).
@@ -1897,87 +1881,24 @@ function completeRun() {
   const practice = state.practice;
   if (!practice.enabled || !state.song) return;
   practice.repetitions++;
-
-  const expected = expectedNotes(
-    state.song.notes,
-    sectionBounds(),
-    practice.hand
-  );
-
-  // Sans note reçue, rien n'a été mesuré : le tour est une répétition, pas une
-  // exécution jugée — et aucune précision ne sera affichée (plan/06 § 9).
-  // En mode Attente non plus : on ne peut pas s'y tromper, la porte attend.
-  const measured =
-    !practice.wait && expected.length > 0 && practice.played.length > 0;
-
-  let report = null;
-  if (measured) {
-    report = evaluateRun(expected, practice.played, secondsPerBeat());
-    practice.lastReport = report;
-    // Les notes à revoir se lisent sur plusieurs tours : une note ratée une
-    // fois n'est pas une difficulté, ratée cinq fois si. On garde une fenêtre
-    // glissante plutôt que toute la séance — sur la tablette, une boucle peut
-    // tourner longtemps.
-    practice.reports.push(report);
-    if (practice.reports.length > 20) practice.reports.shift();
-    if (report.outcome === "clean") {
-      practice.cleanRuns++;
-      practice.flawedStreak = 0;
-    } else {
-      practice.flawedStreak++;
-    }
-    practice.suggestion = suggestTempo({
-      tempoPercent: tempoPercent(),
-      outcome: report.outcome,
-      targetPercent: targetTempoPercent(),
-      flawedStreak: practice.flawedStreak,
-    });
-    sectionStore.recordRun(practice.songId, practice.sectionId ?? WHOLE_SONG_ID, {
-      outcome: report.outcome,
-      tempoPercent: tempoPercent(),
-      whole: { endSeconds: songDuration(), targetTempoPercent: 100 },
-    });
-    practice.sections = sectionStore.list(practice.songId);
-  }
-
-  recordRunEvent(report);
+  // La porte attend la bonne note : un tour n'est pas une exécution jugée,
+  // seulement une répétition.
+  recordRunEvent();
   renderPracticeStatus();
 }
 
-// Journal de progression (F3). Une exécution jugée est un `run` en
-// `clean`/`flawed` ; un tour dont rien n'a été mesuré reste une `repetition`
-// en `none`. C'est exactement la distinction déjà faite par les exercices
-// techniques (plan/03 étape D), avec le même vocabulaire.
-function recordRunEvent(report) {
+function recordRunEvent() {
   const practice = state.practice;
-  const target = {
-    songId: practice.songId,
-    sectionId: practice.sectionId ?? WHOLE_SONG_ID,
-    hand: practice.hand,
-    tempoPercent: tempoPercent(),
-    repetition: practice.repetitions,
-  };
-
-  if (!report) {
-    state.practiceLog?.record({ type: "repetition", target, outcome: "none" });
-    return;
-  }
-
   state.practiceLog?.record({
-    type: "run",
-    target,
-    outcome: report.outcome,
-    given: {
-      correct: report.correct,
-      total: report.total,
-      extras: report.extras.length,
-      // L'écart moyen brut, en fraction de temps : les seuils restent à la vue
-      // (plan/F3 § 7).
-      meanFraction:
-        report.timing.meanFraction === null
-          ? null
-          : Math.round(report.timing.meanFraction * 1000) / 1000,
+    type: "repetition",
+    target: {
+      songId: practice.songId,
+      sectionId: practice.sectionId ?? WHOLE_SONG_ID,
+      hand: practice.hand,
+      tempoPercent: tempoPercent(),
+      repetition: practice.repetitions,
     },
+    outcome: "none",
   });
 }
 
@@ -1989,8 +1910,8 @@ function openPracticeLog() {
     sectionId: practice.sectionId ?? WHOLE_SONG_ID,
     hand: practice.hand,
     tempoPercent: tempoPercent(),
-    loop: practice.loop,
-    wait: practice.wait,
+    loop: true,
+    wait: true,
   });
 }
 
@@ -2011,7 +1932,7 @@ function closePracticeLog() {
   // d'entraînement (04).
   log.close(practice.repetitions > 0 ? "done" : "abandoned", {
     repetitions: practice.repetitions,
-    cleanRuns: practice.cleanRuns,
+    cleanRuns: 0,
     tempoPercent: tempoPercent(),
   });
   state.practiceLog = null;
@@ -2049,6 +1970,7 @@ function setPracticeEnabled(enabled) {
   if (state.audio.ready) buildPart(); // la main muette change avec le sous-mode
   renderPracticeBar(); // remesure le canvas : la barre change la hauteur utile
   drawImmediately();
+  if (enabled) ensurePracticePlaying();
 }
 
 // Rejoue le morceau à partir des réglages : appelée après tout changement qui
@@ -2072,22 +1994,6 @@ function setPracticeHand(hand) {
   resumeFrozenPlayback();
   renderPracticeBar();
   scheduleDraw();
-}
-
-function setPracticeAccompany(accompany) {
-  state.practice.accompany = accompany;
-  refreshPracticeAudio({ rebuildGate: false });
-  renderPracticeBar();
-  scheduleDraw();
-}
-
-function setPracticeLoop(loop) {
-  state.practice.loop = loop;
-  // Le bilan ne compte que des tours de boucle : il repart de zéro quand la
-  // boucle démarre, sinon « N tours » désignerait deux choses à la fois.
-  if (loop) resetPracticeCounters();
-  applyLoopPoints();
-  renderPracticeBar();
 }
 
 // Retour immédiat au début du passage travaillé — au début du morceau si aucun
@@ -2121,26 +2027,11 @@ function restartSection() {
   drawImmediately();
 }
 
-function setPracticeWait(wait) {
-  state.practice.wait = wait;
-  leaveWait({ resume: false });
-  refreshPracticeAudio();
-  resumeFrozenPlayback();
-  renderPracticeBar();
-  scheduleDraw();
-}
-
 // Tout ce que le bilan a accumulé sur le passage précédent. Remis à zéro dès
 // que « N tours » cesserait de compter la même chose : autre passage, autre
 // morceau, ou boucle relancée.
 function resetPracticeCounters() {
-  const practice = state.practice;
-  practice.repetitions = 0;
-  practice.cleanRuns = 0;
-  practice.flawedStreak = 0;
-  practice.lastReport = null;
-  practice.reports = [];
-  practice.suggestion = null;
+  state.practice.repetitions = 0;
 }
 
 function setActiveSection(sectionId) {
@@ -2258,6 +2149,7 @@ function renderPracticeBar() {
   const practice = state.practice;
   const toggle = byId("practiceToggle");
   const bar = byId("practiceBar");
+  updatePlayButton();
   if (!toggle || !bar) return;
 
   toggle.setAttribute("aria-pressed", String(practice.enabled));
@@ -2287,22 +2179,6 @@ function renderPracticeBar() {
       "aria-pressed",
       String(button.dataset.hand === practice.hand)
     );
-  }
-  setPressed("practiceAccompany", practice.accompany);
-  // Allumé seulement quand ça boucle vraiment, pas quand c'est seulement voulu.
-  setPressed("practiceLoop", isLooping());
-  setPressed("practiceWait", practice.wait);
-
-  // Sans main séparée, accompagner ou masquer ne veut rien dire.
-  const accompany = byId("practiceAccompany");
-  if (accompany) accompany.disabled = practice.hand === "both";
-
-  const loop = byId("practiceLoop");
-  if (loop) {
-    loop.disabled = !hasSection;
-    loop.title = hasSection
-      ? "Répéter le passage en boucle"
-      : "Choisis un passage pour le répéter en boucle";
   }
 
   // Le retour au début reste actif sans passage : il ramène alors au début du
@@ -2335,24 +2211,16 @@ function renderPracticeBar() {
   syncCanvasSize();
 }
 
-function setPressed(id, pressed) {
-  byId(id)?.setAttribute("aria-pressed", String(pressed));
-}
-
-// Bilan compact du passage : uniquement ce qui a été mesuré (plan/06 § 9).
-//
-// Il ne s'affiche que sous boucle : ce qu'il compte, ce sont des tours du même
-// passage. Hors boucle il n'y a pas de tours, donc rien à dire — sauf
-// l'attente, qui est la seule explication d'un rouleau figé.
+// Bilan du passage en boucle : le nombre de tours, et ce que le journal des
+// passages sait déjà (record, maîtrise). Hors passage, rien à compter — sauf
+// le rouleau figé sur une note.
 function renderPracticeStatus() {
   const text = byId("practiceStatusText");
-  const apply = byId("practiceApplyTempo");
   if (!text) return;
 
   const practice = state.practice;
   if (!isLooping()) {
     text.textContent = practice.waiting ? "en attente de la note…" : "";
-    if (apply) apply.hidden = true;
     syncCanvasSize();
     return;
   }
@@ -2366,16 +2234,6 @@ function renderPracticeStatus() {
   parts.push(
     practice.repetitions === 1 ? "1 tour" : `${practice.repetitions} tours`
   );
-  if (practice.lastReport) {
-    parts.push(`${practice.cleanRuns} propre${practice.cleanRuns > 1 ? "s" : ""}`);
-    const report = practice.lastReport;
-    parts.push(`dernier : ${report.correct}/${report.total}`);
-    const rework = notesToRework(practice.reports, 1)[0];
-    if (rework) parts.push(`à revoir : ${rework.label}`);
-  } else if (practice.repetitions > 0) {
-    // Aucune note reçue : on ne montre aucun pourcentage inventé.
-    parts.push("aucune note reçue — pratique libre");
-  }
   if (entry?.bestCleanTempoPercent) {
     parts.push(`record ${entry.bestCleanTempoPercent} %`);
   }
@@ -2384,20 +2242,6 @@ function renderPracticeStatus() {
   if (practice.waiting) parts.push("en attente de la note…");
 
   text.textContent = parts.join(" · ");
-
-  if (apply) {
-    const suggestion = practice.suggestion;
-    apply.hidden = !suggestion;
-    if (suggestion) {
-      apply.textContent =
-        suggestion.direction === "up"
-          ? `Monter à ${suggestion.percent} %`
-          : `Redescendre à ${suggestion.percent} %`;
-    }
-  }
-
-  // Le bilan peut passer à la ligne en petite largeur : l'en-tête grandit, le
-  // canvas rétrécit.
   syncCanvasSize();
 }
 
@@ -2445,19 +2289,7 @@ function attachPracticeControls(signal) {
     );
   }
 
-  on("practiceAccompany", "click", () =>
-    setPracticeAccompany(!state.practice.accompany)
-  );
-  on("practiceLoop", "click", () => setPracticeLoop(!state.practice.loop));
   on("practiceRestart", "click", restartSection);
-  on("practiceWait", "click", () => setPracticeWait(!state.practice.wait));
-  on("practiceApplyTempo", "click", () => {
-    const suggestion = state.practice.suggestion;
-    if (!suggestion) return;
-    state.practice.suggestion = null;
-    setTempoPercent(suggestion.percent);
-    renderPracticeStatus();
-  });
 }
 
 // ----------------------------------------------------------------------------
@@ -2536,6 +2368,7 @@ function resetForNewSong(label) {
   applyLoopPoints();
   syncTransportUI(true);
   drawImmediately();
+  ensurePracticePlaying();
 }
 
 async function loadMidiFromUrl(url, displayName) {
@@ -2826,7 +2659,18 @@ function attachInteractions(signal) {
     { signal }
   );
 
-  // Raccourci clavier : Espace = play/pause
+  // Un chargement du morceau (ou une restauration du Travail) peut avoir
+  // tenté de lancer la lecture hors d'un geste : le premier appui dans la
+  // page la démarre, puisque le bouton doit rester allumé.
+  window.addEventListener(
+    "pointerdown",
+    () => {
+      if (state.practice.enabled && !state.isPlaying && !state.playPending) play();
+    },
+    { signal }
+  );
+
+  // Raccourci clavier : Espace = play/pause (en Travail, la lecture reste)
   window.addEventListener(
     "keydown",
     (e) => {
@@ -2878,6 +2722,7 @@ function start(host, options) {
 
   attachInteractions(listeners.signal);
   attachPracticeControls(listeners.signal);
+  attachSongBluetooth(listeners.signal);
   attachMidiKeyboard();
   renderPracticeBar();
   resizeCanvas();
@@ -2887,17 +2732,30 @@ function start(host, options) {
 // ----------------------------------------------------------------------------
 //  Clavier physique (fondation F2)
 //
+//  L'icône Bluetooth de la barre reprend le bouton de l'accueil : brancher ou
+//  débrancher sans quitter le morceau. Le reste du panneau (liste, diagnostic)
+//  reste sur l'accueil.
+//
 //  Une note jouée sur le clavier branché doit produire le **même** retour que
 //  la même touche cliquée à l'écran : elle s'allume et elle sonne
-//  (plan/F2 § 7) — sauf en mode Attente, où le piano de l'utilisateur sonne
-//  déjà (voir `echoesPlayedNotes`). C'est tout ce que le mode Morceau fait du
-//  MIDI pour l'instant — savoir si la note était la bonne appartient au travail
-//  guidé de plan/06, et n'est pas décidé ici.
+//  (plan/F2 § 7) — sauf en Travail, où le piano de l'utilisateur sonne
+//  déjà (voir `echoesPlayedNotes`). Savoir si la note était la bonne appartient
+//  au travail guidé de plan/06, et n'est pas décidé ici.
 //
 //  Différence avec le clic : la touche reste allumée tant que la note est
 //  tenue, au lieu de se rallumer pendant 220 ms. Un vrai clavier dit quand on
 //  relâche, une souris ne le dit pas.
 // ----------------------------------------------------------------------------
+function attachSongBluetooth(signal) {
+  const button = document.getElementById("songBluetoothBtn");
+  if (!button) return;
+  button.addEventListener("click", () => toggleBluetooth(), { signal });
+  const render = (midiState) => syncBluetoothButton(button, midiState);
+  const unsubscribe = midiInput.onStateChange(render);
+  signal.addEventListener("abort", unsubscribe, { once: true });
+  render(midiInput.state());
+}
+
 function attachMidiKeyboard() {
   const session = state;
   session.stopMidi = midiInput.onNote((event) => {
@@ -2906,17 +2764,13 @@ function attachMidiKeyboard() {
       releaseKey(event.midi);
       return;
     }
-    // L'horodatage du message est plus juste que l'instant où ce rappel
-    // s'exécute : c'est l'ordre de grandeur que mesure la fenêtre de tolérance
-    // du travail guidé (CLAUDE.md, entrée MIDI).
-    const lateness = Math.max(0, performance.now() - event.timestamp) / 1000;
-    holdKey(event.midi, lateness);
+    holdKey(event.midi);
   });
 }
 
-function holdKey(midi, lateness = 0) {
+function holdKey(midi) {
   const session = state;
-  notePlayed(midi, lateness);
+  notePlayed(midi);
   if (session.pressedKeys.has(midi)) return;
   session.pressedKeys.add(midi);
   scheduleDraw();
@@ -2926,15 +2780,14 @@ function holdKey(midi, lateness = 0) {
   });
 }
 
-// En mode Attente, la note vient d'un vrai piano : elle a déjà sonné sous les
+// En Travail, la note vient d'un vrai piano : elle a déjà sonné sous les
 // doigts. La rejouer ferait entendre la même note deux fois à quelques
 // millisecondes d'écart — le doublon est d'autant plus gênant que c'est
 // justement le mode où l'application se tait sur la main travaillée
 // (`isAudibleNote`). Ne concerne que le clavier physique : une touche cliquée à
 // l'écran n'a pas d'autre source de son que l'application.
 function echoesPlayedNotes(session) {
-  const practice = session.practice;
-  return !(practice.enabled && practice.wait);
+  return !session.practice.enabled;
 }
 
 function releaseKey(midi) {
@@ -3076,9 +2929,6 @@ function restorePracticeSettings(saved) {
   if (saved.hand === "left" || saved.hand === "right" || saved.hand === "both") {
     practice.hand = saved.hand;
   }
-  if (typeof saved.accompany === "boolean") practice.accompany = saved.accompany;
-  if (typeof saved.loop === "boolean") practice.loop = saved.loop;
-  if (typeof saved.wait === "boolean") practice.wait = saved.wait;
   if (practice.sections.some((section) => section.id === saved.sectionId)) {
     practice.sectionId = saved.sectionId;
   }

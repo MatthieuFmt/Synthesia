@@ -269,6 +269,83 @@ function emptyEntry(id, title, startSeconds, endSeconds, targetTempoPercent) {
   };
 }
 
+// Un export ne doit réécrire que des passages que l'application sait relire.
+// Tout le reste (fichier du journal, JSON quelconque) est refusé.
+const SECTION_ID = /^s[1-9]\d{0,5}$/;
+const SONG_ID = /^[a-z0-9-]{1,60}$/;
+const DAY_KEY = /^\d{4}-\d{2}-\d{2}$/;
+const MAX_SECTION_SECONDS = 24 * 60 * 60;
+const FORBIDDEN_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+
+function finiteTempo(value, fallback) {
+  if (value == null || value === "") return fallback;
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  return clampTempoPercent(number);
+}
+
+function cleanRunsOf(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const runs = {};
+  for (const [day, count] of Object.entries(raw)) {
+    if (!DAY_KEY.test(day)) continue;
+    const number = Number(count);
+    if (!Number.isInteger(number) || number < 1 || number > 99) continue;
+    runs[day] = number;
+  }
+  return runs;
+}
+
+function sanitizeSection(raw, songId) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  if (typeof raw.id !== "string" || !SECTION_ID.test(raw.id)) return null;
+  const startSeconds = Number(raw.startSeconds);
+  const endSeconds = Number(raw.endSeconds);
+  if (
+    !Number.isFinite(startSeconds) ||
+    !Number.isFinite(endSeconds) ||
+    startSeconds < 0 ||
+    endSeconds > MAX_SECTION_SECONDS ||
+    endSeconds - startSeconds < MIN_SECTION_SECONDS
+  ) {
+    return null;
+  }
+  const title =
+    typeof raw.title === "string" && raw.title.trim()
+      ? raw.title.trim().slice(0, 80)
+      : "Passage";
+  const entry = emptyEntry(
+    raw.id,
+    title,
+    startSeconds,
+    endSeconds,
+    finiteTempo(raw.targetTempoPercent, 100)
+  );
+  entry.songId = songId;
+  entry.bestCleanTempoPercent = finiteTempo(raw.bestCleanTempoPercent, null);
+  entry.cleanRunsByDate = cleanRunsOf(raw.cleanRunsByDate);
+  return entry;
+}
+
+function sanitizeWhole(raw, songId) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const endSeconds = Number(raw.endSeconds);
+  if (!Number.isFinite(endSeconds) || endSeconds < 0 || endSeconds > MAX_SECTION_SECONDS) {
+    return null;
+  }
+  const entry = emptyEntry(
+    WHOLE_SONG_ID,
+    "Morceau entier",
+    0,
+    endSeconds,
+    finiteTempo(raw.targetTempoPercent, 100)
+  );
+  entry.songId = songId;
+  entry.bestCleanTempoPercent = finiteTempo(raw.bestCleanTempoPercent, null);
+  entry.cleanRunsByDate = cleanRunsOf(raw.cleanRunsByDate);
+  return entry;
+}
+
 export function createSectionStore({
   storage = defaultStorage(),
   now = Date.now,
@@ -418,6 +495,71 @@ export function createSectionStore({
       return writable;
     },
 
+    passageCount() {
+      let count = 0;
+      for (const song of Object.values(songs)) {
+        if (Array.isArray(song?.sections)) count += song.sections.length;
+      }
+      return count;
+    },
+
+    // Copie téléchargeable. Même forme que le stockage, plus la date : un
+    // vidage de cache ne laisse sinon aucune trace des passages.
+    exportPayload() {
+      return {
+        v: STORE_VERSION,
+        exportedAt: now(),
+        songs: JSON.parse(JSON.stringify(songs)),
+      };
+    },
+
+    // Ajoute les passages du fichier qui ne sont pas déjà là. Ceux du
+    // navigateur restent : réimporter un vieux fichier ne doit pas effacer un
+    // passage créé depuis. Importer deux fois le même fichier ne double rien.
+    importPayload(payload) {
+      if (
+        !payload ||
+        typeof payload !== "object" ||
+        payload.v !== STORE_VERSION ||
+        !payload.songs ||
+        typeof payload.songs !== "object" ||
+        Array.isArray(payload.songs)
+      ) {
+        return { ok: false, reason: "unreadable", added: 0, incoming: 0 };
+      }
+
+      let added = 0;
+      let incoming = 0;
+      for (const [songId, raw] of Object.entries(payload.songs)) {
+        if (FORBIDDEN_KEYS.has(songId) || !SONG_ID.test(songId)) continue;
+        if (!raw || typeof raw !== "object" || Array.isArray(raw)) continue;
+
+        const accepted = [];
+        const listed = Array.isArray(raw.sections) ? raw.sections : [];
+        for (const item of listed) {
+          const section = sanitizeSection(item, songId);
+          if (!section) continue;
+          incoming += 1;
+          accepted.push(section);
+        }
+        const whole = sanitizeWhole(raw.whole, songId);
+        if (accepted.length === 0 && !whole) continue;
+
+        const store = bucket(songId);
+        const existing = new Set(store.sections.map((section) => section.id));
+        for (const section of accepted) {
+          if (existing.has(section.id)) continue;
+          existing.add(section.id);
+          store.sections.push(section);
+          added += 1;
+        }
+        if (whole && !store.whole) store.whole = whole;
+      }
+
+      if (!save()) return { ok: false, reason: "unwritable", added, incoming };
+      return { ok: true, added, incoming };
+    },
+
     clear(songId) {
       if (songId) delete songs[songId];
       else songs = {};
@@ -425,3 +567,8 @@ export function createSectionStore({
     },
   };
 }
+
+// Une seule instance pour toute la page. Le mode Morceau et l'écran
+// Progression écrivent le même journal : une deuxième copie en mémoire
+// réécrirait l'import au prochain enregistrement.
+export const sectionStore = createSectionStore();
