@@ -172,24 +172,11 @@
               <option value="">Morceau entier</option>
             </select>
             <button id="practiceAdd" class="btn icon-btn" type="button"
-              aria-label="Nouveau passage" title="Nouveau passage à la position actuelle">+</button>
+              aria-label="Nouveau passage" title="Nouveau passage à la suite du précédent">+</button>
             <button id="practiceRename" class="btn icon-btn" type="button"
               aria-label="Renommer le passage" title="Renommer le passage">✎</button>
             <button id="practiceDelete" class="btn icon-btn" type="button"
               aria-label="Supprimer le passage" title="Supprimer le passage">✕</button>
-          </div>
-
-          <div class="practice-group">
-            <!-- En petite largeur, seule la flèche reste : deux libellés de
-                 plus feraient une ligne de plus, prise sur le rouleau. -->
-            <button id="practiceMarkStart" class="btn practice-btn" type="button"
-              aria-label="Placer le début du passage à la position actuelle"
-              title="Placer le début du passage à la position actuelle"
-            ><span aria-hidden="true">⇤</span><span class="practice-btn-label">Début ici</span></button>
-            <button id="practiceMarkEnd" class="btn practice-btn" type="button"
-              aria-label="Placer la fin du passage à la position actuelle"
-              title="Placer la fin du passage à la position actuelle"
-            ><span aria-hidden="true">⇥</span><span class="practice-btn-label">Fin ici</span></button>
           </div>
 
           <div class="practice-group" role="group" aria-label="Main travaillée">
@@ -214,6 +201,10 @@
                de la barre du dessus, qui reste visible quand le Travail est
                ouvert. En avoir deux copies était un doublon. -->
           <div class="practice-status">
+            <!-- Visible seulement pendant la création : le « + » pose le début,
+                 un tap sur une note pose la fin. Rien n'est enregistré avant. -->
+            <button id="practiceCancel" class="btn practice-btn" type="button" hidden
+              aria-label="Annuler la création du passage">Annuler</button>
             <span id="practiceStatusText" class="practice-status-text" role="status"></span>
           </div>
         </div>

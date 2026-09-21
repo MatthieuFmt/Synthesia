@@ -39,7 +39,6 @@ export const STORE_VERSION = 1;
 export const WHOLE_SONG_ID = "whole";
 
 export const MIN_SECTION_SECONDS = 1;      // en deçà, un passage n'a plus de sens
-export const DEFAULT_SECTION_SECONDS = 8;  // longueur d'un passage créé au vol
 
 // Tempo de travail, en pourcentage du tempo réel du morceau (plan/06 § 8).
 // Les bornes sont celles du curseur de vitesse déjà en place (0,25× à 2×), et

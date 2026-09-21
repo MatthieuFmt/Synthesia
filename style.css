@@ -539,9 +539,26 @@ body {
   font-weight: 600;
 }
 
-.practice-btn:disabled {
+.practice-btn:disabled,
+.practice-bar .icon-btn:disabled {
   opacity: .45;
   cursor: default;
+}
+
+/* `[hidden]` doit regagner sur `display` de `.btn`. */
+#practiceCancel[hidden] { display: none; }
+
+/* Création d'un passage : la barre se réduit à Annuler et à la consigne.
+   Les autres commandes reviendraient masquer la phrase à suivre. */
+.practice-bar.practice-drafting .practice-group {
+  display: none;
+}
+
+.practice-bar.practice-drafting .practice-status-text {
+  color: var(--text);
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
 }
 
 .practice-status {
@@ -2080,8 +2097,6 @@ body.force-landscape .landscape-btn { display: inline-flex; }
   .practice-bar { gap: 6px; padding-top: 6px; }
   .practice-btn { height: 30px; padding: 0 7px; }
   .practice-btn-label { display: none; }
-  #practiceMarkStart,
-  #practiceMarkEnd,
   #practiceRestart { width: 30px; justify-content: center; padding: 0; }
   .practice-bar .icon-btn { width: 30px; flex: 0 0 30px; height: 30px; }
   .practice-select { height: 30px; line-height: 28px; max-width: 108px; }

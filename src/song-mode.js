@@ -36,12 +36,12 @@ import { createProgressStore } from "./progress/store.js";
 import {
   clampBounds,
   clampTempoPercent,
-  DEFAULT_SECTION_SECONDS,
   expectedNotes,
   groupChords,
   HELP_AFTER_FAILS,
   isMastered,
   isWorkedHand,
+  MIN_SECTION_SECONDS,
   nextGroupIndex,
   sectionStore,
   songIdFromTitle,
@@ -83,6 +83,12 @@ const BOUND_GRAB_PX = 14;       // zone de saisie d'une borne de passage (au doi
 // force au doigt quel que soit le morceau, et reste plus court que la zone de
 // saisie pour qu'attraper une borne ne la déplace jamais tout seul.
 const SNAP_GRAB_PX = 11;
+// Création d'un passage au doigt. Le tap tremble : en deçà, ce n'est pas
+// un défilement. L'aimant autour d'une note rattrape un doigt un peu à côté.
+const DRAFT_TAP_SLOP_PX = 18;
+const NOTE_TAP_SLACK_PX = 16;
+// Le trait de début reste au-dessus du clavier, distinct de la ligne de lecture.
+const DRAFT_LEAD_PX = 36;
 const ACCOMPANY_ALPHA = 0.28;   // opacité de la main non travaillée
 
 const COLORS = {
@@ -192,6 +198,10 @@ function createPracticeState() {
     sectionId: null,     // null = morceau entier
     sections: [],
     snappedBound: null,  // "start" | "end" : borne aimantée pendant un glissement
+    // Création en cours : rien n'est enregistré tant que la fin n'est pas
+    // touchée. `phase` "start" (premier passage du morceau) ou "end".
+    draft: null,         // { phase, startSeconds, anchorTitle } | null
+    notice: null,        // message court, jusqu'au prochain geste ou tour
 
     repetitions: 0,      // tours effectués depuis l'entrée dans le passage
     groups: [],          // accords attendus : le rouleau s'arrête dessus
@@ -861,6 +871,15 @@ function drawNotes(first, afterLast) {
 // non masqué — on doit voir ce qui précède et ce qui suit), les deux bornes
 // portent une poignée saisissable au doigt.
 function drawPracticeSection(w, h) {
+  const practice = state.practice;
+  if (!practice.enabled) return;
+  // Pendant la création, seul le début déjà choisi est dessiné : le passage
+  // précédent ne doit pas se confondre avec celui qu'on est en train de poser.
+  if (practice.draft) {
+    drawDraftStart(w, h, practice.draft);
+    return;
+  }
+
   const section = activeSection();
   if (!section) return;
 
@@ -877,6 +896,22 @@ function drawPracticeSection(w, h) {
 
   drawBoundHandle(4, yStart, "début");
   drawBoundHandle(4, yEnd, section.title);
+}
+
+// Assombrit ce qui précède le début choisi. La fin n'existe pas encore :
+// tout ce qui est au-dessus du trait reste lisible, c'est là qu'on touche.
+function drawDraftStart(w, h, draft) {
+  if (draft.startSeconds === null) return;
+  const yStart = timeToScreenY(draft.startSeconds);
+  ctx.fillStyle = COLORS.outside;
+  if (yStart < h) {
+    ctx.fillRect(0, Math.max(0, yStart), w, h - Math.max(0, yStart));
+  }
+  drawBoundLine(w, yStart, false);
+  // Tout près du clavier, le libellé resterait coupé par le rouleau : on le
+  // remonte pour qu'il tienne au-dessus de la ligne de lecture.
+  const handleY = Math.min(yStart, keyboardTop() - 12);
+  drawBoundHandle(4, handleY, "début");
 }
 
 // Une borne calée sur un début ou une fin de note change de couleur et
@@ -1499,7 +1534,8 @@ async function play() {
   try {
     await session.audio.ensureReady();
     // L'utilisateur a pu revenir à l'accueil pendant le chargement audio.
-    if (session.stopped) return;
+    // Une création de passage demandée entre-temps garde le rouleau immobile.
+    if (session.stopped || session.practice.draft) return;
     if (!state.part) buildPart();
 
     // Reprise depuis le début si on est à la fin
@@ -1562,6 +1598,9 @@ function togglePlay() {
   // S'il est encore à l'arrêt (audio pas prêt, morceau qui vient de changer),
   // l'appui la relance.
   if (state.practice.enabled) {
+    // La création vise une note : relancer la lecture ferait défiler le rouleau
+    // sous le doigt. Annuler ou poser la fin relance.
+    if (state.practice.draft) return;
     if (!state.isPlaying) play();
     return;
   }
@@ -1571,7 +1610,13 @@ function togglePlay() {
 // Le Travail emporte la lecture avec lui. Appelé à l'ouverture du sous-mode
 // et après chaque changement de morceau, tant que le Travail est ouvert.
 function ensurePracticePlaying() {
-  if (!state?.practice.enabled || !state.song || state.isPlaying || state.playPending) {
+  if (
+    !state?.practice.enabled ||
+    !state.song ||
+    state.isPlaying ||
+    state.playPending ||
+    state.practice.draft
+  ) {
     return;
   }
   play();
@@ -1880,6 +1925,7 @@ function flashWrongKey(midi) {
 function completeRun() {
   const practice = state.practice;
   if (!practice.enabled || !state.song) return;
+  practice.notice = null;
   practice.repetitions++;
   // La porte attend la bonne note : un tour n'est pas une exécution jugée,
   // seulement une répétition.
@@ -1951,12 +1997,17 @@ function byId(id) {
 function setPracticeEnabled(enabled) {
   const practice = state.practice;
   if (practice.enabled === enabled) return;
+  // La création avait mis la lecture en pause : la quitter doit la rendre,
+  // le mode Morceau simple ne s'arrête pas tout seul.
+  const resumeAfterDraft = !enabled && practice.draft !== null;
   practice.enabled = enabled;
 
   if (enabled) {
     resetPracticeCounters();
     openPracticeLog();
   } else {
+    practice.draft = null;
+    practice.notice = null;
     closePracticeLog();
     leaveWait({ resume: false });
     practice.hintKeys.clear();
@@ -1971,6 +2022,7 @@ function setPracticeEnabled(enabled) {
   renderPracticeBar(); // remesure le canvas : la barre change la hauteur utile
   drawImmediately();
   if (enabled) ensurePracticePlaying();
+  else if (resumeAfterDraft) play();
 }
 
 // Rejoue le morceau à partir des réglages : appelée après tout changement qui
@@ -1989,6 +2041,7 @@ function setPracticeHand(hand) {
   const practice = state.practice;
   if (practice.hand === hand) return;
   practice.hand = hand;
+  practice.notice = null;
   leaveWait({ resume: false });
   refreshPracticeAudio();
   resumeFrozenPlayback();
@@ -2003,8 +2056,9 @@ function setPracticeHand(hand) {
 // que les notes reçues : sans cela, `tick()` verrait le saut en arrière comme un
 // bouclage et compterait le tour qu'on vient justement d'annuler.
 function restartSection() {
-  if (!state.song) return;
+  if (!state.song || state.practice.draft) return;
   const practice = state.practice;
+  practice.notice = null;
   const start = sectionBounds().startSeconds;
   // Le gel de l'attente avait mis le Transport en pause : il faut le relancer
   // nous-mêmes, `leaveWait()` reprendrait là où il gelait.
@@ -2036,6 +2090,7 @@ function resetPracticeCounters() {
 
 function setActiveSection(sectionId) {
   const practice = state.practice;
+  practice.notice = null;
   practice.sectionId = sectionId || null;
   resetPracticeCounters();
   leaveWait({ resume: false });
@@ -2052,35 +2107,152 @@ function setActiveSection(sectionId) {
   drawImmediately();
 }
 
-// Où commence un nouveau passage : à la suite du précédent, parce qu'on découpe
-// un morceau en passages qui s'enchaînent, pas en passages qui se chevauchent.
-// « Le précédent », c'est celui qu'on travaille — on vient de le border, la
-// suite commence là où il finit —, sinon le dernier découpé du morceau. Sans
-// aucun passage, il ne reste que la position de lecture.
-function nextSectionStart() {
-  const previous = activeSection();
-  if (previous) return previous.endSeconds;
+// Le passage dont on prend la suite : celui qu'on travaille, sinon le dernier
+// du morceau. On découpe à la chaîne, un passage après l'autre.
+function sectionToContinue() {
+  const active = activeSection();
+  if (active) return active;
   const sections = state.practice.sections;
-  if (!sections.length) return state.currentTime;
-  return sections.reduce((last, s) => Math.max(last, s.endSeconds), 0);
+  if (!sections.length) return null;
+  return sections.reduce((last, section) =>
+    section.endSeconds > last.endSeconds ? section : last
+  );
 }
 
-// Nouveau passage, dans le prolongement du précédent. Ses bornes restent
-// déplaçables aussitôt (glissement sur le rouleau, « Début ici », « Fin ici ») :
-// c'est un point de départ, pas un découpage imposé. Sa longueur par défaut est
-// fixe — le découpage par mesures ou par phrases (plan/06 § 5) reste à évaluer.
-function createSectionHere() {
+function hasRoomAfter(seconds) {
+  return songDuration() - seconds >= MIN_SECTION_SECONDS;
+}
+
+// Le « + » n'enregistre rien. Il pose le début — la fin du passage précédent,
+// ou la première note touchée s'il n'y en a pas encore — et attend la fin.
+function beginSectionDraft() {
   const practice = state.practice;
-  if (!state.song || !practice.songId) return;
-  const from = nextSectionStart();
+  if (!state.song || !practice.songId || practice.draft) return;
+
+  const anchor = sectionToContinue();
+  if (anchor && !hasRoomAfter(anchor.endSeconds)) {
+    practice.notice = "Le morceau est déjà découpé jusqu'au bout";
+    renderPracticeStatus();
+    return;
+  }
+
+  practice.notice = null;
+  if (!anchor) {
+    practice.draft = { phase: "start", startSeconds: null, anchorTitle: null };
+  } else {
+    practice.draft = {
+      phase: "end",
+      startSeconds: anchor.endSeconds,
+      anchorTitle: anchor.title,
+    };
+  }
+  leaveWait({ resume: false });
+  // Le rouleau reste immobile le temps de viser une note. La lecture reprend
+  // quand le passage est créé, ou si on annule. Le brouillon est posé avant
+  // la pause : une lecture encore en cours de démarrage s'arrête en le voyant.
+  pause({ refresh: false });
+  if (anchor) revealDraftStart(anchor.endSeconds);
+  renderPracticeBar();
+  drawImmediately();
+}
+
+// Laisse voir le trait de début au-dessus du clavier, pas sous la ligne orange.
+function revealDraftStart(seconds) {
+  setTime(seconds - DRAFT_LEAD_PX / PIXELS_PER_SECOND);
+}
+
+function cancelSectionDraft() {
+  const practice = state.practice;
+  if (!practice.draft) return;
+  practice.draft = null;
+  renderPracticeBar();
+  drawImmediately();
+  ensurePracticePlaying();
+}
+
+function draftInstruction(draft) {
+  if (draft.phase === "start") return "Touche la première note";
+  if (draft.anchorTitle) {
+    return `À la suite de ${draft.anchorTitle} — touche la dernière note`;
+  }
+  return "Touche la dernière note";
+}
+
+// Note sous le doigt, ou la plus proche dans la même colonne si le tap est
+// un peu à côté du rectangle. On vise une note, pas un instant entre deux.
+function noteAtPointer(x, y) {
+  const notes = state.song?.notes;
+  if (!notes?.length) return null;
+
+  const time = screenYToTime(y);
+  const slackSeconds = NOTE_TAP_SLACK_PX / PIXELS_PER_SECOND;
+  const first = lowerBound(
+    notes,
+    time - state.song.maxNoteDuration - slackSeconds,
+    noteStart
+  );
+  const after = upperBound(notes, time + slackSeconds, noteStart);
+
+  let best = null;
+  let bestDist = Infinity;
+  for (let index = first; index < after; index++) {
+    const note = notes[index];
+    const geometry = noteGeometry(note.midi);
+    if (!geometry || x < geometry.x || x > geometry.x + geometry.width) continue;
+
+    const yTop = timeToScreenY(note.endTime);
+    const yBottom = timeToScreenY(note.time);
+    let dist = 0;
+    if (y < yTop) dist = yTop - y;
+    else if (y > yBottom) dist = y - yBottom;
+    if (dist > NOTE_TAP_SLACK_PX) continue;
+    if (best && dist > bestDist) continue;
+    best = note;
+    bestDist = dist;
+  }
+  return best;
+}
+
+// Fin du passage quand on touche sa dernière note : l'attaque suivante.
+// Une note compte si elle commence dans le passage, donc tout l'accord
+// touché est dedans, et la note d'après non. Sans note d'après, le passage
+// va jusqu'au bout du morceau.
+function endAfterNote(note) {
+  const notes = state.song.notes;
+  const next = notes[upperBound(notes, note.time, noteStart)];
+  return next ? next.time : songDuration();
+}
+
+// Un tap pendant la création. Rien n'est enregistré avant la fin.
+function placeDraftBound(x, y) {
+  const practice = state.practice;
+  const draft = practice.draft;
+  if (!draft || !state.song) return;
+  const note = noteAtPointer(x, y);
+  if (!note) return;
+
+  if (draft.phase === "start") {
+    if (!hasRoomAfter(note.time)) return;
+    draft.startSeconds = note.time;
+    draft.phase = "end";
+    revealDraftStart(note.time);
+    renderPracticeBar();
+    drawImmediately();
+    return;
+  }
+
+  if (note.time < draft.startSeconds - 1e-3) return;
   const bounds = clampBounds(
-    from,
-    from + DEFAULT_SECTION_SECONDS,
+    draft.startSeconds,
+    endAfterNote(note),
     songDuration()
   );
   const section = sectionStore.create(practice.songId, bounds);
+  practice.draft = null;
   practice.sections = sectionStore.list(practice.songId);
+  setTime(bounds.startSeconds);
   setActiveSection(section.id);
+  play();
 }
 
 function renameActiveSection() {
@@ -2130,6 +2302,9 @@ function boundSeconds(which) {
 // Borne saisissable sous le pointeur, ou null. Testée avant le défilement du
 // rouleau : à moins de 14 px d'une borne, le geste la déplace.
 function boundAtY(y) {
+  // Pendant la création, le trait de début se pose, il ne se tire pas.
+  // L'ajuster vient après, une fois le passage enregistré.
+  if (state.practice.draft) return null;
   const section = activeSection();
   if (!section) return null;
   const distanceToStart = Math.abs(y - timeToScreenY(section.startSeconds));
@@ -2154,6 +2329,12 @@ function renderPracticeBar() {
 
   toggle.setAttribute("aria-pressed", String(practice.enabled));
   bar.hidden = !practice.enabled;
+  bar.classList.toggle(
+    "practice-drafting",
+    Boolean(practice.enabled && practice.draft)
+  );
+  const cancel = byId("practiceCancel");
+  if (cancel) cancel.hidden = !practice.draft;
   // L'en-tête doit pouvoir se replier tant que la barre est là (cf. style.css).
   document
     .querySelector(".topbar")
@@ -2198,13 +2379,14 @@ function renderPracticeBar() {
   if (add) {
     const label = practice.sections.length
       ? "Nouveau passage à la suite du précédent"
-      : "Nouveau passage à la position actuelle";
+      : "Nouveau passage : touche la première note, puis la dernière";
     add.title = label;
     add.setAttribute("aria-label", label);
+    add.disabled = Boolean(practice.draft);
   }
-  for (const id of ["practiceRename", "practiceDelete", "practiceMarkStart", "practiceMarkEnd"]) {
+  for (const id of ["practiceRename", "practiceDelete"]) {
     const button = byId(id);
-    if (button) button.disabled = !hasSection;
+    if (button) button.disabled = !hasSection || Boolean(practice.draft);
   }
 
   renderPracticeStatus();
@@ -2219,6 +2401,16 @@ function renderPracticeStatus() {
   if (!text) return;
 
   const practice = state.practice;
+  if (practice.draft) {
+    text.textContent = draftInstruction(practice.draft);
+    syncCanvasSize();
+    return;
+  }
+  if (practice.notice) {
+    text.textContent = practice.notice;
+    syncCanvasSize();
+    return;
+  }
   if (!isLooping()) {
     text.textContent = practice.waiting ? "en attente de la note…" : "";
     syncCanvasSize();
@@ -2248,6 +2440,8 @@ function renderPracticeStatus() {
 // Recharge les passages enregistrés pour le morceau courant.
 function loadSectionsForSong(title) {
   const practice = state.practice;
+  practice.draft = null;
+  practice.notice = null;
   practice.songId = songIdFromTitle(title);
   practice.sections = sectionStore.list(practice.songId);
   practice.sectionId =
@@ -2266,20 +2460,16 @@ function attachPracticeControls(signal) {
   on("practiceToggle", "click", () =>
     setPracticeEnabled(!state.practice.enabled)
   );
-  on("practiceSection", "change", (e) => setActiveSection(e.target.value));
-  on("practiceAdd", "click", createSectionHere);
+  on("practiceSection", "change", (e) => {
+    // Choisir un passage abandonne la création en cours, sans l'enregistrer.
+    state.practice.draft = null;
+    setActiveSection(e.target.value);
+    ensurePracticePlaying();
+  });
+  on("practiceAdd", "click", beginSectionDraft);
+  on("practiceCancel", "click", cancelSectionDraft);
   on("practiceRename", "click", renameActiveSection);
   on("practiceDelete", "click", deleteActiveSection);
-  on("practiceMarkStart", "click", () => {
-    moveSectionBound("start", state.currentTime);
-    renderPracticeBar();
-    drawImmediately();
-  });
-  on("practiceMarkEnd", "click", () => {
-    moveSectionBound("end", state.currentTime);
-    renderPracticeBar();
-    drawImmediately();
-  });
 
   for (const button of document.querySelectorAll(".practice-hand")) {
     button.addEventListener(
@@ -2579,7 +2769,8 @@ function attachInteractions(signal) {
         p.y >= keyboardTop() ? "pointer" : boundAtY(p.y) ? "ns-resize" : "grab";
       return;
     }
-    if (Math.abs(p.y - downY) > 3) moved = true;
+    const slop = state.practice.draft ? DRAFT_TAP_SLOP_PX : 3;
+    if (Math.abs(p.y - downY) > slop) moved = true;
     setTime(state.currentTime + (p.y - lastY) / PIXELS_PER_SECOND);
     lastY = p.y;
   }, { signal });
@@ -2599,6 +2790,12 @@ function attachInteractions(signal) {
     // Clic simple (sans glisser) = placer le curseur à l'endroit cliqué
     if (!moved) {
       const p = pointerPos(e.clientX, e.clientY);
+      // Un tap pendant la création pose une borne. Un tap à côté d'une note
+      // ne déplace pas la lecture : le rouleau doit rester là où on vise.
+      if (state.practice.draft && p.y < keyboardTop()) {
+        placeDraftBound(p.x, p.y);
+        return;
+      }
       setTime(screenYToTime(p.y));
     }
   };
