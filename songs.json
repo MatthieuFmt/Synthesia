@@ -3,6 +3,7 @@
   { "kind": "song", "title": "Ludovico Einaudi — Experience", "file": "midi/Ludovico%20Einaudi%20-%20Experience.mid" },
   { "kind": "song", "title": "Coldplay — Speed of Sound", "file": "midi/Coldplay%20-%20Speed%20of%20Sound.mid" },
   { "kind": "song", "title": "Paul de Senneville — Mariage d'Amour", "file": "midi/Paul%20de%20Senneville%20-%20Mariage%20d'Amour.mid" },
+  { "kind": "song", "title": "Yiruma — Kiss the Rain (facile)", "file": "midi/Yiruma%20-%20Kiss%20the%20Rain%20(easy).mid" },
 
   { "kind": "exercice", "title": "Czerny — Op. 821 nº 1", "file": "morceaux-exercice/czerny-op821-01.mid" },
   { "kind": "exercice", "title": "Czerny — Op. 821 nº 2", "file": "morceaux-exercice/czerny-op821-02.mid" },
