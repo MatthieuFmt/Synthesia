@@ -20,6 +20,7 @@
 // ============================================================================
 
 import { createMidiPanel } from "./midi-controls.js";
+import { sharedProgressStore } from "./progress/store.js";
 import { createTodayPanel } from "./today-panel.js";
 
 const HOME_TITLE = "Accueil";
@@ -93,6 +94,9 @@ export function switchTo(featureId, options) {
 
   // 1. Arrêt complet de la fonctionnalité en cours (audio, animations,
   //    écouteurs) avant tout démarrage : les deux ne tournent jamais ensemble.
+  //    Le journal est unique : on le pousse avant `stop()`, qui le pousse
+  //    encore après avoir clos la séance.
+  sharedProgressStore().flush();
   if (currentFeature) {
     currentFeature.stop();
     currentFeature = null;

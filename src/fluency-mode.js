@@ -32,7 +32,7 @@ import {
 import { CLEF_BY_HAND } from "./note-reading-engine.js";
 import { createPianoKeyboard } from "./piano-dom.js";
 import { midiInput } from "./midi-input.js";
-import { createProgressStore } from "./progress/store.js";
+import { sharedProgressStore } from "./progress/store.js";
 import { lastSessionContext, priorWeights } from "./progress/review.js";
 
 // Une session : une série continue de notes, puis le bilan.
@@ -93,12 +93,13 @@ function createModeState() {
     stopped: false,
     audio: createAudio(),
     settings: { difficulty: "beginner", hand: "right", speed: "calm" },
-    progress: createProgressStore(),
+    progress: sharedProgressStore(),
     practice: null,   // séance ouverte dans le journal
     run: null,        // exécution en cours : notes, horloge, compteurs
     piano: null,
     stopMidi: null,
     rafId: null,
+    timers: new Set(),
     ui: null,
   };
 }
@@ -114,11 +115,30 @@ function onClick(node, handler) {
   node.addEventListener("click", handler, { signal: listeners.signal });
 }
 
+// Minuterie annulée par `stop()` et à chaque changement d'écran : sinon le
+// rappel touche encore un nœud déjà retiré.
+function later(callback, delay) {
+  const session = state;
+  const timer = setTimeout(() => {
+    session.timers.delete(timer);
+    if (session.stopped) return;
+    callback();
+  }, delay);
+  session.timers.add(timer);
+}
+
+function clearTimers() {
+  if (!state?.timers) return;
+  for (const timer of state.timers) clearTimeout(timer);
+  state.timers.clear();
+}
+
 // ----------------------------------------------------------------------------
 //  Écran de réglages
 // ----------------------------------------------------------------------------
 function renderSetup() {
   cancelLoop();
+  clearTimers();
   closePractice("abandoned");
   state.run = null;
 
@@ -235,6 +255,7 @@ function closePractice(outcome) {
 //  Écran d'exécution : Canvas + clavier
 // ----------------------------------------------------------------------------
 function renderRun() {
+  clearTimers();
   const root = el("div", "fl fl--run");
 
   const status = el("div", "fl-status");
@@ -248,7 +269,10 @@ function renderRun() {
   );
   status.append(progress, noteName, streak, meta);
 
-  const canvas = el("canvas", "fl-canvas");
+  const canvas = el(
+    "canvas",
+    PERFORMANCE_PROFILE.constrained ? "fl-canvas is-flat" : "fl-canvas"
+  );
   canvas.setAttribute(
     "aria-label",
     state.run.hands.length > 1
@@ -292,7 +316,10 @@ function renderRun() {
     instruction,
     feedback,
     canvas,
-    ctx: canvas.getContext("2d"),
+    ctx: PERFORMANCE_PROFILE.constrained
+      ? canvas.getContext("2d", { alpha: false })
+      : canvas.getContext("2d"),
+    clefBitmaps: null,
     geometry: null,
   };
   startMidiCapture();
@@ -311,8 +338,21 @@ function resizeCanvas() {
   const cssWidth = ui.canvas.clientWidth || 560;
   const cssHeight = ui.canvas.clientHeight || 170;
   const dpr = Math.min(window.devicePixelRatio || 1, PERFORMANCE_PROFILE.maxCanvasDpr);
-  ui.canvas.width = Math.round(cssWidth * dpr);
-  ui.canvas.height = Math.round(cssHeight * dpr);
+  const bufferW = Math.round(cssWidth * dpr);
+  const bufferH = Math.round(cssHeight * dpr);
+  if (
+    ui.geometry &&
+    ui.geometry.dpr === dpr &&
+    ui.geometry.width === cssWidth &&
+    ui.geometry.height === cssHeight &&
+    ui.canvas.width === bufferW &&
+    ui.canvas.height === bufferH
+  ) {
+    return;
+  }
+
+  ui.canvas.width = bufferW;
+  ui.canvas.height = bufferH;
 
   const staffGeometry = layoutStaffs(cssHeight, state.run.hands);
   ui.geometry = {
@@ -323,6 +363,9 @@ function resizeCanvas() {
     targetX: 118,                       // après la clé : la « ligne d'arrivée »
     pxPerSecond: (cssWidth - 118) / LOOKAHEAD_S,
   };
+  ui.clefBitmaps = PERFORMANCE_PROFILE.constrained
+    ? rasterizeClefs(ui.geometry.LG)
+    : null;
 }
 
 // ----------------------------------------------------------------------------
@@ -373,18 +416,57 @@ const GOOD = "#1f9d55";
 const BAD = "#c0392b";
 const TARGET = "rgba(58, 130, 246, .45)";
 
+function clefBaseline(clef, staff, LG) {
+  if (clef === "treble") return staff.bottom + LG * 0.6;
+  const size = Math.round(LG / 0.2162);
+  return Math.round(staff.top + LG + size * 0.4469);
+}
+
+function clefFont(clef, LG) {
+  if (clef === "treble") return `${Math.round(LG * 4 * 1.7)}px serif`;
+  return `${Math.round(LG / 0.2162)}px serif`;
+}
+
+// Glyphe dessiné une fois : `fillText` d'un caractère musical, à chaque image,
+// est le primitive le plus lent de ce mode sur une vieille WebView.
+function rasterizeClefs(LG) {
+  const bitmaps = {};
+  for (const clef of ["treble", "bass"]) {
+    const font = clefFont(clef, LG);
+    const glyph = CLEF_GLYPH[clef];
+    const probe = document.createElement("canvas").getContext("2d");
+    probe.font = font;
+    const metrics = probe.measureText(glyph);
+    const fontSize = Number.parseInt(font, 10);
+    const ascent = Math.ceil(metrics.actualBoundingBoxAscent || fontSize * 0.8);
+    const descent = Math.ceil(metrics.actualBoundingBoxDescent || fontSize * 0.25);
+    const pad = 2;
+    const bitmap = document.createElement("canvas");
+    bitmap.width = Math.ceil(metrics.width) + pad * 2;
+    bitmap.height = ascent + descent + pad * 2;
+    const bitmapCtx = bitmap.getContext("2d");
+    bitmapCtx.font = font;
+    bitmapCtx.fillStyle = INK;
+    bitmapCtx.textAlign = "left";
+    bitmapCtx.textBaseline = "alphabetic";
+    bitmapCtx.fillText(glyph, pad, pad + ascent);
+    bitmaps[clef] = { bitmap, origin: pad + ascent, pad };
+  }
+  return bitmaps;
+}
+
 function drawClef(ctx, clef, staff, LG) {
+  const baseline = clefBaseline(clef, staff, LG);
+  const cached = state.ui.clefBitmaps?.[clef];
+  if (cached) {
+    ctx.drawImage(cached.bitmap, 12 - cached.pad, baseline - cached.origin);
+    return;
+  }
   ctx.fillStyle = INK;
   ctx.textAlign = "left";
   ctx.textBaseline = "alphabetic";
-  if (clef === "treble") {
-    ctx.font = `${Math.round(LG * 4 * 1.7)}px serif`;
-    ctx.fillText(CLEF_GLYPH.treble, 12, staff.bottom + LG * 0.6);
-  } else {
-    const size = Math.round(LG / 0.2162);
-    ctx.font = `${size}px serif`;
-    ctx.fillText(CLEF_GLYPH.bass, 12, Math.round(staff.top + LG + size * 0.4469));
-  }
+  ctx.font = clefFont(clef, LG);
+  ctx.fillText(CLEF_GLYPH[clef], 12, baseline);
 }
 
 function draw() {
@@ -518,7 +600,7 @@ function pressKey(midi) {
   if (midi === note.midi) {
     const key = state.piano.key(midi);
     key?.classList.add("is-correct");
-    setTimeout(() => key?.classList.remove("is-correct"), 400);
+    later(() => key?.classList.remove("is-correct"), 400);
     resolveNote(index, "correct");
     return;
   }
@@ -529,7 +611,7 @@ function pressKey(midi) {
   run.streak = 0;
   const key = state.piano.key(midi);
   key?.classList.add("is-wrong");
-  setTimeout(() => key?.classList.remove("is-wrong"), 300);
+  later(() => key?.classList.remove("is-wrong"), 300);
   const expectedName = `${noteDegreeName(note.midi)}${octaveOf(note.midi)}`;
   const playedName = `${noteDegreeName(midi)}${octaveOf(midi)}`;
   state.ui.feedback.textContent = `${playedName} — Non, il faut jouer ${expectedName}.`;
@@ -581,7 +663,7 @@ function resolveNote(index, status) {
     cancelLoop();
     // Laisser voir la dernière note résolue avant le bilan.
     draw();
-    setTimeout(() => {
+    later(() => {
       if (state && !state.stopped && state.run === run) renderSummary();
     }, 650);
   } else {
@@ -760,6 +842,7 @@ function stop() {
   // 1. Arrêter la boucle d'animation avant tout.
   state.stopped = true;
   cancelLoop();
+  clearTimers();
 
   // 2. Se désabonner du clavier physique (l'entrée MIDI, elle, survit — F2).
   stopMidiCapture();

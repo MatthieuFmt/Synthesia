@@ -57,7 +57,7 @@ import { summarizeMidiRun, validateRepetition } from "./exercises/validate-run.j
 // « réutiliser sans déplacer »).
 import { groupChords, nextGroupIndex } from "./song-practice.js";
 import { midiInput } from "./midi-input.js";
-import { createProgressStore } from "./progress/store.js";
+import { sharedProgressStore } from "./progress/store.js";
 import { lastSessionContext } from "./progress/review.js";
 import { entriesOfKind, groupByPrefix, loadSongCatalog } from "./song-library.js";
 import { switchTo } from "./navigation.js";
@@ -178,7 +178,7 @@ function createModeState() {
     stopped: false,
     audio: createAudio(),
     click: null, // petit synthé de clic, créé avec l'audio
-    progress: createProgressStore(),
+    progress: sharedProgressStore(),
     practice: null,
 
     settings: {
@@ -228,6 +228,9 @@ function createModeState() {
     animationFrame: null,
     lastVisualFrame: -Infinity,
     pressedKeys: new Set(),
+    // Main qui allume chaque touche à l'image : 0 aucune, 1 droite, 2 gauche.
+    // Rempli une fois par dessin. La première note encore tenue gagne.
+    activeHands: new Uint8Array(128),
     keyPressTimers: new Set(),
     timers: new Set(),
     ui: null,
@@ -809,10 +812,18 @@ function syncRunUI() {
   const { run } = state;
   const rep = run.repetitionAt(state.currentTime);
   const counting = state.currentTime < state.grid.startTime;
-  state.ui.repetition.textContent = counting
+  const repetitionText = counting
     ? `Départ dans ${state.grid.countInBeats - state.grid.beatAt(state.currentTime)}`
     : `Série ${rep} / ${run.repetitions}`;
-  state.ui.playBtn.textContent = state.paused ? "Reprendre" : "Pause";
+  const playText = state.paused ? "Reprendre" : "Pause";
+  // Réécrire le texte à chaque image relance une mise en page, même quand
+  // rien n'a changé. On ne touche au DOM que si le libellé diffère.
+  if (state.ui.repetition.textContent !== repetitionText) {
+    state.ui.repetition.textContent = repetitionText;
+  }
+  if (state.ui.playBtn.textContent !== playText) {
+    state.ui.playBtn.textContent = playText;
+  }
 }
 
 function leaveRun() {
@@ -904,6 +915,35 @@ function timeToY(time) {
   return keyboardTop - (time - state.currentTime) * pixelsPerSecond;
 }
 
+function screenYToTime(y) {
+  const { keyboardTop, pixelsPerSecond } = state.layout;
+  return state.currentTime + (keyboardTop - y) / pixelsPerSecond;
+}
+
+const noteStart = (note) => note.time;
+
+function lowerBound(items, target, valueOf) {
+  let low = 0;
+  let high = items.length;
+  while (low < high) {
+    const middle = (low + high) >>> 1;
+    if (valueOf(items[middle]) < target) low = middle + 1;
+    else high = middle;
+  }
+  return low;
+}
+
+function upperBound(items, target, valueOf) {
+  let low = 0;
+  let high = items.length;
+  while (low < high) {
+    const middle = (low + high) >>> 1;
+    if (valueOf(items[middle]) <= target) low = middle + 1;
+    else high = middle;
+  }
+  return low;
+}
+
 function keyAtPosition(x, y) {
   const layout = state.layout;
   if (!layout || y < layout.keyboardTop) return null;
@@ -945,6 +985,26 @@ function roundRect(x, y, w, h, r) {
   ctx.closePath();
 }
 
+// Profil bas : rectangle droit. Les coins arrondis (`arcTo`) coûtent cher
+// sur un rasteriseur mobile, et le profil haut les garde.
+function traceRoundRect(x, y, w, h, r) {
+  if (PERFORMANCE_PROFILE.constrained) {
+    ctx.beginPath();
+    ctx.rect(x, y, w, h);
+    return;
+  }
+  roundRect(x, y, w, h, r);
+}
+
+function fillBottomRounded(x, y, w, h, r) {
+  if (PERFORMANCE_PROFILE.constrained) {
+    ctx.fillRect(x, y, w, h);
+    return;
+  }
+  roundRectBottom(x, y, w, h, r);
+  ctx.fill();
+}
+
 function draw() {
   const layout = state.layout;
   if (!layout) return;
@@ -960,7 +1020,19 @@ function draw() {
   ctx.rect(0, 0, w, keyboardTop);
   ctx.clip();
   drawBeatLines(w, h);
-  drawNotes(h);
+  // Même fenêtre que le mode Morceau : une note longue dont l'attaque est
+  // déjà hors écran reste visible tant que son corps l'est. La marge de 40 px
+  // est celle du rejet fait note par note juste après.
+  const notes = state.run.notes;
+  // `time + duration` et `endTime` diffèrent parfois d'un ulp : sans cette
+  // marge, une note encore à l'écran serait exclue de la dichotomie.
+  const earliestVisibleEnd =
+    screenYToTime(h + 40) - (state.run.maxNoteDuration || 0) - TIME_SLACK_S;
+  const latestVisibleStart = screenYToTime(-40);
+  drawNotes(
+    lowerBound(notes, earliestVisibleEnd, noteStart),
+    upperBound(notes, latestVisibleStart, noteStart)
+  );
   ctx.restore();
 
   drawKeyboard(w, h);
@@ -1013,11 +1085,13 @@ function drawBeatLines(w, h) {
   }
 }
 
-function drawNotes(h) {
+function drawNotes(first, afterLast) {
   const layout = state.layout;
   const now = state.currentTime;
+  const h = layout.height;
 
-  for (const note of state.run.notes) {
+  for (let index = first; index < afterLast; index++) {
+    const note = state.run.notes[index];
     const yBottom = timeToY(note.time);
     const yTop = timeToY(note.endTime);
     if (yBottom < -40 || yTop > h + 40) continue;
@@ -1038,7 +1112,7 @@ function drawNotes(h) {
     const pad = 1;
     const width = Math.max(2, g.width - pad * 2);
     const height = Math.max(3, yBottom - yTop);
-    roundRect(g.x + pad, yTop, width, height, 4);
+    traceRoundRect(g.x + pad, yTop, width, height, 4);
     ctx.fill();
 
     if (now >= note.time && now <= note.endTime) {
@@ -1103,13 +1177,40 @@ function drawFinger(note, g, yTop, height, width) {
   ctx.textBaseline = "alphabetic";
 }
 
-// Touches traversées par une note à la position de lecture.
-function activeHandOf(midi) {
-  for (const note of state.run.notes) {
-    if (note.time > state.currentTime) break;
-    if (note.midi === midi && state.currentTime <= note.endTime) return note.hand;
+// 0 : touche éteinte. 1 : main droite. 2 : main gauche.
+const HAND_NONE = 0;
+const HAND_RIGHT = 1;
+const HAND_LEFT = 2;
+// Marge sur `now - durée max` : l'arithmétique des temps ne retombe pas
+// toujours sur le `time` d'origine. Un dixième de milliseconde, invisible.
+const TIME_SLACK_S = 1e-4;
+
+// Une passe sur les notes déjà commencées et pas encore finies. La première
+// note encore tenue l'emporte : c'est ce que faisait l'ancien balayage par
+// touche, qui s'arrêtait au premier match.
+function computeActiveHands() {
+  const active = state.activeHands;
+  active.fill(HAND_NONE);
+  const run = state.run;
+  if (!run) return active;
+
+  const now = state.currentTime;
+  const notes = run.notes;
+  const first = lowerBound(notes, now - (run.maxNoteDuration || 0) - TIME_SLACK_S, noteStart);
+  for (let index = first; index < notes.length; index++) {
+    const note = notes[index];
+    if (note.time > now) break;
+    if (now <= note.endTime && active[note.midi] === HAND_NONE) {
+      active[note.midi] = note.hand === "right" ? HAND_RIGHT : HAND_LEFT;
+    }
   }
-  return null;
+  return active;
+}
+
+function keyColor(hand, white) {
+  if (hand === HAND_RIGHT) return white ? COLORS.rightHand : COLORS.rightHandDark;
+  if (hand === HAND_LEFT) return white ? COLORS.leftHand : COLORS.leftHandDark;
+  return white ? "#f2ede1" : "#14181f";
 }
 
 function drawKeyboard(w, h) {
@@ -1124,23 +1225,20 @@ function drawKeyboard(w, h) {
 
   const whiteTop = top + 3;
   const whiteHeight = keyboardHeight - 3;
+  const active = computeActiveHands();
 
   for (let midi = layout.low; midi <= layout.high; midi++) {
     if (!isWhite(midi)) continue;
     const g = layout.geometries[midi];
-    const hand = activeHandOf(midi);
-    ctx.fillStyle = hand === "right" ? COLORS.rightHand : hand === "left" ? COLORS.leftHand : "#f2ede1";
-    roundRectBottom(g.x + 0.5, whiteTop, g.width - 1, whiteHeight, 4);
-    ctx.fill();
+    ctx.fillStyle = keyColor(active[midi], true);
+    fillBottomRounded(g.x + 0.5, whiteTop, g.width - 1, whiteHeight, 4);
     if (state.pressedKeys.has(midi)) {
       ctx.fillStyle = "rgba(0, 0, 0, 0.32)";
-      roundRectBottom(g.x + 0.5, whiteTop, g.width - 1, whiteHeight, 4);
-      ctx.fill();
+      fillBottomRounded(g.x + 0.5, whiteTop, g.width - 1, whiteHeight, 4);
     }
     if (state.wait.wrongKeys.has(midi)) {
       ctx.fillStyle = COLORS.wrongKey;
-      roundRectBottom(g.x + 0.5, whiteTop, g.width - 1, whiteHeight, 4);
-      ctx.fill();
+      fillBottomRounded(g.x + 0.5, whiteTop, g.width - 1, whiteHeight, 4);
     }
   }
 
@@ -1165,20 +1263,15 @@ function drawKeyboard(w, h) {
   for (let midi = layout.low; midi <= layout.high; midi++) {
     if (isWhite(midi)) continue;
     const g = layout.geometries[midi];
-    const hand = activeHandOf(midi);
-    ctx.fillStyle =
-      hand === "right" ? COLORS.rightHandDark : hand === "left" ? COLORS.leftHandDark : "#14181f";
-    roundRectBottom(g.x, whiteTop, g.width, blackHeight, 3);
-    ctx.fill();
+    ctx.fillStyle = keyColor(active[midi], false);
+    fillBottomRounded(g.x, whiteTop, g.width, blackHeight, 3);
     if (state.pressedKeys.has(midi)) {
       ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
-      roundRectBottom(g.x, whiteTop, g.width, blackHeight, 3);
-      ctx.fill();
+      fillBottomRounded(g.x, whiteTop, g.width, blackHeight, 3);
     }
     if (state.wait.wrongKeys.has(midi)) {
       ctx.fillStyle = COLORS.wrongKey;
-      roundRectBottom(g.x, whiteTop, g.width, blackHeight, 3);
-      ctx.fill();
+      fillBottomRounded(g.x, whiteTop, g.width, blackHeight, 3);
     }
   }
 }
@@ -1288,6 +1381,20 @@ function resizeCanvas() {
   const nativeDpr = Math.max(1, window.devicePixelRatio || 1);
   const budgetDpr = Math.sqrt(PERFORMANCE_PROFILE.maxCanvasPixels / Math.max(1, w * h));
   const dpr = Math.max(1, Math.min(nativeDpr, PERFORMANCE_PROFILE.maxCanvasDpr, budgetDpr));
+  const bufferW = Math.round(w * dpr);
+  const bufferH = Math.round(h * dpr);
+  // Réassigner la taille du tampon efface le canvas et recrée le contexte.
+  // Un resize qui ne change rien (barre d'adresse, clavier virtuel) s'arrête là.
+  if (
+    state.layout &&
+    state.layout.width === w &&
+    state.layout.height === h &&
+    state.dpr === dpr &&
+    canvas.width === bufferW &&
+    canvas.height === bufferH
+  ) {
+    return;
+  }
 
   state.dpr = dpr;
   canvas.width = Math.round(w * dpr);

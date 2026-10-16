@@ -2,10 +2,10 @@
 //  Audio partagé (Tone.js)
 //
 //  Chaque fonctionnalité crée sa propre chaîne audio avec `createAudio()` et la
-//  libère dans son `stop()`. Rien n'est mis en cache entre deux visites : c'est
-//  le prix de la garantie « rien ne survit à stop() » décrite dans
-//  plan/F1-navigation.md § 12. Si le re-décodage des échantillons devient
-//  gênant, c'est ici — et nulle part ailleurs — qu'un cache devra être ajouté.
+//  libère dans son `stop()`. Les nœuds (Sampler, réverb) ne survivent pas :
+//  c'est la garantie « rien de branché ne survit à stop() » de plan/F1 § 12.
+//  Seuls les buffers PCM des 9 échantillons du profil bas sont gardés ici,
+//  pour ne pas les re-décoder à chaque visite. Le profil haut re-décode les 30.
 //
 //  Une chaîne libérée est définitivement morte : `ensureReady()` et
 //  `playNote()` n'ont plus aucun effet, ce qui protège des rappels asynchrones
@@ -63,8 +63,47 @@ const LIGHT_PIANO_SAMPLES = {
   C8: "C8.mp3",
 };
 
+// Noms tels que `Tone.Frequency(midi, "midi").toNote()` : dièses, octave
+// scientifique (le Do central est C4). Le Sampler s'aligne sur cette écriture.
+const NOTE_NAMES = (() => {
+  const pitch = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+  const names = new Array(128);
+  for (let midi = 0; midi < 128; midi++) {
+    names[midi] = pitch[midi % 12] + (Math.floor(midi / 12) - 1);
+  }
+  return names;
+})();
+
 export function midiToNote(midi) {
-  return Tone.Frequency(midi, "midi").toNote();
+  return NOTE_NAMES[midi] ?? Tone.Frequency(midi, "midi").toNote();
+}
+
+// Buffers décodés du profil bas, réutilisés par le Sampler suivant.
+const lightBuffers = new Map();
+
+function cacheLightBuffers(sampler) {
+  if (!PERFORMANCE_PROFILE.lightAudio || !sampler?.buffers) return;
+  for (const note of Object.keys(LIGHT_PIANO_SAMPLES)) {
+    if (lightBuffers.has(note)) continue;
+    const audioBuffer = sampler.buffers.get(note)?.get?.();
+    if (audioBuffer) lightBuffers.set(note, audioBuffer);
+  }
+}
+
+function lightSampleUrls() {
+  const notes = Object.keys(LIGHT_PIANO_SAMPLES);
+  if (!notes.every((note) => lightBuffers.has(note))) return LIGHT_PIANO_SAMPLES;
+  const urls = {};
+  for (const note of notes) urls[note] = lightBuffers.get(note);
+  return urls;
+}
+
+// Attaque d'une note jouée au doigt. `Tone.now()` ajoute le lookAhead (~100 ms) ;
+// les Parts du morceau et du métronome, elles, restent datées par Tone.
+const LIVE_NOTE_DELAY_S = 0.015;
+
+function liveAttackTime() {
+  return Tone.immediate() + LIVE_NOTE_DELAY_S;
 }
 
 export function createAudio() {
@@ -84,7 +123,7 @@ export function createAudio() {
 
           const sampler = new Tone.Sampler({
             urls: PERFORMANCE_PROFILE.lightAudio
-              ? LIGHT_PIANO_SAMPLES
+              ? lightSampleUrls()
               : FULL_PIANO_SAMPLES,
             release: 1,
             baseUrl: SAMPLE_BASE_URL,
@@ -102,6 +141,7 @@ export function createAudio() {
           // Quitter la fonctionnalité pendant l'initialisation ne doit pas
           // laisser un échantillonneur branché sur la sortie audio.
           if (audio.disposed) {
+            cacheLightBuffers(sampler);
             sampler.dispose();
             reverb?.dispose();
             return;
@@ -110,6 +150,7 @@ export function createAudio() {
           audio.sampler = sampler;
           audio.reverb = reverb;
           await Tone.loaded(); // attendre le téléchargement des échantillons
+          cacheLightBuffers(sampler);
           if (audio.disposed) return; // dispose() a déjà libéré les nœuds
           audio.ready = true;
         })();
@@ -136,13 +177,13 @@ export function createAudio() {
       audio.sampler.triggerAttackRelease(
         midiToNote(midi),
         duration,
-        undefined,
+        liveAttackTime(),
         velocity
       );
     },
 
     // Joue plusieurs hauteurs, ensemble (accord) ou l'une après l'autre. Les
-    // attaques sont datées explicitement depuis `Tone.now()` : laisser le temps
+    // attaques partent du même instant (`liveAttackTime`) : laisser le temps
     // indéfini ferait partir les notes d'un accord au fil des appels, donc
     // légèrement arpégées (plan/07-entrainement-oreille.md étape A).
     //
@@ -152,7 +193,7 @@ export function createAudio() {
       await audio.ensureReady();
       if (audio.disposed || !audio.ready) return 0;
 
-      const start = Tone.now();
+      const start = liveAttackTime();
       const step = playback === "simultaneous" ? 0 : gap;
       midis.forEach((midi, index) => {
         audio.sampler.triggerAttackRelease(
@@ -167,6 +208,7 @@ export function createAudio() {
 
     dispose() {
       audio.disposed = true;
+      if (audio.sampler) cacheLightBuffers(audio.sampler);
       audio.sampler?.releaseAll?.();
       audio.sampler?.dispose();
       audio.reverb?.dispose();

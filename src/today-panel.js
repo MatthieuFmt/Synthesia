@@ -15,7 +15,7 @@
 
 import { planDay } from "./training-coach.js";
 import { createTrainingStore } from "./training-program.js";
-import { createProgressStore } from "./progress/store.js";
+import { sharedProgressStore } from "./progress/store.js";
 
 function el(tag, className, text) {
   const node = document.createElement(tag);
@@ -28,7 +28,7 @@ export function createTodayPanel({ features, onOpen, onSettings, signal }) {
   const titles = new Map(features.map((feature) => [feature.id, feature.title]));
 
   const store = createTrainingStore();
-  const progress = createProgressStore();
+  const progress = sharedProgressStore();
 
   const plan = planDay(
     features.map((feature) => feature.id),

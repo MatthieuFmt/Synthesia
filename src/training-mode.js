@@ -21,7 +21,7 @@
 // ============================================================================
 
 import { availableFeatures, switchTo } from "./navigation.js";
-import { createProgressStore } from "./progress/store.js";
+import { sharedProgressStore } from "./progress/store.js";
 import { completedSessions } from "./progress/views.js";
 import { planDay } from "./training-coach.js";
 import {
@@ -64,7 +64,7 @@ let listeners = null; // AbortController : retire tous les écouteurs d'un coup
 function createModeState() {
   return {
     store: createTrainingStore(),
-    progress: createProgressStore(), // lu seulement : ce mode n'écrit rien dedans
+    progress: sharedProgressStore(), // lu seulement : ce mode n'écrit rien dedans
     features: [],                    // fonctionnalités programmables (registre F1)
   };
 }

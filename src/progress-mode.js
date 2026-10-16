@@ -4,8 +4,8 @@
 //  Le seul écran qui LIT le journal sans jamais y écrire de séance : il montre
 //  ce que les vues de `progress/views.js` savent calculer — régularité, notes
 //  confondues, exercices maîtrisés, tempo maximal propre, évolution par main —
-//  et rend à l'utilisateur la maîtrise de ses données : export en fichier
-//  JSON et effacement (plan/F3-suivi-progression.md § 8 et étape E). Les
+//  et rend à l'utilisateur la maîtrise de ses données : export et import du
+//  journal, et effacement (plan/F3-suivi-progression.md § 8 et étape E). Les
 //  passages du mode Morceau sont un autre journal : ils s'exportent et se
 //  réimportent ici, sans jamais être écrits dans le journal de séances.
 //
@@ -19,7 +19,7 @@
 
 import { noteDegreeName, octaveOf } from "./music.js";
 import { exerciseById } from "./exercises/catalog.js";
-import { createProgressStore } from "./progress/store.js";
+import { sharedProgressStore } from "./progress/store.js";
 import { sectionStore } from "./song-practice.js";
 import {
   completedSessions,
@@ -285,7 +285,8 @@ function renderData(log) {
       "p",
       "pg-note",
       `${log.length} évènement${log.length > 1 ? "s" : ""} dans le journal local. ` +
-        "Changer de navigateur ou vider son cache efface le journal : l'export est sa seule sauvegarde."
+        "Changer de navigateur ou vider son cache efface le journal : " +
+        "le fichier exporté se réimporte ici."
     )
   );
 
@@ -305,12 +306,27 @@ function renderData(log) {
   exportBtn.type = "button";
   onClick(exportBtn, exportJournal);
 
+  const importBtn = el("button", "btn pg-secondary", "Importer (JSON)");
+  importBtn.type = "button";
+  const journalFile = jsonFileInput((payload) => {
+    const result = payload
+      ? state.progress.importPayload(payload)
+      : { ok: false, reason: "unreadable" };
+    state.journalNotice = journalNoticeFor(result);
+    render();
+  });
+  onClick(importBtn, () => journalFile.click());
+
   const clearBtn = el("button", "btn pg-danger", "Effacer mes données");
   clearBtn.type = "button";
   onClick(clearBtn, () => confirmClear(clearBtn));
 
-  actions.append(exportBtn, clearBtn);
+  actions.append(exportBtn, importBtn, clearBtn, journalFile);
   box.appendChild(actions);
+
+  if (state.journalNotice) {
+    box.appendChild(notice(state.journalNotice));
+  }
 
   box.appendChild(el("p", "pg-note", passagesBackupText(sectionStore.passageCount())));
 
@@ -321,30 +337,55 @@ function renderData(log) {
 
   const importPassages = el("button", "btn pg-secondary", "Importer les passages");
   importPassages.type = "button";
+  const file = jsonFileInput((payload) => {
+    const result = payload
+      ? sectionStore.importPayload(payload)
+      : { ok: false, reason: "unreadable" };
+    state.sectionNotice = sectionNoticeFor(result);
+    render();
+  });
+  onClick(importPassages, () => file.click());
+
+  passageActions.append(exportPassages, importPassages, file);
+  box.appendChild(passageActions);
+
+  if (state.sectionNotice) box.appendChild(notice(state.sectionNotice));
+  return box;
+}
+
+function notice(item) {
+  return el("p", item.tone === "warning" ? "pg-warning" : "pg-note", item.text);
+}
+
+function jsonFileInput(onPayload) {
   const file = el("input");
   file.type = "file";
   file.accept = "application/json,.json";
   file.className = "visually-hidden";
   file.tabIndex = -1;
   file.setAttribute("aria-hidden", "true");
-  onClick(importPassages, () => file.click());
-  file.addEventListener("change", () => readSectionFile(file), {
-    signal: listeners.signal,
-  });
-
-  passageActions.append(exportPassages, importPassages, file);
-  box.appendChild(passageActions);
-
-  if (state.sectionNotice) {
-    box.appendChild(
-      el(
-        "p",
-        state.sectionNotice.tone === "warning" ? "pg-warning" : "pg-note",
-        state.sectionNotice.text
-      )
-    );
-  }
-  return box;
+  file.addEventListener(
+    "change",
+    () => {
+      const chosen = file.files?.[0];
+      file.value = "";
+      if (!chosen) return;
+      const reader = new FileReader();
+      reader.addEventListener("load", () => {
+        if (!state) return;
+        let payload = null;
+        try {
+          payload = JSON.parse(String(reader.result));
+        } catch {
+          payload = null;
+        }
+        onPayload(payload);
+      });
+      reader.readAsText(chosen);
+    },
+    { signal: listeners.signal }
+  );
+  return file;
 }
 
 function passagesBackupText(count) {
@@ -372,24 +413,26 @@ function exportSections() {
   setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
 
-function readSectionFile(input) {
-  const file = input.files?.[0];
-  input.value = "";
-  if (!file) return;
-  const reader = new FileReader();
-  reader.addEventListener("load", () => {
-    if (!state) return;
-    let payload = null;
-    try {
-      payload = JSON.parse(String(reader.result));
-    } catch {
-      payload = null;
-    }
-    const result = payload ? sectionStore.importPayload(payload) : { ok: false, reason: "unreadable" };
-    state.sectionNotice = sectionNoticeFor(result);
-    render();
-  });
-  reader.readAsText(file);
+function journalNoticeFor(result) {
+  if (!result.ok) {
+    return {
+      tone: "warning",
+      text:
+        result.reason === "unwritable"
+          ? "Impossible d'enregistrer le journal dans ce navigateur."
+          : "Ce fichier n'est pas un export de progression.",
+    };
+  }
+  if (result.added > 1) return { tone: "note", text: `${result.added} évènements repris.` };
+  if (result.added === 1) return { tone: "note", text: "1 évènement repris." };
+  if (result.capped) {
+    return {
+      tone: "note",
+      text: "Le journal est déjà plein : ces évènements plus anciens n'ont pas été gardés.",
+    };
+  }
+  if (result.incoming > 0) return { tone: "note", text: "Ces évènements sont déjà enregistrés." };
+  return { tone: "warning", text: "Ce fichier ne contient aucun évènement." };
 }
 
 function sectionNoticeFor(result) {
@@ -443,6 +486,7 @@ function confirmClear(button) {
   clearTimeout(state.disarmTimer);
   state.clearArmed = false;
   state.progress.clear();
+  state.journalNotice = null;
   render(); // l'écran vide dit lui-même que tout est parti
 }
 
@@ -453,9 +497,10 @@ function start(host) {
   container = host;
   listeners = new AbortController();
   state = {
-    progress: createProgressStore(),
+    progress: sharedProgressStore(),
     clearArmed: false,
     disarmTimer: null,
+    journalNotice: null,
     sectionNotice: null,
   };
 

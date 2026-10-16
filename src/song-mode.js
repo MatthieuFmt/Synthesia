@@ -32,7 +32,7 @@ import { PERFORMANCE_PROFILE } from "./perf.js";
 import { createAudio, midiToNote } from "./audio.js";
 import { midiInput } from "./midi-input.js";
 import { syncBluetoothButton, toggleBluetooth } from "./midi-controls.js";
-import { createProgressStore } from "./progress/store.js";
+import { sharedProgressStore } from "./progress/store.js";
 import {
   clampBounds,
   clampTempoPercent,
@@ -182,7 +182,7 @@ function createSession() {
     // Sous-mode Travail (feature 06). Tant que `enabled` est faux, le mode se
     // comporte exactement comme le lecteur d'avant.
     practice: createPracticeState(),
-    progress: createProgressStore(),
+    progress: sharedProgressStore(),
     practiceLog: null,   // séance F3 ouverte pendant le travail
   };
 }
@@ -387,17 +387,28 @@ function rebuildLayout(w, h) {
   const whiteTop = layout.keyboardTop + 3;
   const whiteHeight = layout.keyboardHeight - 3;
   const blackHeight = whiteHeight * 0.62;
-  layout.whiteGradients = [
-    makeGradient(whiteTop, whiteTop + whiteHeight, "#ffffff", "#d7d0c2"),
-    makeGradient(whiteTop, whiteTop + whiteHeight, COLORS.leftHandEdge, COLORS.leftHand),
-    makeGradient(whiteTop, whiteTop + whiteHeight, COLORS.rightHandEdge, COLORS.rightHand),
-  ];
-  layout.blackGradients = [
-    makeGradient(whiteTop, whiteTop + blackHeight, "#2b313b", "#080a0e"),
-    makeGradient(whiteTop, whiteTop + blackHeight, COLORS.leftHand, COLORS.leftHandDark),
-    makeGradient(whiteTop, whiteTop + blackHeight, COLORS.rightHand, COLORS.rightHandDark),
-  ];
+  // Profil bas : aplats, comme le mode Exercices. Un dégradé se calcule
+  // pixel par pixel ; sur 52 touches blanches c'est le gros du raster.
+  if (PERFORMANCE_PROFILE.constrained) {
+    layout.whiteGradients = FLAT_WHITE_KEYS;
+    layout.blackGradients = FLAT_BLACK_KEYS;
+  } else {
+    layout.whiteGradients = [
+      makeGradient(whiteTop, whiteTop + whiteHeight, "#ffffff", "#d7d0c2"),
+      makeGradient(whiteTop, whiteTop + whiteHeight, COLORS.leftHandEdge, COLORS.leftHand),
+      makeGradient(whiteTop, whiteTop + whiteHeight, COLORS.rightHandEdge, COLORS.rightHand),
+    ];
+    layout.blackGradients = [
+      makeGradient(whiteTop, whiteTop + blackHeight, "#2b313b", "#080a0e"),
+      makeGradient(whiteTop, whiteTop + blackHeight, COLORS.leftHand, COLORS.leftHandDark),
+      makeGradient(whiteTop, whiteTop + blackHeight, COLORS.rightHand, COLORS.rightHandDark),
+    ];
+  }
 }
+
+// Indexés comme `activeKeys` : 0 éteinte, 1 main gauche, 2 main droite.
+const FLAT_WHITE_KEYS = ["#f2ede1", COLORS.leftHand, COLORS.rightHand];
+const FLAT_BLACK_KEYS = ["#14181f", COLORS.leftHandDark, COLORS.rightHandDark];
 
 function whiteLeftEdge(midi) {
   return whiteIndex(midi) * layout.whiteKeyWidth;
@@ -845,7 +856,7 @@ function drawNotes(first, afterLast) {
       ? COLORS.leftHandDark
       : COLORS.leftHand;
     const pad = 1;
-    roundRect(
+    traceNoteRect(
       g.x + pad,
       yTop,
       Math.max(2, g.width - pad * 2),
@@ -1246,33 +1257,28 @@ function paintKey(midi, color, alpha) {
   ctx.save();
   ctx.globalAlpha = alpha;
   ctx.fillStyle = color;
-  if (g.white) roundRectBottom(g.x + 0.5, top + 3, g.width - 1, kbH - 3, 4);
-  else roundRectBottom(g.x, top + 3, g.width, (kbH - 3) * 0.62, 3);
-  ctx.fill();
+  if (g.white) fillBottomRounded(g.x + 0.5, top + 3, g.width - 1, kbH - 3, 4);
+  else fillBottomRounded(g.x, top + 3, g.width, (kbH - 3) * 0.62, 3);
   ctx.restore();
 }
 
 function drawWhiteKey(x, top, w, kbH, midi, active) {
   ctx.fillStyle = layout.whiteGradients[active[midi]];
-  roundRectBottom(x + 0.5, top, w - 1, kbH, 4);
-  ctx.fill();
+  fillBottomRounded(x + 0.5, top, w - 1, kbH, 4);
 
   if (state.pressedKeys.has(midi)) {
     ctx.fillStyle = "rgba(0, 0, 0, 0.32)";
-    roundRectBottom(x + 0.5, top, w - 1, kbH, 4);
-    ctx.fill();
+    fillBottomRounded(x + 0.5, top, w - 1, kbH, 4);
   }
 }
 
 function drawBlackKey(x, top, w, bkH, midi, active) {
   ctx.fillStyle = layout.blackGradients[active[midi]];
-  roundRectBottom(x, top, w, bkH, 3);
-  ctx.fill();
+  fillBottomRounded(x, top, w, bkH, 3);
 
   if (state.pressedKeys.has(midi)) {
     ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
-    roundRectBottom(x, top, w, bkH, 3);
-    ctx.fill();
+    fillBottomRounded(x, top, w, bkH, 3);
   }
 }
 
@@ -1387,6 +1393,26 @@ function roundRect(x, y, w, hgt, r) {
   ctx.arcTo(x, y + hgt, x, y, rr);
   ctx.arcTo(x, y, x + w, y, rr);
   ctx.closePath();
+}
+
+// Notes du rouleau. Profil bas : rectangle, le chemin reste en place pour
+// le contour blanc de la note en cours.
+function traceNoteRect(x, y, w, hgt, r) {
+  if (PERFORMANCE_PROFILE.constrained) {
+    ctx.beginPath();
+    ctx.rect(x, y, w, hgt);
+    return;
+  }
+  roundRect(x, y, w, hgt, r);
+}
+
+function fillBottomRounded(x, y, w, hgt, r) {
+  if (PERFORMANCE_PROFILE.constrained) {
+    ctx.fillRect(x, y, w, hgt);
+    return;
+  }
+  roundRectBottom(x, y, w, hgt, r);
+  ctx.fill();
 }
 
 function drawImmediately() {
@@ -2501,10 +2527,25 @@ function resizeCanvas() {
       pixelBudgetDpr
     )
   );
+  const bufferW = Math.round(w * dpr);
+  const bufferH = Math.round(h * dpr);
+  // Même taille CSS et même DPR : ne pas vider le tampon (ça recrée aussi
+  // les dégradés du clavier dans `rebuildLayout`).
+  if (
+    w > 0 &&
+    h > 0 &&
+    layout.width === w &&
+    layout.height === h &&
+    state.dpr === dpr &&
+    canvas.width === bufferW &&
+    canvas.height === bufferH
+  ) {
+    return;
+  }
 
   state.dpr = dpr;
-  canvas.width = Math.round(w * dpr);
-  canvas.height = Math.round(h * dpr);
+  canvas.width = bufferW;
+  canvas.height = bufferH;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   rebuildLayout(w, h);
   drawImmediately();

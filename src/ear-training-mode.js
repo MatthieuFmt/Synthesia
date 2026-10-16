@@ -35,7 +35,7 @@ import {
   REFERENCE_MIDI,
   targetOf,
 } from "./ear/questions.js";
-import { createProgressStore } from "./progress/store.js";
+import { sharedProgressStore } from "./progress/store.js";
 import { lastSessionContext, priorWeights } from "./progress/review.js";
 
 // Délai avant la question suivante : assez long pour entendre le retour, assez
@@ -73,7 +73,7 @@ function createModeState() {
     stopped: false,
     audio: createAudio(),
     settings: { family: "single-note", difficulty: "beginner" },
-    progress: createProgressStore(), // journal partagé (plan/F3 § 7)
+    progress: sharedProgressStore(), // journal partagé (plan/F3 § 7)
     practice: null,   // séance ouverte dans le journal
     session: null,    // session d'exercice (session-engine)
     locked: false,    // vrai pendant la transition vers la question suivante

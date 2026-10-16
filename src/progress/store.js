@@ -89,6 +89,82 @@ function readLog(storage) {
   }
 }
 
+// Un fichier choisi par l'utilisateur n'est pas le journal déjà stocké.
+// On en recopie les évènements lisibles, y compris d'anciens types (Rythme,
+// Pédale) que l'application n'écrit plus. Le reste est ignoré.
+const FORBIDDEN_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+const FEATURE_ID = /^[a-z][a-z0-9-]{0,39}$/;
+const TOKEN = /^[a-z][a-z0-9-]{0,31}$/;
+const MAX_IMPORT_EVENTS = 8000;
+const MAX_PLAIN_NODES = 80;
+
+function finiteStamp(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number < 0 || number > 1e15) return null;
+  return number;
+}
+
+function copyPlain(value, depth, budget) {
+  if (budget.nodes <= 0) return undefined;
+  budget.nodes -= 1;
+  if (value === null) return null;
+  const kind = typeof value;
+  if (kind === "boolean") return value;
+  if (kind === "number") return Number.isFinite(value) ? value : undefined;
+  if (kind === "string") return value.length > 200 ? value.slice(0, 200) : value;
+  if (depth >= 4) return undefined;
+  if (Array.isArray(value)) {
+    const copy = [];
+    for (const item of value.slice(0, 32)) {
+      const next = copyPlain(item, depth + 1, budget);
+      if (next !== undefined) copy.push(next);
+    }
+    return copy;
+  }
+  if (kind !== "object") return undefined;
+  const copy = {};
+  for (const key of Object.keys(value).slice(0, 24)) {
+    if (FORBIDDEN_KEYS.has(key)) continue;
+    const next = copyPlain(value[key], depth + 1, budget);
+    if (next !== undefined) copy[key] = next;
+  }
+  return copy;
+}
+
+function sanitizeEvent(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  if (typeof raw.type !== "string" || !TOKEN.test(raw.type)) return null;
+  if (typeof raw.featureId !== "string" || !FEATURE_ID.test(raw.featureId)) return null;
+  const at = finiteStamp(raw.at);
+  const sessionId = finiteStamp(raw.sessionId);
+  if (at === null || sessionId === null) return null;
+
+  const event = { at, sessionId, featureId: raw.featureId, type: raw.type };
+  if (raw.outcome !== undefined) {
+    if (typeof raw.outcome !== "string" || !TOKEN.test(raw.outcome)) return null;
+    event.outcome = raw.outcome;
+  }
+  const budget = { nodes: MAX_PLAIN_NODES };
+  for (const field of ["target", "given", "context"]) {
+    if (raw[field] === undefined) continue;
+    const value = raw[field];
+    if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+    event[field] = copyPlain(value, 1, budget);
+  }
+  return event;
+}
+
+function stableStringify(value) {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableStringify(item)).join(",")}]`;
+  }
+  const keys = Object.keys(value).sort();
+  return `{${keys
+    .map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`)
+    .join(",")}}`;
+}
+
 export function createProgressStore({
   storage = defaultStorage(),
   now = Date.now,
@@ -199,10 +275,69 @@ export function createProgressStore({
       }
     },
 
-    // Export (F3 § 8) : le document tel qu'il est stocké — la seule sauvegarde
+    // Export (F3 § 8) : le document tel qu'il est stocké — la sauvegarde
     // possible sans serveur. Une copie, comme `log()`.
     exportPayload() {
       return { v: LOG_VERSION, exportedAt: now(), log: [...log] };
+    },
+
+    // Réimporte cet export. Ce qui est déjà là reste : un vieux fichier ne
+    // doit pas effacer une séance faite depuis, et le même fichier importé
+    // deux fois ne double rien. Ensuite le journal redevient chronologique,
+    // parce que les vues le lisent comme une suite dans le temps.
+    importPayload(payload) {
+      if (
+        !payload ||
+        typeof payload !== "object" ||
+        Array.isArray(payload) ||
+        payload.v !== LOG_VERSION ||
+        !Array.isArray(payload.log)
+      ) {
+        return { ok: false, reason: "unreadable", added: 0, incoming: 0 };
+      }
+
+      const slice =
+        payload.log.length > MAX_IMPORT_EVENTS
+          ? payload.log.slice(-MAX_IMPORT_EVENTS)
+          : payload.log;
+      const accepted = [];
+      for (const raw of slice) {
+        const event = sanitizeEvent(raw);
+        if (event) accepted.push(event);
+      }
+
+      const known = new Set();
+      for (const event of log) {
+        const cleaned = sanitizeEvent(event);
+        if (cleaned) known.add(stableStringify(cleaned));
+      }
+
+      const fresh = [];
+      for (const event of accepted) {
+        const key = stableStringify(event);
+        if (known.has(key)) continue;
+        known.add(key);
+        fresh.push(key);
+        log.push(event);
+      }
+
+      if (fresh.length === 0) {
+        return { ok: true, added: 0, incoming: accepted.length, capped: false };
+      }
+
+      log.sort((a, b) => a.at - b.at);
+      if (log.length > maxEvents) log.splice(0, log.length - maxEvents);
+      const kept = new Set();
+      for (const event of log) {
+        const cleaned = sanitizeEvent(event);
+        if (cleaned) kept.add(stableStringify(cleaned));
+      }
+      const added = fresh.filter((key) => kept.has(key)).length;
+      dirty = true;
+      if (!write()) {
+        return { ok: false, reason: "unwritable", added, incoming: accepted.length };
+      }
+      return { ok: true, added, incoming: accepted.length, capped: fresh.length > added };
     },
 
     // Compaction (F3 étape E) : garde le détail des `keepDetail` évènements les
@@ -232,4 +367,14 @@ export function createProgressStore({
       return writable;
     },
   };
+}
+
+// Un seul journal pour la page. Chaque `start()` relisait et reparsait
+// localStorage ; les modes se relaient, ils n'écrivent jamais en même temps.
+// `createProgressStore` reste disponible pour un stockage injecté (tests).
+let sharedStore = null;
+
+export function sharedProgressStore() {
+  if (!sharedStore) sharedStore = createProgressStore();
+  return sharedStore;
 }

@@ -2400,6 +2400,11 @@ body.force-landscape .song-info { margin-top: 6px; font-size: 12px; }
   touch-action: none;
 }
 
+/* Profil bas : canvas opaque. Le radius laisserait voir les coins de la page. */
+.fl-canvas.is-flat {
+  border-radius: 0;
+}
+
 .fl-instruction {
   margin: 0;
   font-size: 14px;
