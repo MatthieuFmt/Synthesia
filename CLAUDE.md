@@ -42,7 +42,7 @@ src/training-coach.js       # le professeur (sans DOM) : créneaux d'une séance
                             # ancienneté, répartition d'un budget en minutes
 src/training-program.js     # réglages du Programme (sans DOM) : budget quotidien, bornes
                             # de jour, persistance
-src/song-mode.js            # mode Morceau : piano roll, clavier, notation, sous-mode Travail
+src/song-mode.js            # mode Morceau : piano roll, clavier, sous-mode Travail
 src/song-practice.js        # règles du Travail, sans DOM : passages, accords attendus,
                             # tempo, maîtrise, persistance des passages
 src/note-reading-engine.js  # groupes de notes par niveau et par main, clés (sans DOM)

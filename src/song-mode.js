@@ -56,14 +56,10 @@ import {
   songAt,
 } from "./song-library.js";
 import {
-  CLEF_GLYPH,
   isWhite,
   MIDI_HIGH,
   MIDI_LOW,
-  noteDegreeName,
   pitchClass,
-  SHARP_PCS,
-  staffStep,
 } from "./music.js";
 
 // ----------------------------------------------------------------------------
@@ -112,8 +108,6 @@ const COLORS = {
   wrongKey: "#f87171",       // note fausse : signalée, sans rien changer d'autre
   hintKey: "#7ee2a8",        // aide après plusieurs échecs sur le même accord
   label: "#6e7681",
-  cardBg: "#f6f1e3", // fond « papier » des mini-portées
-  ink: "#1b1b1b",    // encre des portées / notes
 };
 
 // ----------------------------------------------------------------------------
@@ -156,7 +150,6 @@ function createSession() {
 
     currentTime: 0,    // position de lecture, en secondes (source de vérité)
     isPlaying: false,
-    showNotation: false, // mini-portées sur les notes (désactivées par défaut)
     speed: 1,           // multiplicateur de vitesse de lecture (1 = normal)
     dpr: 1,
     pressedKeys: new Set(), // touches enfoncées au clic (assombrissement temporaire)
@@ -223,7 +216,7 @@ function isRunning() {
 // ----------------------------------------------------------------------------
 //  Persistance des réglages (localStorage)
 //
-//  On mémorise les derniers réglages — vitesse, notation, morceau et position
+//  On mémorise les derniers réglages — vitesse, morceau et position
 //  de lecture — pour les restaurer au prochain chargement. L'écriture est
 //  périodique (une fois par minute, cf. startAutoSave) plutôt qu'à chaque
 //  changement.
@@ -252,7 +245,6 @@ function saveSettings() {
   const practice = state.practice;
   const data = {
     speed: state.speed,
-    showNotation: state.showNotation,
     library,
     // Réglages du sous-mode Travail. Le passage actif est retenu avec eux :
     // reprendre le travail là où on l'a laissé fait partie du § 18 de plan/06.
@@ -737,9 +729,6 @@ function draw() {
     );
     drawMeasureLines(w, h);
     drawNotes(firstVisibleNote, afterLastVisibleNote);
-    if (state.showNotation) {
-      drawNotationCards(firstVisibleNote, afterLastVisibleNote);
-    }
     drawPedalCues(w);
     drawPracticeSection(w, h);
     ctx.restore();
@@ -1036,129 +1025,6 @@ function drawPedalReleaseCue(x, y) {
   ctx.lineTo(6, 3);
   ctx.stroke();
   ctx.restore();
-}
-
-// Mini-portées : sur chaque note visible, une petite « carte » de partition
-// (5 lignes + clé + tête de note placée + lignes supplémentaires + hampe + nom)
-// pour apprendre à lire la note en même temps qu'on la joue.
-function drawNotationCards(first, afterLast) {
-  const h = layout.height;
-  for (let index = first; index < afterLast; index++) {
-    const n = state.song.notes[index];
-    const yBottom = timeToScreenY(n.time);
-    const yTop = timeToScreenY(n.endTime);
-    if (yBottom < -40 || yTop > h + 40) continue;
-    const g = noteGeometry(n.midi);
-    drawNotationCard(g.centerX, yTop, yBottom, n.midi, n.hand);
-  }
-}
-
-function drawNotationCard(cx, noteTop, noteBottom, midi, hand) {
-  const clef = hand === "right" ? "treble" : "bass";
-
-  const LG = 4;             // espacement des interlignes (px)
-  const staffH = LG * 4;    // hauteur des 5 lignes
-  const clefW = 10;         // largeur réservée à la clé
-  const cardW = 30;
-  const topPad = 12;        // marge haute (hampes / lignes supplémentaires)
-  const captionH = 10;      // bandeau du nom de note
-  const cardH = topPad + staffH + captionH;
-
-  const cardX = Math.round(cx - cardW / 2);
-  const cardY = Math.round(noteTop); // ancrée au bord supérieur de la note
-
-  // Clip : la carte ne dépasse pas en-dehors du rectangle de la note
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(cardX - 1, noteTop, cardW + 2, Math.max(0, noteBottom - noteTop));
-  ctx.clip();
-
-  // Carte « papier » bordée de la couleur de la main
-  ctx.fillStyle = COLORS.cardBg;
-  ctx.strokeStyle = hand === "right" ? COLORS.rightHand : COLORS.leftHand;
-  ctx.lineWidth = 1.5;
-  roundRect(cardX, cardY, cardW, cardH, 3);
-  ctx.fill();
-  ctx.stroke();
-
-  const staffLeft = cardX + clefW;
-  const staffRight = cardX + cardW - 3;
-  const staffTopY = cardY + topPad;
-  const bottomLineY = staffTopY + staffH;
-
-  // 5 lignes de portée
-  ctx.strokeStyle = COLORS.ink;
-  ctx.lineWidth = 1;
-  for (let i = 0; i < 5; i++) {
-    const y = crisp(staffTopY + i * LG);
-    line(staffLeft, y, staffRight, y);
-  }
-
-  // Clé (symboles musicaux Unicode)
-  ctx.fillStyle = COLORS.ink;
-  ctx.textAlign = "left";
-  ctx.textBaseline = "alphabetic";
-  if (clef === "treble") {
-    ctx.font = `${Math.round(staffH * 1.7)}px serif`;
-    ctx.fillText(CLEF_GLYPH.treble, cardX + 1, bottomLineY + LG * 0.6);
-  } else {
-    ctx.font = `${Math.round(staffH * 1.1)}px serif`;
-    ctx.fillText(CLEF_GLYPH.bass, cardX + 1, staffTopY + LG * 2.7);
-  }
-
-  // Tête de note
-  const step = staffStep(midi, clef);
-  const headY = bottomLineY - step * (LG / 2);
-  const headX = staffLeft + (staffRight - staffLeft) * 0.62;
-  const headRx = LG * 0.72;
-  const headRy = LG * 0.6;
-
-  // Lignes supplémentaires (au-dessus / en dessous de la portée)
-  ctx.strokeStyle = COLORS.ink;
-  const ledgerHalf = headRx + 2;
-  if (step < 0) {
-    for (let k = -2; k >= step; k -= 2) {
-      const y = crisp(bottomLineY - k * (LG / 2));
-      line(headX - ledgerHalf, y, headX + ledgerHalf, y);
-    }
-  } else if (step > 8) {
-    for (let k = 10; k <= step; k += 2) {
-      const y = crisp(bottomLineY - k * (LG / 2));
-      line(headX - ledgerHalf, y, headX + ledgerHalf, y);
-    }
-  }
-
-  // Hampe (le « trait vertical ») : vers le haut sous la 3e ligne, sinon bas
-  ctx.lineWidth = 1.2;
-  ctx.beginPath();
-  if (step < 4) {
-    ctx.moveTo(headX + headRx, headY);
-    ctx.lineTo(headX + headRx, headY - LG * 2.6);
-  } else {
-    ctx.moveTo(headX - headRx, headY);
-    ctx.lineTo(headX - headRx, headY + LG * 2.6);
-  }
-  ctx.stroke();
-
-  // Tête de note (ovale plein, légèrement incliné)
-  ctx.fillStyle = COLORS.ink;
-  ctx.beginPath();
-  ctx.ellipse(headX, headY, headRx, headRy, -0.3, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Altération dièse éventuelle
-  if (SHARP_PCS.has(pitchClass(midi))) {
-    ctx.font = `${Math.round(LG * 2.6)}px serif`;
-    ctx.fillText("♯", headX - headRx - 6, headY + LG * 0.9);
-  }
-
-  // Nom de la note (notation latine)
-  ctx.font = "bold 8px system-ui, sans-serif";
-  ctx.textAlign = "center";
-  ctx.fillText(noteDegreeName(midi), cardX + cardW / 2, cardY + cardH - 2);
-  ctx.textAlign = "left";
-
-  ctx.restore(); // fin du clipping
 }
 
 // ----------------------------------------------------------------------------
@@ -2873,16 +2739,6 @@ function attachInteractions(signal) {
     { signal }
   );
 
-  // Affichage de la notation (mini-portées)
-  document.getElementById("notationToggle").addEventListener(
-    "change",
-    (e) => {
-      state.showNotation = e.target.checked;
-      scheduleDraw();
-    },
-    { signal }
-  );
-
   // Vitesse de lecture, par pas de 5 % : un clic = une reconstruction du Part
   // de Tone, là où le curseur d'avant devait attendre le relâché pour ne pas en
   // faire trente pendant un glissé.
@@ -3113,10 +2969,6 @@ async function loadInitialSong() {
   if (saved) {
     if (typeof saved.speed === "number") {
       setSpeed(clampTempoPercent(saved.speed * 100) / 100);
-    }
-    if (typeof saved.showNotation === "boolean") {
-      session.showNotation = saved.showNotation;
-      document.getElementById("notationToggle").checked = saved.showNotation;
     }
   }
 

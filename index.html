@@ -61,8 +61,8 @@
       </nav>
 
       <!-- =====================================================================
-           Contrôles propres au mode Morceau : bibliothèque, notation, vitesse
-           et transport. Affichés par song-mode.js pendant que le mode est
+           Contrôles propres au mode Morceau : bibliothèque, vitesse et
+           transport. Affichés par song-mode.js pendant que le mode est
            actif, masqués dès son arrêt.
            ================================================================== -->
       <div id="songControls" class="mode-controls" hidden>
@@ -88,20 +88,6 @@
             <select id="songSelect" class="song-select">
               <option value="">Bibliothèque de morceaux…</option>
             </select>
-
-            <label class="toggle annotation-toggle" title="Afficher la notation">
-              <input
-                type="checkbox"
-                id="notationToggle"
-                class="visually-hidden"
-                aria-label="Afficher la notation"
-              />
-              <svg class="toolbar-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M9 18V5l10-2v13" />
-                <circle cx="6" cy="18" r="3" />
-                <circle cx="16" cy="16" r="3" />
-              </svg>
-            </label>
 
             <!-- Vitesse de lecture. C'est aussi le « tempo de travail » du
                  sous-mode Travail (06) : un seul et même réglage, donc une
