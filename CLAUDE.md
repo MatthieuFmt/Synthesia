@@ -198,6 +198,11 @@ Puis <http://localhost:8000>. Ne pas ouvrir `index.html` en `file://` (modules E
 
 ## Règles diverses
 
+- **Jamais de versions simplifiées.** Quand on ajoute un morceau, on cherche une version
+  fidèle et complète (transcription réelle, accompagnement non réduit, toutes les variations).
+  Les versions « facile », « easy », karaoké, ou à accords plaqués sont refusées ; si on ne
+  trouve que ça, on le dit à l'utilisateur au lieu d'ajouter le fichier. Une version déjà
+  ajoutée qui se révèle simplifiée doit être remplacée par la version fidèle.
 - **Ne jamais modifier `songs.json` sans demander**. Les chemins contiennent des URL-encoded spaces (`%20`).
 - **La nature d'un fichier est dans la donnée, pas dans son dossier** : `kind: "song"` (mode Morceau) ou `kind: "exercice"` (liste « Morceaux d'étude » du mode Exercices). Une entrée sans `kind` est un morceau. `src/song-library.js` tranche, et lui seul lit `songs.json`.
 - **Le dossier `midi/` contient les vrais morceaux** (fichiers binaires). Ne pas les modifier.

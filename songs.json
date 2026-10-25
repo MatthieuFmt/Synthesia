@@ -8,6 +8,7 @@
   { "kind": "song", "title": "Haendel — Passacaglia", "file": "midi/Haendel%20-%20Passacaglia.mid" },
   { "kind": "song", "title": "Beethoven — Sonate au Clair de Lune (3e mouvement)", "file": "midi/Beethoven%20-%20Sonate%20au%20Clair%20de%20Lune%20(3e%20mouvement).mid" },
   { "kind": "song", "title": "Luo Ni — G Minor Bach (Prélude nº 2 en sol mineur)", "file": "midi/Luo%20Ni%20-%20G%20Minor%20Bach%20(Prelude%20No.%202).mid" },
+  { "kind": "song", "title": "Renaud — Mistral Gagnant", "file": "midi/Renaud%20-%20Mistral%20Gagnant.mid" },
 
   { "kind": "exercice", "title": "Czerny — Op. 821 nº 1", "file": "morceaux-exercice/czerny-op821-01.mid" },
   { "kind": "exercice", "title": "Czerny — Op. 821 nº 2", "file": "morceaux-exercice/czerny-op821-02.mid" },
